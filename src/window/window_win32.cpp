@@ -1,8 +1,8 @@
-#include <window/window_win32.hpp>
 #include <core/event/event.hpp>
 #include <core/log.hpp>
 #include <core/std/basic_types.hpp>
 #include <cstring>
+#include <window/window_win32.hpp>
 #include <windowsx.h>
 
 namespace window
@@ -25,7 +25,10 @@ namespace window
             pd.win32class.hCursor = LoadCursor(NULL, IDC_ARROW);
             pd.win32class.hIcon = LoadIconW(pd.instance, L"WINDOW_ICON");
             if (!pd.win32class.hIcon)
+            {
+                logWarn("Failed to load window icon");
                 pd.win32class.hIcon = LoadIcon(NULL, IDI_APPLICATION);
+            }
             ATOM classAtom = RegisterClassExW(&pd.win32class);
             return classAtom != 0;
         }
@@ -142,7 +145,7 @@ namespace window
                     break;
                 case WM_NCHITTEST:
                 {
-                    if (!gWindowEvents.NCHitTest)
+                    if (window->decorated())
                         break;
                     LRESULT hit = DefWindowProcW(hwnd, uMsg, wParam, lParam);
                     switch (hit)
@@ -164,6 +167,8 @@ namespace window
                     ScreenToClient(hwnd, &cursorPoint);
                     if (cursorPoint.y > 0 && cursorPoint.y < pd.frameY + pd.padding)
                         return HTTOP;
+                    if (!gWindowEvents.NCHitTest)
+                        break;
                     Win32NativeEvent event("window:NCHitTest", window, uMsg, wParam, lParam, &hit);
                     gWindowEvents.NCHitTest->invoke(event);
                     return hit;
@@ -238,6 +243,8 @@ namespace window
                 }
                 case WM_KILLFOCUS:
                 {
+                    if (!window)
+                        break;
                     window->_focused = false;
                     emitWindowEvent(gWindowEvents.focusEvents, "window:focus", window, false);
                     if (!window->_rawInput)
@@ -311,62 +318,75 @@ namespace window
                     const auto action =
                         (HIWORD(lParam) & KF_UP) ? io::KeyPressState::release : io::KeyPressState::press;
                     const auto mods = getKeyMods();
-                    io::Key key;
-                    auto it = pd.keymap.find(wParam);
-                    key = it != pd.keymap.end() ? it->second : io::Key::kUnknown;
-                    // The Ctrl keys require special handling
-                    if (wParam == VK_CONTROL)
+                    io::Key key = io::Key::kUnknown;
+                    switch (wParam)
                     {
-                        if (HIWORD(lParam) & KF_EXTENDED)
-                            key = io::Key::kRightControl;
-                        else
+                        case VK_MENU:
+                            key = HIWORD(lParam) & KF_EXTENDED ? io::Key::kRightAlt : io::Key::kLeftAlt;
+                            break;
+                        case VK_SHIFT:
                         {
-                            // NOTE: Alt Gr sends Left Ctrl followed by Right Alt
-                            // HACK: We only want one event for Alt Gr, so if we detect
-                            //       this sequence we discard this Left Ctrl message now
-                            //       and later report Right Alt normally
-                            MSG next;
-                            const DWORD time = GetMessageTime();
-
-                            if (PeekMessageW(&next, NULL, 0, 0, PM_NOREMOVE))
+                            if (action == io::KeyPressState::release)
                             {
-                                if (next.message == WM_KEYDOWN || next.message == WM_SYSKEYDOWN ||
-                                    next.message == WM_KEYUP || next.message == WM_SYSKEYUP)
-                                {
-                                    if (next.wParam == VK_MENU && (HIWORD(next.lParam) & KF_EXTENDED) &&
-                                        next.time == time)
-                                        break;
-                                }
+                                // HACK: Release both Shift keys on Shift up event, as when both
+                                //       are pressed the first release does not emit any event
+                                // NOTE: The other half of this is in _glfwPollEventsWin32
+                                window->inputKey(io::Key::kLeftShift, action, mods);
+                                window->inputKey(io::Key::kRightShift, action, mods);
                             }
+                            else
+                                key = HIWORD(lParam) & KF_EXTENDED ? io::Key::kRightShift : io::Key::kLeftShift;
+                            break;
+                        }
+                        case VK_CONTROL:
+                        {
+                            if (HIWORD(lParam) & KF_EXTENDED)
+                                key = io::Key::kRightControl;
+                            else
+                            {
+                                // NOTE: Alt Gr sends Left Ctrl followed by Right Alt
+                                // HACK: We only want one event for Alt Gr, so if we detect
+                                //       this sequence we discard this Left Ctrl message now
+                                //       and later report Right Alt normally
+                                MSG next;
+                                const DWORD time = GetMessageTime();
 
-                            // This is a regular Left Ctrl message
-                            key = io::Key::kLeftControl;
+                                if (PeekMessageW(&next, NULL, 0, 0, PM_NOREMOVE))
+                                {
+                                    if (next.message == WM_KEYDOWN || next.message == WM_SYSKEYDOWN ||
+                                        next.message == WM_KEYUP || next.message == WM_SYSKEYUP)
+                                    {
+                                        if (next.wParam == VK_MENU && (HIWORD(next.lParam) & KF_EXTENDED) &&
+                                            next.time == time)
+                                            break;
+                                    }
+                                }
+
+                                // This is a regular Left Ctrl message
+                                key = io::Key::kLeftControl;
+                            }
+                            break;
+                        }
+                        case VK_PROCESSKEY:
+                            // IME notifies that keys have been filtered by setting the
+                            // virtual key-code to VK_PROCESSKEY
+                            break;
+                        case VK_SNAPSHOT:
+                            // HACK: Key down is not reported for the Print Screen key
+                            window->inputKey(key, io::KeyPressState::press, mods);
+                            window->inputKey(key, io::KeyPressState::release, mods);
+                            break;
+                        default:
+                        {
+                            auto it = pd.keymap.find(wParam);
+                            key = it != pd.keymap.end() ? it->second : io::Key::kUnknown;
+                            break;
                         }
                     }
-                    else if (wParam == VK_PROCESSKEY)
-                    {
-                        // IME notifies that keys have been filtered by setting the
-                        // virtual key-code to VK_PROCESSKEY
-                        break;
-                    }
 
-                    if (action == io::KeyPressState::release && wParam == VK_SHIFT)
-                    {
-                        // HACK: Release both Shift keys on Shift up event, as when both
-                        //       are pressed the first release does not emit any event
-                        // NOTE: The other half of this is in _glfwPollEventsWin32
-                        window->inputKey(io::Key::kLeftShift, action, mods);
-                        window->inputKey(io::Key::kRightShift, action, mods);
-                    }
-                    else if (wParam == VK_SNAPSHOT)
-                    {
-                        // HACK: Key down is not reported for the Print Screen key
-                        window->inputKey(key, io::KeyPressState::press, mods);
-                        window->inputKey(key, io::KeyPressState::release, mods);
-                    }
-                    else
+                    if (key != io::Key::kUnknown)
                         window->inputKey(key, action, mods);
-                    // Prevent Alt to Menu call Behavior
+                    // Prevent Alt to call Menu Behavior
                     if (wParam == VK_MENU)
                         return 0;
                     break;
@@ -469,7 +489,7 @@ namespace window
                     {
                         i32 dx = raw->data.mouse.lLastX;
                         i32 dy = raw->data.mouse.lLastY;
-                        emitWindowEvent(gWindowEvents.cursorPosEvents, "window:cursorPos", window, Point2D{dx, dy});
+                        emitWindowEvent(gWindowEvents.cursorPosEvents, "window:mouseMove", window, Point2D{dx, dy});
                     }
                     return 0;
                 }
@@ -502,9 +522,11 @@ namespace window
     {
         HMONITOR hMonitor = MonitorFromPoint({0, 0}, MONITOR_DEFAULTTOPRIMARY);
         MONITORINFO monitorInfo = {sizeof(monitorInfo)};
-        if (GetMonitorInfo(hMonitor, &monitorInfo))
+        if (GetMonitorInfoW(hMonitor, &monitorInfo))
         {
-            return {.width = monitorInfo.rcMonitor.right - monitorInfo.rcMonitor.left,
+            return {.xpos = monitorInfo.rcWork.right,
+                    .ypos = monitorInfo.rcWork.bottom,
+                    .width = monitorInfo.rcMonitor.right - monitorInfo.rcMonitor.left,
                     .height = monitorInfo.rcMonitor.bottom - monitorInfo.rcMonitor.top};
         }
         else
@@ -615,6 +637,30 @@ namespace window
         _isCursorHidden = true;
     }
 
+    Point2D Win32Window::windowPos() const
+    {
+        POINT pos;
+        ClientToScreen(_hwnd, &pos);
+        return {pos.x, pos.y};
+    }
+
+    void Win32Window::windowPos(Point2D position)
+    {
+        SetWindowPos(_hwnd, NULL, position.x, position.y, _dimenstions.x, _dimenstions.y, 0);
+    }
+
+    void Win32Window::centerWindowPos()
+    {
+        RECT clientRect;
+        GetClientRect(_hwnd, &clientRect);
+        AdjustWindowRectExForDpi(&clientRect, _style, FALSE, _exStyle, _internal::pd.dpi);
+        int clientWidth = clientRect.right - clientRect.left;
+        int clientHeight = clientRect.bottom - clientRect.top;
+        int endHeight = _dimenstions.y / 2 - clientHeight / 2;
+        SetWindowPos(_hwnd, NULL, _internal::pd.screenWidth / 2 - clientWidth / 2, endHeight < 0 ? 0 : endHeight,
+                     clientWidth, clientHeight, 0);
+    }
+
     void waitEvents()
     {
         WaitMessage();
@@ -647,5 +693,12 @@ namespace window
     {
         MsgWaitForMultipleObjects(0, NULL, FALSE, (DWORD)(timeout * 1e3), QS_ALLINPUT);
         pollEvents();
+    }
+
+    Point2D getWindowSize(Win32Window &window)
+    {
+        RECT area;
+        GetClientRect(window.nativeHandle(), &area);
+        return {area.right, area.bottom};
     }
 } // namespace window

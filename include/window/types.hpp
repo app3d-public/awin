@@ -148,6 +148,9 @@ namespace io
         middle
     };
 
+    inline constexpr i16 operator+(MouseKey k) { return static_cast<i16>(k); }
+    inline constexpr i16 operator+(MouseKey lhs, i16 rhs) { return static_cast<i16>(lhs) + rhs; }
+
     enum class KeyPressState : i8
     {
         release,
@@ -192,6 +195,8 @@ namespace window
     // Basic information about a monitor/display.
     struct MonitorInfo
     {
+        int xpos;
+        int ypos;
         int width;
         int height;
     };
@@ -215,10 +220,7 @@ namespace window
         virtual void title(const std::string &title) = 0;
 
         // Returns the width of the window.
-        i32 width() const { return _dimenstions.x; }
-
-        // Returns the height of the window.
-        i32 height() const { return _dimenstions.y; }
+        Point2D dimensions() const { return _dimenstions; }
 
         // Check if the window has decorations
         bool decorated() const { return (_flags & window::CreationFlagsBits::decorated) != 0; }
@@ -273,6 +275,15 @@ namespace window
 
         // Hide the window
         virtual void hideWindow() = 0;
+
+        // Get current window position
+        virtual Point2D windowPos() const = 0;
+
+        // Set window position
+        virtual void windowPos(Point2D position) = 0;
+
+        // Center the window to the parent
+        virtual void centerWindowPos() = 0;
 
     protected:
         Point2D _dimenstions;

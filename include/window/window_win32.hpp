@@ -191,6 +191,15 @@ namespace window
         // Hide the window
         virtual void hideWindow() override;
 
+        // Get current window position
+        virtual Point2D windowPos() const override;
+
+        // Set window position
+        virtual void windowPos(Point2D position) override;
+
+        // Center the window to the parent
+        virtual void centerWindowPos() override;
+
         // Get the WIN32 HWND handle
         HWND nativeHandle() const { return _hwnd; }
 
@@ -229,6 +238,9 @@ namespace window
     // if no events occur within a certain time frame, such as updating the UI or
     // handling non-event-related logic.
     void waitEventsTimeout(f64 timeout);
+
+    // Get the client area size
+    Point2D getWindowSize(Win32Window &window);
 } // namespace window
 
 #endif

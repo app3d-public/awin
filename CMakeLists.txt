@@ -8,22 +8,29 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++ -fexperimental-library")
 add_definitions(-D_LIBCPP_NO_VCRUNTIME)
 add_definitions(-DWINVER=0x0A00)
 
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}")
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}")
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}")
+if(NOT TARGET app3d-core)
+    add_subdirectory("src/deps/internal/core")
+endif()
 
-add_subdirectory("src/deps/internal/core")
 add_library(tinyfiledialogs SHARED "src/deps/external/tinyfiledialogs/tinyfiledialogs.c")
+
 if(WIN32)
     target_link_libraries(tinyfiledialogs PRIVATE comdlg32 ole32)
 endif()
 
-
 list(APPEND SOURCE_FILES
-    "src/window/window_win32.cpp"
     "src/window/types.cpp"
     "src/window/window.cpp"
-    "src/window/popup.cpp")
+    "src/window/popup.cpp"
+    "src/window/vulkan.cpp"
+)
+
+if(WIN32)
+    list(APPEND SOURCE_FILES
+        "src/window/window_win32.cpp"
+        "src/window/vulkan_win32.cpp"
+    )
+endif()
 
 add_library(${PROJECT_NAME} SHARED ${SOURCE_FILES})
 target_include_directories(${PROJECT_NAME} PRIVATE $<TARGET_PROPERTY:app3d-core,INCLUDE_DIRECTORIES>)
@@ -37,5 +44,4 @@ set_target_properties(${PROJECT_NAME}
     CXX_STANDARD 23
     CXX_STANDARD_REQUIRED YES
     CXX_EXTENSIONS YES
-    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}"
 )

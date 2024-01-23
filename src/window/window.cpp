@@ -19,7 +19,7 @@ namespace window
         gWindowEvents.keyInputEvents = gWindowEvents.e->getListeners<KeyInputEvent>("window:keyInput");
         gWindowEvents.mouseClickEvents = gWindowEvents.e->getListeners<MouseClickEvent>("window:mouseClick");
         gWindowEvents.cursorEnterEvents = gWindowEvents.e->getListeners<CursorEnterEvent>("window:cursorEnter");
-        gWindowEvents.cursorPosEvents = gWindowEvents.e->getListeners<PosEvent>("window:cursorPos");
+        gWindowEvents.cursorPosEvents = gWindowEvents.e->getListeners<PosEvent>("window:mouseMove");
         gWindowEvents.scrollEvents = gWindowEvents.e->getListeners<ScrollEvent>("window:scroll");
         gWindowEvents.minimizeEvents = gWindowEvents.e->getListeners<PosEvent>("window:minimize");
         gWindowEvents.maximizeEvents = gWindowEvents.e->getListeners<PosEvent>("window:maximize");
