@@ -19,10 +19,9 @@ if(WIN32)
 endif()
 
 list(APPEND SOURCE_FILES
-    "src/window/types.cpp"
-    "src/window/window.cpp"
     "src/window/popup.cpp"
     "src/window/vulkan.cpp"
+    "src/window/window.cpp"
 )
 
 if(WIN32)

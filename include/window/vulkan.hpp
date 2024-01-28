@@ -1,18 +1,19 @@
 #ifndef APP_WINDOW_VULKAN_H
 #define APP_WINDOW_VULKAN_H
 
+#include <core/std/array.hpp>
 #include <vulkan/vulkan.hpp>
-#include "core/std/array.hpp"
-#include "window/types.hpp"
+#include "window.hpp"
+
 
 namespace window
 {
-    namespace _internal
+    namespace vulkan
     {
         extern struct BackendData
         {
             bool available;
-            vk::DispatchLoaderDynamic* loader;
+            vk::DispatchLoaderDynamic *loader;
             bool KHR_surface;
             bool KHR_win32_surface;
             bool MVK_macos_surface;
@@ -23,13 +24,14 @@ namespace window
             Array<std::string> extensitions;
         } bd;
 
-    } // namespace _internal
+        Array<std::string> getExtensionNames();
 
-    bool initVulkan(vk::DispatchLoaderDynamic* loader);
+        bool init(vk::DispatchLoaderDynamic *loader);
 
-    [[nodiscard]] vk::Result createWindowSurface(WindowBase *window, vk::Instance instance, vk::SurfaceKHR &surface);
+        [[nodiscard]] vk::Result createWindowSurface(Window *window, vk::Instance instance, vk::SurfaceKHR &surface);
 
-    Array<const char *> requiredInstanceExtensions();
+        Array<const char *> requiredInstanceExtensions();
+    } // namespace vulkan
 } // namespace window
 
 #endif

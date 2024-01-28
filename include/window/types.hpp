@@ -1,15 +1,8 @@
 #ifndef APP_WINDOW_TYPES_H
 #define APP_WINDOW_TYPES_H
 
-#include <core/event/event.hpp>
-#include <core/std/array.hpp>
 #include <core/std/basic_types.hpp>
 #include <core/std/enum.hpp>
-#include <memory>
-
-#ifdef _WIN32
-    #include <windows.h>
-#endif
 
 // Keys
 namespace io
@@ -142,10 +135,10 @@ namespace io
 
     enum class MouseKey
     {
-        unknown,
-        left,
-        right,
-        middle
+        unknown = -1,
+        left = 0,
+        right = 1,
+        middle = 2
     };
 
     inline constexpr i16 operator+(MouseKey k) { return static_cast<i16>(k); }
@@ -173,6 +166,61 @@ namespace io
 
 namespace window
 {
+    // Basic information about a monitor/display.
+    struct MonitorInfo
+    {
+        int xpos;
+        int ypos;
+        int width;
+        int height;
+    };
+    class Cursor
+    {
+        struct PlatformData;
+
+    public:
+        enum class Type
+        {
+            arrow,      // The regular arrow cursor.
+            ibeam,      // The text input I-beam cursor.
+            crosshair,  // The crosshair cursor.
+            hand,       // The pointing hand cursor.
+            resizeEW,   // The horizontal resize/move arrow cursor.  This is usually a horizontal double-headed arrow.
+            resizeNS,   // The vertical resize/move cursor. This is usually a vertical double-headed arrow.
+            resizeNWSE, // The top-left to bottom-right diagonal resize/move cursor.  This is usually a diagonal
+                        // double-headed arrow.
+            resizeNESW, // The top-right to bottom-left diagonal resize/move cursor.  This is usually a diagonal
+                        // double-headed arrow.
+            resizeAll,  // The omni-directional resize cursor/move.  This is usually either a combined horizontal and
+                        // vertical double-headed arrow or a grabbing hand.
+            notAllowed  // The operation-not-allowed shape.  This is usually a circle with a diagonal line through it.
+        };
+
+        explicit Cursor(PlatformData *platform = nullptr) : _platform(platform) {}
+
+        Cursor(const Cursor &) = delete;
+        Cursor &operator=(const Cursor &) = delete;
+
+        Cursor &operator=(Cursor &&other) noexcept;
+
+        ~Cursor();
+
+        // Check if cursor is valid and was initialized.
+        bool valid() const { return _platform != nullptr; }
+
+        // Create a new cursor with the given type.
+        static Cursor create(Type type);
+
+        // Get the default cursor.
+        static Cursor *defaultCursor();
+
+        // Assign cursor to the platform context
+        void assign();
+
+    private:
+        PlatformData *_platform;
+    };
+
     // Flags for window creation, stored as u8 for memory efficiency.
     enum class CreationFlagsBits : u8
     {
@@ -185,282 +233,12 @@ namespace window
         hidden = 0x00040       // Does not show the window on creation.
     };
 
-#define WINDOW_DEFAULT_FLAGS                                                                         \
-    CreationFlagsBits::resizable | CreationFlagsBits::minimizebox | CreationFlagsBits::maximizebox | \
-        CreationFlagsBits::decorated | CreationFlagsBits::snapped
-
     // Flags for window creation, stored as u8 for memory efficiency.
     using CreationFlags = Flags<CreationFlagsBits>;
 
-    // Basic information about a monitor/display.
-    struct MonitorInfo
-    {
-        int xpos;
-        int ypos;
-        int width;
-        int height;
-    };
-
-    // Abstract base class for platform-specific window classes like Win32Window, X11Window, etc.
-    class WindowBase
-    {
-    public:
-        // Initialize a window with a title, dimensions, and creation flags.
-        WindowBase(const std::string &title, i32 width, i32 height, window::CreationFlags flags)
-            : _dimenstions(width, height), _flags(flags)
-        {
-        }
-
-        virtual ~WindowBase() = default;
-
-        // Get the window title
-        virtual std::string title() const = 0;
-
-        // Set the window title
-        virtual void title(const std::string &title) = 0;
-
-        // Returns the width of the window.
-        Point2D dimensions() const { return _dimenstions; }
-
-        // Check if the window has decorations
-        bool decorated() const { return (_flags & window::CreationFlagsBits::decorated) != 0; }
-
-        // Check if the window is resizable.
-        bool resizable() const { return (_flags & window::CreationFlagsBits::resizable) != 0; }
-
-        // Check if the window is in fullscreen mode.
-        bool fullscreen() const { return (_flags & window::CreationFlagsBits::fullscreen) != 0; }
-
-        // Enable fullscreen mode.
-        virtual void enableFullscreen() = 0;
-
-        // Disable fullscreen mode.
-        virtual void disableFullscreen() = 0;
-
-        // Get the current cursor position.
-        virtual Point2D cursorPosition() const = 0;
-
-        // Set the cursor position
-        virtual void cursorPosition(Point2D position) = 0;
-
-        // Show the cursor.
-        virtual void showCursor() = 0;
-
-        // Hide the cursor.
-        virtual void hideCursor() = 0;
-
-        // Check if the window is focused.
-        bool focused() const { return _focused; }
-
-        // Check if the window is minimized.
-        bool minimized() const { return _minimized; }
-
-        // Check if the window is maximized.
-        bool maximized() const { return _maximized; }
-
-        // Check if the window is hidden.
-        bool hidden() const { return (_flags & window::CreationFlagsBits::hidden) != 0; }
-
-        // Get the window's resize limits.
-        Point2D resizeLimit() const { return _resizeLimit; }
-
-        // Set the window's resize limits.
-        void resizeLimit(i32 width, i32 height) { _resizeLimit = {width, height}; }
-
-        // Check if the window is ready to be closed.
-        bool readyToClose() const { return _readyToClose; }
-
-        // Show the window if it is hidden.
-        virtual void showWindow() = 0;
-
-        // Hide the window
-        virtual void hideWindow() = 0;
-
-        // Get current window position
-        virtual Point2D windowPos() const = 0;
-
-        // Set window position
-        virtual void windowPos(Point2D position) = 0;
-
-        // Center the window to the parent
-        virtual void centerWindowPos() = 0;
-
-    protected:
-        Point2D _dimenstions;
-        window::CreationFlags _flags;
-        bool _isCursorHidden = false;
-        bool _focused;
-        bool _minimized;
-        bool _maximized;
-        bool _readyToClose = false;
-        Point2D _resizeLimit{0, 0};
-        io::KeyPressState _keys[io::Key::kLast + 1];
-
-        void inputKey(io::Key key, io::KeyPressState action, io::KeyMode mods);
-    };
-} // namespace window
-
-// Events
-#ifdef _WIN32
-// Event specific to Win32 platform, carrying native window message data.
-struct Win32NativeEvent : public Event
-{
-    window::WindowBase *window; // Pointer to the associated Window object.
-    UINT uMsg;                  // Windows message identifier.
-    WPARAM wParam;              // Additional message information.
-    LPARAM lParam;              // Additional message information.
-    LRESULT *lResult;           // Pointer to the result of the message processing.
-
-    Win32NativeEvent(const std::string &name = "", window::WindowBase *window = nullptr, UINT uMsg = 0,
-                     WPARAM wParam = 0, LPARAM lParam = 0, LRESULT *lResult = nullptr)
-        : Event(name), window(window), uMsg(uMsg), wParam(wParam), lParam(lParam), lResult(lResult)
-    {
-    }
-};
-#endif
-
-// Represents a focus change event in a window.
-struct FocusEvent : public Event
-{
-    // Pointer to the associated Window object.
-    window::WindowBase *window;
-
-    // Whether the window is focused or not.
-    bool focused;
-
-    FocusEvent(const std::string &name = "", window::WindowBase *window = nullptr, bool focused = false)
-        : Event(name), window(window), focused(focused)
-    {
-    }
-};
-
-// Represents a character input event in a window.
-struct CharInputEvent : public Event
-{
-    window::WindowBase *window; // Pointer to the associated Window object.
-    u32 charCode;               // Unicode character code.
-
-    CharInputEvent(const std::string &name = "", window::WindowBase *window = nullptr, u32 charCode = 0)
-        : Event(name), window(window), charCode(charCode)
-    {
-    }
-};
-
-// Represents a keyboard input event in a window.
-struct KeyInputEvent : public Event
-{
-    window::WindowBase *window; // Pointer to the associated Window object.
-    io::Key key;                // The key involved in the event.
-    io::KeyPressState action;   // The action (press, release, repeat) associated with the key.
-    io::KeyMode mods;           // The key modifiers associated with the key.
-
-    KeyInputEvent(const std::string &name = "", window::WindowBase *window = nullptr, io::Key key = io::Key::kUnknown,
-                  io::KeyPressState action = io::KeyPressState::release, io::KeyMode mods = io::KeyMode{})
-        : Event(name), window(window), key(key), action(action), mods(mods)
-    {
-    }
-};
-
-// Represents a mouse click event in a window.
-struct MouseClickEvent : public Event
-{
-    window::WindowBase *window; // Pointer to the associated Window object.
-    io::MouseKey button;        // The mouse button involved in the event.
-    io::KeyPressState action;   // The action (press, release, repeat) associated with the key.
-    io::KeyMode mods;           // The key modifiers associated with the key.
-
-    MouseClickEvent(const std::string &name = "", window::WindowBase *window = nullptr,
-                    io::MouseKey button = io::MouseKey::unknown, io::KeyPressState action = io::KeyPressState::release,
-                    io::KeyMode mods = io::KeyMode{})
-        : Event(name), window(window), button(button), action(action), mods(mods)
-    {
-    }
-};
-
-// Represents a mouse position event in a window. This one is emitted when the mouse enters or leaves the window.
-struct CursorEnterEvent : public Event
-{
-    window::WindowBase *window; // Pointer to the associated Window object.
-    bool entered;               // Whether the mouse entered or left the window.
-
-    CursorEnterEvent(const std::string &name = "", window::WindowBase *window = nullptr, bool entered = false)
-        : Event(name), window(window), entered(entered)
-    {
-    }
-};
-
-// Represents a position change event in a window.
-struct PosEvent : public Event
-{
-    window::WindowBase *window; // Pointer to the associated Window object.
-    Point2D position;           // The new position.
-
-    PosEvent(const std::string &name = "", window::WindowBase *window = nullptr, Point2D position = Point2D())
-        : Event(name), window(window), position(position)
-    {
-    }
-};
-
-// Represents a scroll event in a window.
-struct ScrollEvent : public Event
-{
-    window::WindowBase *window; // Pointer to the associated Window object.
-    f32 offset;                 // The scroll offset.
-
-    ScrollEvent(const std::string &name = "", window::WindowBase *window = nullptr, f32 offset = 0.0f)
-        : Event(name), window(window), offset(offset)
-    {
-    }
-};
-
-// Represents a DPI change event in a window.
-struct DpiChangedEvent : public Event
-{
-    window::WindowBase *window; // Pointer to the associated Window object.
-    f32 xDpi;                   // New DPI value in the x-axis.
-    f32 yDpi;                   // New DPI value in the y-axis.
-
-    DpiChangedEvent(const std::string &name = "", window::WindowBase *window = nullptr, f32 xDpi = 0.0f,
-                    f32 yDpi = 0.0f)
-        : Event(name), window(window), xDpi(xDpi), yDpi(yDpi)
-    {
-    }
-};
-
-namespace window
-{
-    namespace _internal
-    {
-        extern struct WindowEvents
-        {
-            EventManager *e;
-#ifdef _WIN32
-            EventListener<Win32NativeEvent> *NCLMouseClick;
-            EventListener<Win32NativeEvent> *NCHitTest;
-#endif
-            Array<std::shared_ptr<EventListener<FocusEvent>>> focusEvents;
-            Array<std::shared_ptr<EventListener<CharInputEvent>>> charInputEvents;
-            Array<std::shared_ptr<EventListener<KeyInputEvent>>> keyInputEvents;
-            Array<std::shared_ptr<EventListener<MouseClickEvent>>> mouseClickEvents;
-            Array<std::shared_ptr<EventListener<CursorEnterEvent>>> cursorEnterEvents;
-            Array<std::shared_ptr<EventListener<PosEvent>>> cursorPosEvents;
-            Array<std::shared_ptr<EventListener<ScrollEvent>>> scrollEvents;
-            Array<std::shared_ptr<EventListener<PosEvent>>> minimizeEvents;
-            Array<std::shared_ptr<EventListener<PosEvent>>> maximizeEvents;
-            Array<std::shared_ptr<EventListener<PosEvent>>> resizeEvents;
-            Array<std::shared_ptr<EventListener<PosEvent>>> moveEvents;
-            Array<std::shared_ptr<EventListener<DpiChangedEvent>>> dpiChangedEvents;
-
-        } gWindowEvents;
-
-        template <typename T, typename... Args>
-        inline void emitWindowEvent(const Array<std::shared_ptr<EventListener<T>>> &listener, Args &&...args)
-        {
-            T event(std::forward<Args>(args)...);
-            for (const auto &l : listener)
-                l->invoke(event);
-        }
-    } // namespace _internal
+#define WINDOW_DEFAULT_FLAGS                                                                         \
+    CreationFlagsBits::resizable | CreationFlagsBits::minimizebox | CreationFlagsBits::maximizebox | \
+        CreationFlagsBits::decorated | CreationFlagsBits::snapped
 } // namespace window
 
 template <>

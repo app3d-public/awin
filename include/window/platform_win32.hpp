@@ -1,33 +1,38 @@
-#ifndef APP_WINDOW_WIN32_H
-#define APP_WINDOW_WIN32_H
+#ifndef APP_WINDOW_PLATFORM_WIN32_H
+#define APP_WINDOW_PLATFORM_WIN32_H
 
-#include <core/event/event.hpp>
-#include <core/std/basic_types.hpp>
-#include <core/std/string.hpp>
 #include <map>
 #include <windows.h>
-#include "types.hpp"
-
-#define WM_COPYGLOBALDATA 0x0049
+#include "window.hpp"
 
 namespace window
 {
-    namespace _internal
+    namespace platform
     {
-        bool initPlatform();
+        struct WindowPlatformData : WindowPlatformBase
+        {
+            std::u16string title;
+            DWORD style;
+            DWORD exStyle;
+            HWND hwnd;
+            WCHAR highSurrogate;
+            Point2D savedCursorPos{0, 0};
+            bool cursorTracked{false};
+            bool rawInput{false};
+            LPBYTE rawInputData{nullptr};
+            UINT rawInputSize{0};
+        };
 
-        LRESULT CALLBACK wndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
-
-        extern struct Win32PlatformData
+        struct PlatformContext
         {
             HINSTANCE instance;
             WNDCLASSEXW win32class;
-            UINT dpi;
             int frameX;
             int frameY;
             int padding;
             int screenWidth;
             int screenHeight;
+            UINT dpi;
             std::map<i16, io::Key> keymap{{VK_SPACE, io::Key::kSpace},
                                           {VK_OEM_7, io::Key::kApostroph},
                                           {VK_OEM_COMMA, io::Key::kComma},
@@ -145,102 +150,28 @@ namespace window
                                           {VK_RMENU, io::Key::kRightAlt},
                                           {VK_RWIN, io::Key::kRightSuper},
                                           {VK_APPS, io::Key::kMenu}};
-        } pd;
+        };
 
-        static DWORD getWindowStyle(CreationFlags flags);
+        class AccessBridge
+        {
+        public:
+            AccessBridge(WindowPlatformData *impl = nullptr) : _impl(impl) {}
 
-        void destroyPlatform();
-    } // namespace _internal
-    MonitorInfo getPrimaryMonitorInfo();
+            HINSTANCE instance() const;
 
-    class Win32Window : public WindowBase
+            HWND hwnd() const;
+
+        private:
+            WindowPlatformData *_impl;
+        };
+    } // namespace platform
+
+    struct Cursor::PlatformData
     {
-    public:
-        Win32Window(const std::string &title, i32 width = -1, i32 height = -1,
-                    CreationFlags flags = WINDOW_DEFAULT_FLAGS);
+        HCURSOR cursor;
 
-        ~Win32Window();
-
-        // Get the window title
-        virtual std::string title() const override { return convertUTF16toUTF8(_title); }
-
-        // Set the window title
-        virtual void title(const std::string &title) override;
-
-        // Enable fullscreen mode.
-        virtual void enableFullscreen() override;
-
-        // Disable fullscreen mode.
-        virtual void disableFullscreen() override;
-
-        // Get the current cursor position.
-        virtual Point2D cursorPosition() const override;
-
-        // Set the cursor position
-        virtual void cursorPosition(Point2D position) override;
-
-        // Show the cursor.
-        virtual void showCursor() override;
-
-        // Hide the cursor.
-        virtual void hideCursor() override;
-
-        // Show the window if it is hidden.
-        virtual void showWindow() override;
-
-        // Hide the window
-        virtual void hideWindow() override;
-
-        // Get current window position
-        virtual Point2D windowPos() const override;
-
-        // Set window position
-        virtual void windowPos(Point2D position) override;
-
-        // Center the window to the parent
-        virtual void centerWindowPos() override;
-
-        // Get the WIN32 HWND handle
-        HWND nativeHandle() const { return _hwnd; }
-
-        friend LRESULT CALLBACK _internal::wndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
-        friend void pollEvents();
-
-    private:
-        std::u16string _title;
-        DWORD _style;
-        DWORD _exStyle;
-        HWND _hwnd;
-        WCHAR _highSurrogate;
-        Point2D _savedCursorPos{0, 0};
-        bool _cursorTracked{false};
-        bool _rawInput{false};
-        LPBYTE _rawInputData{nullptr};
-        UINT _rawInputSize{0};
+        explicit PlatformData(HCURSOR _cursor = nullptr) : cursor(_cursor) {}
     };
-
-    // Processes all pending events in the event queue. This function checks the state
-    // of all windows and other event sources, processes those events, and returns
-    // control after all events have been processed. Typically used in an application's
-    // update loop to handle events as they occur.
-    void pollEvents();
-
-    // Waits for new events to occur and processes them as soon as they appear.
-    // Unlike pollEvents, this function blocks the execution of the program until
-    // new events are available. Useful in situations where you want to conserve CPU
-    // usage when the application is idle or when you need to wait for user input
-    // without continuously polling.
-    void waitEvents();
-
-    // Waits for events with a specified timeout and processes them. If no events occur
-    // within the given timeout period, the function returns. This is useful for
-    // scenarios where you want to wait for events but also perform some other action
-    // if no events occur within a certain time frame, such as updating the UI or
-    // handling non-event-related logic.
-    void waitEventsTimeout(f64 timeout);
-
-    // Get the client area size
-    Point2D getWindowSize(Win32Window &window);
 } // namespace window
 
 #endif

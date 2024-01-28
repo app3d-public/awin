@@ -1,13 +1,9 @@
-#include <cassert>
-#include <stdexcept>
-#include <window/vulkan_win32.hpp>
-// include platform specific headers first
 #include <window/vulkan.hpp>
-#include <window/window_win32.hpp>
+#include <window/platform_win32.hpp>
 
 namespace window
 {
-    namespace _internal
+    namespace vulkan
     {
         Array<std::string> getExtensionNames()
         {
@@ -17,26 +13,29 @@ namespace window
             return {"VK_KHR_surface", "VK_KHR_win32_surface"};
         }
 
-        vk::Result createSurfaceNative(WindowBase *window, vk::Instance instance, vk::SurfaceKHR &surface)
+        [[nodiscard]] vk::Result createWindowSurface(Window *window, vk::Instance instance, vk::SurfaceKHR &surface)
         {
+            if (!bd.available)
+                return vk::Result::eErrorInitializationFailed;
+            if (bd.extensitions.empty())
+                return vk::Result::eErrorExtensionNotPresent;
             try
             {
-                Win32Window *win32Window = static_cast<Win32Window *>(window);
                 VkResult err;
                 vk::Win32SurfaceCreateInfoKHR info;
-                info.setHinstance(pd.instance).setHwnd(win32Window->nativeHandle());
-                assert(bd.loader->vkCreateWin32SurfaceKHR != nullptr);
+                auto accessBridge = window->accessBridge();
+                info.setHinstance(accessBridge.instance()).setHwnd(accessBridge.hwnd());
                 surface = instance.createWin32SurfaceKHR(info, nullptr, *bd.loader);
                 return vk::Result::eSuccess;
             }
-            catch (vk::SystemError &e)
+            catch (const vk::SystemError &e)
             {
                 return static_cast<vk::Result>(e.code().value());
             }
-            catch (std::runtime_error &e)
+            catch (const std::runtime_error &e)
             {
                 return vk::Result::eErrorInitializationFailed;
             }
         }
-    } // namespace _internal
+    } // namespace vulkan
 } // namespace window
