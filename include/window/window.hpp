@@ -115,6 +115,9 @@ namespace window
         // Hide the cursor.
         void hideCursor();
 
+        // Check if the cursor is hidden.
+        bool isCursorHidden() const;
+
         // Set cursor
         void setCursor(Cursor *cursor);
 
@@ -144,6 +147,9 @@ namespace window
 
         // Hide the window
         void hideWindow();
+
+        // Close the window
+        void close();
 
         // Get current window position
         Point2D windowPos() const;
@@ -177,7 +183,7 @@ namespace window
     // Events
 #ifdef _WIN32
     // Event specific to Win32 platform, carrying native window message data.
-    struct Win32NativeEvent : public Event
+    struct Win32NativeEvent : public events::Event
     {
         window::Window *window; // Pointer to the associated Window object.
         UINT uMsg;              // Windows message identifier.
@@ -194,7 +200,7 @@ namespace window
 #endif
 
     // Represents a focus change event in a window.
-    struct FocusEvent : public Event
+    struct FocusEvent : public events::Event
     {
         // Pointer to the associated Window object.
         window::Window *window;
@@ -209,7 +215,7 @@ namespace window
     };
 
     // Represents a character input event in a window.
-    struct CharInputEvent : public Event
+    struct CharInputEvent : public events::Event
     {
         window::Window *window; // Pointer to the associated Window object.
         u32 charCode;           // Unicode character code.
@@ -221,7 +227,7 @@ namespace window
     };
 
     // Represents a keyboard input event in a window.
-    struct KeyInputEvent : public Event
+    struct KeyInputEvent : public events::Event
     {
         window::Window *window;   // Pointer to the associated Window object.
         io::Key key;              // The key involved in the event.
@@ -237,7 +243,7 @@ namespace window
     };
 
     // Represents a mouse click event in a window.
-    struct MouseClickEvent : public Event
+    struct MouseClickEvent : public events::Event
     {
         window::Window *window;   // Pointer to the associated Window object.
         io::MouseKey button;      // The mouse button involved in the event.
@@ -254,7 +260,7 @@ namespace window
     };
 
     // Represents a mouse position event in a window. This one is emitted when the mouse enters or leaves the window.
-    struct CursorEnterEvent : public Event
+    struct CursorEnterEvent : public events::Event
     {
         window::Window *window; // Pointer to the associated Window object.
         bool entered;           // Whether the mouse entered or left the window.
@@ -266,7 +272,7 @@ namespace window
     };
 
     // Represents a position change event in a window.
-    struct PosEvent : public Event
+    struct PosEvent : public events::Event
     {
         window::Window *window; // Pointer to the associated Window object.
         Point2D position;       // The new position.
@@ -278,7 +284,7 @@ namespace window
     };
 
     // Represents a scroll event in a window.
-    struct ScrollEvent : public Event
+    struct ScrollEvent : public events::Event
     {
         window::Window *window; // Pointer to the associated Window object.
         f32 offset;             // The scroll offset.
@@ -290,7 +296,7 @@ namespace window
     };
 
     // Represents a DPI change event in a window.
-    struct DpiChangedEvent : public Event
+    struct DpiChangedEvent : public events::Event
     {
         window::Window *window; // Pointer to the associated Window object.
         f32 xDpi;               // New DPI value in the x-axis.
@@ -306,53 +312,51 @@ namespace window
     // A structure that contains event-related data and listeners for window events
     extern struct DefaultRegistry
     {
-        // App3D event manager
-        EventManager *mng;
 #ifdef _WIN32
         // Handling non-client area mouse clicks on Windows.
-        EventListener<Win32NativeEvent> *NCLMouseClick;
+        events::EventListener<Win32NativeEvent> *NCLMouseClick;
 
         // Performing hit testing in the non-client area on Windows.
-        EventListener<Win32NativeEvent> *NCHitTest;
+        events::EventListener<Win32NativeEvent> *NCHitTest;
 #endif
         // List of event listeners for focus-related events.
-        Array<std::shared_ptr<EventListener<FocusEvent>>> focusEvents;
+        Array<std::shared_ptr<events::EventListener<FocusEvent>>> focusEvents;
 
         // List of event listeners for character input events.
-        Array<std::shared_ptr<EventListener<CharInputEvent>>> charInputEvents;
+        Array<std::shared_ptr<events::EventListener<CharInputEvent>>> charInputEvents;
 
         // List of event listeners for keyboard input events.
-        Array<std::shared_ptr<EventListener<KeyInputEvent>>> keyInputEvents;
+        Array<std::shared_ptr<events::EventListener<KeyInputEvent>>> keyInputEvents;
 
         // List of event listeners for mouse click events.
-        Array<std::shared_ptr<EventListener<MouseClickEvent>>> mouseClickEvents;
+        Array<std::shared_ptr<events::EventListener<MouseClickEvent>>> mouseClickEvents;
 
         // List of event listeners for cursor enter/leave events.
-        Array<std::shared_ptr<EventListener<CursorEnterEvent>>> cursorEnterEvents;
+        Array<std::shared_ptr<events::EventListener<CursorEnterEvent>>> cursorEnterEvents;
 
         //  Listener for handling when the mouse position changes in RAW Input mode.
-        Array<std::shared_ptr<EventListener<PosEvent>>> cursorPosEvents;
+        Array<std::shared_ptr<events::EventListener<PosEvent>>> cursorPosEvents;
 
         //  Listener for handling when the mouse position changes in absolute (per Window dimensions) values
-        Array<std::shared_ptr<EventListener<PosEvent>>> cursorPosAbsEvents;
+        Array<std::shared_ptr<events::EventListener<PosEvent>>> cursorPosAbsEvents;
 
         // List of event listeners for scroll events.
-        Array<std::shared_ptr<EventListener<ScrollEvent>>> scrollEvents;
+        Array<std::shared_ptr<events::EventListener<ScrollEvent>>> scrollEvents;
 
         // List of event listeners for window minimize events.
-        Array<std::shared_ptr<EventListener<PosEvent>>> minimizeEvents;
+        Array<std::shared_ptr<events::EventListener<PosEvent>>> minimizeEvents;
 
         // List of event listeners for window maximize events.
-        Array<std::shared_ptr<EventListener<PosEvent>>> maximizeEvents;
+        Array<std::shared_ptr<events::EventListener<PosEvent>>> maximizeEvents;
 
         // List of event listeners for window resize events.
-        Array<std::shared_ptr<EventListener<PosEvent>>> resizeEvents;
+        Array<std::shared_ptr<events::EventListener<PosEvent>>> resizeEvents;
 
         // List of event listeners for window move events.
-        Array<std::shared_ptr<EventListener<PosEvent>>> moveEvents;
+        Array<std::shared_ptr<events::EventListener<PosEvent>>> moveEvents;
 
         // List of event listeners for DPI (dots per inch) changed events.
-        Array<std::shared_ptr<EventListener<DpiChangedEvent>>> dpiChangedEvents;
+        Array<std::shared_ptr<events::EventListener<DpiChangedEvent>>> dpiChangedEvents;
 
     } eventRegistry;
 
@@ -363,7 +367,7 @@ namespace window
      * @param args event arguments
      */
     template <typename T, typename... Args>
-    inline void emitWindowEvent(const Array<std::shared_ptr<EventListener<T>>> &listener, Args &&...args)
+    inline void emitWindowEvent(const Array<std::shared_ptr<events::EventListener<T>>> &listener, Args &&...args)
     {
         T event(std::forward<Args>(args)...);
         for (const auto &l : listener)
@@ -419,6 +423,9 @@ namespace window
     // handling non-event-related logic.
     void waitEventsTimeout(f64 timeout);
 
+    // Pushes an empty event to the event queue.
+    void pushEmptyEvent();
+
     // Retrieves the current dots per inch (DPI) value of the display.
     f32 getDpi();
 
@@ -431,8 +438,8 @@ namespace window
     // Set text string in the clipboard buffer
     void setClipboardString(const Window &window, const std::string &text);
 
-    // Initialize the library with the provided event manager.
-    void initLibrary(EventManager &events);
+    // Initialize the library.
+    void initLibrary();
 
     // Destroy the library and release associated resources.
     void destroyLibrary();

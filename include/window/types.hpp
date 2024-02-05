@@ -4,6 +4,8 @@
 #include <core/std/basic_types.hpp>
 #include <core/std/enum.hpp>
 
+#define KEY_MOD_START_INDEX 106
+
 // Keys
 namespace io
 {
@@ -72,9 +74,6 @@ namespace io
         kPageDown,
         kHome,
         kEnd,
-        kCapsLock,
-        kScrollLock,
-        kNumLock,
         kPrintScreen,
         kPause,
         kF1,
@@ -118,6 +117,9 @@ namespace io
         kKPAdd,
         kKPEnter,
         kKPEqual,
+        kCapsLock,
+        kScrollLock,
+        kNumLock,
         kLeftShift,
         kLeftControl,
         kLeftAlt,

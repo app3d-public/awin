@@ -155,7 +155,7 @@ namespace window
         class AccessBridge
         {
         public:
-            AccessBridge(WindowPlatformData *impl = nullptr) : _impl(impl) {}
+            explicit AccessBridge(WindowPlatformData *impl = nullptr) : _impl(impl) {}
 
             HINSTANCE instance() const;
 

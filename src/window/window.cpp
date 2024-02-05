@@ -57,6 +57,8 @@ namespace window
 
     void Window::setCursor(Cursor *cursor) { _platform->cursor = cursor; }
 
+    bool Window::isCursorHidden() const { return _platform->isCursorHidden; }
+
     bool Window::focused() const { return _platform->focused; }
 
     bool Window::minimized() const { return _platform->minimized; }
@@ -71,37 +73,38 @@ namespace window
 
     bool Window::readyToClose() const { return _platform->readyToClose; }
 
+    void Window::close() { _platform->readyToClose = true; }
+
     void updateEvents()
     {
 #ifdef _WIN32
-        auto NCLMouseClickList = eventRegistry.mng->getListeners<Win32NativeEvent>("window:NCLMouseClick");
+        auto NCLMouseClickList = events::mng.getListeners<Win32NativeEvent>("window:NCLMouseClick");
         if (!NCLMouseClickList.empty())
             eventRegistry.NCLMouseClick = NCLMouseClickList[0].get();
 
-        auto NCHitTestList = eventRegistry.mng->getListeners<Win32NativeEvent>("window:NCHitTest");
+        auto NCHitTestList = events::mng.getListeners<Win32NativeEvent>("window:NCHitTest");
         if (!NCHitTestList.empty())
             eventRegistry.NCHitTest = NCHitTestList[0].get();
 #endif
-        eventRegistry.focusEvents = eventRegistry.mng->getListeners<FocusEvent>("window:focus");
-        eventRegistry.scrollEvents = eventRegistry.mng->getListeners<ScrollEvent>("window:scroll");
-        eventRegistry.minimizeEvents = eventRegistry.mng->getListeners<PosEvent>("window:minimize");
-        eventRegistry.maximizeEvents = eventRegistry.mng->getListeners<PosEvent>("window:maximize");
-        eventRegistry.resizeEvents = eventRegistry.mng->getListeners<PosEvent>("window:resize");
-        eventRegistry.moveEvents = eventRegistry.mng->getListeners<PosEvent>("window:move");
-        eventRegistry.charInputEvents = eventRegistry.mng->getListeners<CharInputEvent>("window:input:char");
-        eventRegistry.keyInputEvents = eventRegistry.mng->getListeners<KeyInputEvent>("window:input:key");
-        eventRegistry.mouseClickEvents = eventRegistry.mng->getListeners<MouseClickEvent>("window:input:mouse");
-        eventRegistry.cursorEnterEvents = eventRegistry.mng->getListeners<CursorEnterEvent>("window:cursor:enter");
-        eventRegistry.cursorPosEvents = eventRegistry.mng->getListeners<PosEvent>("window:cursor:move");
-        eventRegistry.cursorPosAbsEvents = eventRegistry.mng->getListeners<PosEvent>("window:cursor:move:abs");
-        eventRegistry.dpiChangedEvents = eventRegistry.mng->getListeners<DpiChangedEvent>("window:dpiChanged");
+        eventRegistry.focusEvents = events::mng.getListeners<FocusEvent>("window:focus");
+        eventRegistry.scrollEvents = events::mng.getListeners<ScrollEvent>("window:scroll");
+        eventRegistry.minimizeEvents = events::mng.getListeners<PosEvent>("window:minimize");
+        eventRegistry.maximizeEvents = events::mng.getListeners<PosEvent>("window:maximize");
+        eventRegistry.resizeEvents = events::mng.getListeners<PosEvent>("window:resize");
+        eventRegistry.moveEvents = events::mng.getListeners<PosEvent>("window:move");
+        eventRegistry.charInputEvents = events::mng.getListeners<CharInputEvent>("window:input:char");
+        eventRegistry.keyInputEvents = events::mng.getListeners<KeyInputEvent>("window:input:key");
+        eventRegistry.mouseClickEvents = events::mng.getListeners<MouseClickEvent>("window:input:mouse");
+        eventRegistry.cursorEnterEvents = events::mng.getListeners<CursorEnterEvent>("window:cursor:enter");
+        eventRegistry.cursorPosEvents = events::mng.getListeners<PosEvent>("window:cursor:move");
+        eventRegistry.cursorPosAbsEvents = events::mng.getListeners<PosEvent>("window:cursor:move:abs");
+        eventRegistry.dpiChangedEvents = events::mng.getListeners<DpiChangedEvent>("window:dpiChanged");
     }
 
-    void initLibrary(EventManager &events)
+    void initLibrary()
     {
         if (!platform::initPlatform())
             throw std::runtime_error("Failed to initialize Window platform");
-        eventRegistry.mng = &events;
         platform::initTimer();
         setTime(0.0);
     }
@@ -110,7 +113,6 @@ namespace window
     {
         logInfo("Destroying Window platform");
         platform::destroyPlatform();
-        eventRegistry.mng = nullptr;
     }
 
     f64 getTime()

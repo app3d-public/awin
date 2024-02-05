@@ -67,15 +67,14 @@ namespace window
                     //   removing the standard frame.
                 case WM_NCCALCSIZE:
                 {
-
                     window = reinterpret_cast<WindowPlatformData *>(GetPropW(hwnd, L"APP3DWINDOW"));
                     env.context->dpi = GetDpiForWindow(hwnd);
                     env.context->frameX = GetSystemMetricsForDpi(SM_CXFRAME, env.context->dpi);
                     env.context->frameY = GetSystemMetricsForDpi(SM_CYFRAME, env.context->dpi);
                     env.context->padding = GetSystemMetricsForDpi(SM_CXPADDEDBORDER, env.context->dpi);
 
-                    if (!wParam | !window || window->flags & CreationFlagsBits::decorated ||
-                        window->flags & CreationFlagsBits::fullscreen)
+                    if (!wParam || !window || (window->flags & CreationFlagsBits::decorated) ||
+                        (window->flags & CreationFlagsBits::fullscreen))
                         break;
 
                     NCCALCSIZE_PARAMS *params = (NCCALCSIZE_PARAMS *)lParam;
@@ -758,6 +757,8 @@ namespace window
         MsgWaitForMultipleObjects(0, NULL, FALSE, (DWORD)(timeout * 1e3), QS_ALLINPUT);
         pollEvents();
     }
+
+    void pushEmptyEvent() { PostMessageW(NULL, WM_NULL, 0, 0); }
 
     f32 getDpi() { return static_cast<f32>(platform::env.context->dpi) / 100.0f; }
 
