@@ -75,7 +75,7 @@ namespace window
     public:
         // Initialize a window with a title, dimensions, and creation flags.
         explicit Window(const std::string &title, i32 width = WINDOW_DONT_CARE, i32 height = WINDOW_DONT_CARE,
-               CreationFlags flags = WINDOW_DEFAULT_FLAGS);
+                        CreationFlags flags = WINDOW_DEFAULT_FLAGS);
 
         ~Window();
 
@@ -127,8 +127,14 @@ namespace window
         // Check if the window is minimized.
         bool minimized() const;
 
+        // Minimize the window
+        void minimize();
+
         // Check if the window is maximized.
         bool maximized() const;
+
+        // Maximize the window
+        void maximize();
 
         // Check if the window is hidden.
         bool hidden() const;
@@ -186,14 +192,15 @@ namespace window
     struct Win32NativeEvent : public events::Event
     {
         window::Window *window; // Pointer to the associated Window object.
+        HWND hwnd;              // Handle to the window.
         UINT uMsg;              // Windows message identifier.
         WPARAM wParam;          // Additional message information.
         LPARAM lParam;          // Additional message information.
         LRESULT *lResult;       // Pointer to the result of the message processing.
 
-        explicit Win32NativeEvent(const std::string &name = "", window::Window *window = nullptr, UINT uMsg = 0,
-                                  WPARAM wParam = 0, LPARAM lParam = 0, LRESULT *lResult = nullptr)
-            : Event(name), window(window), uMsg(uMsg), wParam(wParam), lParam(lParam), lResult(lResult)
+        explicit Win32NativeEvent(const std::string &name = "", window::Window *window = nullptr, HWND hwnd = 0,
+                                  UINT uMsg = 0, WPARAM wParam = 0, LPARAM lParam = 0, LRESULT *lResult = nullptr)
+            : Event(name), window(window), hwnd(hwnd), uMsg(uMsg), wParam(wParam), lParam(lParam), lResult(lResult)
         {
         }
     };
@@ -271,6 +278,18 @@ namespace window
         }
     };
 
+    // Represents a window state change event in a window.
+    struct StateEvent : public events::Event
+    {
+        window::Window *window; // Pointer to the associated Window object.
+        bool state;             // The new state.
+
+        explicit StateEvent(const std::string &name = "", window::Window *window = nullptr, bool state = false)
+            : Event(name), window(window), state(state)
+        {
+        }
+    };
+
     // Represents a position change event in a window.
     struct PosEvent : public events::Event
     {
@@ -287,10 +306,12 @@ namespace window
     struct ScrollEvent : public events::Event
     {
         window::Window *window; // Pointer to the associated Window object.
-        f32 offset;             // The scroll offset.
+        f32 h;                  // The Horizontal scroll value.
+        f32 v;                  // The Vertical scroll value.
 
-        explicit ScrollEvent(const std::string &name = "", window::Window *window = nullptr, f32 offset = 0.0f)
-            : Event(name), window(window), offset(offset)
+        explicit ScrollEvent(const std::string &name = "", window::Window *window = nullptr, f32 hscroll = 0.0f,
+                             f32 vscroll = 0.0f)
+            : Event(name), window(window), h(hscroll), v(vscroll)
         {
         }
     };
@@ -314,7 +335,7 @@ namespace window
     {
 #ifdef _WIN32
         // Handling non-client area mouse clicks on Windows.
-        events::EventListener<Win32NativeEvent> *NCLMouseClick;
+        events::EventListener<Win32NativeEvent> *NCLMouseDown;
 
         // Performing hit testing in the non-client area on Windows.
         events::EventListener<Win32NativeEvent> *NCHitTest;
@@ -344,10 +365,10 @@ namespace window
         Array<std::shared_ptr<events::EventListener<ScrollEvent>>> scrollEvents;
 
         // List of event listeners for window minimize events.
-        Array<std::shared_ptr<events::EventListener<PosEvent>>> minimizeEvents;
+        Array<std::shared_ptr<events::EventListener<StateEvent>>> minimizeEvents;
 
         // List of event listeners for window maximize events.
-        Array<std::shared_ptr<events::EventListener<PosEvent>>> maximizeEvents;
+        Array<std::shared_ptr<events::EventListener<StateEvent>>> maximizeEvents;
 
         // List of event listeners for window resize events.
         Array<std::shared_ptr<events::EventListener<PosEvent>>> resizeEvents;
@@ -453,8 +474,6 @@ namespace window
             CreationFlags flags;
             bool isCursorHidden{false};
             bool focused{false};
-            bool minimized{false};
-            bool maximized{false};
             bool readyToClose = false;
             Point2D resizeLimit{0, 0};
             io::KeyPressState keys[io::Key::kLast + 1];

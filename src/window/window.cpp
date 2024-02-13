@@ -61,9 +61,9 @@ namespace window
 
     bool Window::focused() const { return _platform->focused; }
 
-    bool Window::minimized() const { return _platform->minimized; }
+    bool Window::minimized() const { return _platform->flags & window::CreationFlagsBits::minimized; }
 
-    bool Window::maximized() const { return _platform->maximized; }
+    bool Window::maximized() const { return _platform->flags & window::CreationFlagsBits::maximized; }
 
     bool Window::hidden() const { return (_platform->flags & window::CreationFlagsBits::hidden) != 0; }
 
@@ -78,9 +78,9 @@ namespace window
     void updateEvents()
     {
 #ifdef _WIN32
-        auto NCLMouseClickList = events::mng.getListeners<Win32NativeEvent>("window:NCLMouseClick");
-        if (!NCLMouseClickList.empty())
-            eventRegistry.NCLMouseClick = NCLMouseClickList[0].get();
+        auto NCLMouseDownList = events::mng.getListeners<Win32NativeEvent>("window:NCLMouseDown");
+        if (!NCLMouseDownList.empty())
+            eventRegistry.NCLMouseDown = NCLMouseDownList[0].get();
 
         auto NCHitTestList = events::mng.getListeners<Win32NativeEvent>("window:NCHitTest");
         if (!NCHitTestList.empty())
@@ -88,8 +88,8 @@ namespace window
 #endif
         eventRegistry.focusEvents = events::mng.getListeners<FocusEvent>("window:focus");
         eventRegistry.scrollEvents = events::mng.getListeners<ScrollEvent>("window:scroll");
-        eventRegistry.minimizeEvents = events::mng.getListeners<PosEvent>("window:minimize");
-        eventRegistry.maximizeEvents = events::mng.getListeners<PosEvent>("window:maximize");
+        eventRegistry.minimizeEvents = events::mng.getListeners<StateEvent>("window:minimize");
+        eventRegistry.maximizeEvents = events::mng.getListeners<StateEvent>("window:maximize");
         eventRegistry.resizeEvents = events::mng.getListeners<PosEvent>("window:resize");
         eventRegistry.moveEvents = events::mng.getListeners<PosEvent>("window:move");
         eventRegistry.charInputEvents = events::mng.getListeners<CharInputEvent>("window:input:char");

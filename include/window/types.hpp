@@ -223,8 +223,8 @@ namespace window
         PlatformData *_platform;
     };
 
-    // Flags for window creation, stored as u8 for memory efficiency.
-    enum class CreationFlagsBits : u8
+    // Flags for window creation, stored as u16 for memory efficiency.
+    enum class CreationFlagsBits : u16
     {
         resizable = 0x0001,    // Allows window resizing.
         snapped = 0x0002,      // Enables window snapping to screen edges.
@@ -232,7 +232,9 @@ namespace window
         fullscreen = 0x0008,   // Enables fullscreen mode.
         minimizebox = 0x00010, // Includes a minimize button.
         maximizebox = 0x00020, // Includes a maximize button.
-        hidden = 0x00040       // Does not show the window on creation.
+        hidden = 0x00040,      // Does not show the window on creation.
+        minimized = 0x00080,   // Starts minimized.
+        maximized = 0x00100    // Starts maximized.
     };
 
     // Flags for window creation, stored as u8 for memory efficiency.
@@ -250,7 +252,9 @@ struct FlagTraits<window::CreationFlagsBits>
     static constexpr window::CreationFlags allFlags =
         (window::CreationFlagsBits::resizable | window::CreationFlagsBits::snapped |
          window::CreationFlagsBits::decorated | window::CreationFlagsBits::fullscreen |
-         window::CreationFlagsBits::minimizebox | window::CreationFlagsBits::maximizebox);
+         window::CreationFlagsBits::minimizebox | window::CreationFlagsBits::maximizebox |
+         window::CreationFlagsBits::hidden | window::CreationFlagsBits::minimized |
+         window::CreationFlagsBits::maximized);
 };
 
 template <>

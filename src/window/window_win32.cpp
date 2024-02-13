@@ -144,22 +144,23 @@ namespace window
                         return HTTOP;
                     if (!eventRegistry.NCHitTest)
                         break;
-                    Win32NativeEvent event("window:NCHitTest", window->owner, uMsg, wParam, lParam, &hit);
+                    Win32NativeEvent event("window:NCHitTest", window->owner, hwnd, uMsg, wParam, lParam, &hit);
                     eventRegistry.NCHitTest->invoke(event);
                     return hit;
                 }
                 case WM_NCLBUTTONDOWN:
                 {
-                    if (eventRegistry.NCLMouseClick)
+                    if (eventRegistry.NCLMouseDown)
                     {
                         LRESULT res{-1};
-                        Win32NativeEvent event("window:NCLMouseClick", window->owner, uMsg, wParam, lParam, &res);
-                        eventRegistry.NCLMouseClick->invoke(event);
+                        Win32NativeEvent event("window:NCLMouseDown", window->owner, hwnd, uMsg, wParam, lParam, &res);
+                        eventRegistry.NCLMouseDown->invoke(event);
                         if (res != -1)
                             return res;
                     }
                     break;
                 }
+
                 case WM_LBUTTONDOWN:
                 case WM_RBUTTONDOWN:
                 case WM_MBUTTONDOWN:
@@ -274,7 +275,7 @@ namespace window
                         case SC_SCREENSAVE:
                         case SC_MONITORPOWER:
                         {
-                            if (window->flags & window::CreationFlagsBits::fullscreen)
+                            if (window->flags & CreationFlagsBits::fullscreen)
                                 return 0;
                             else
                                 break;
@@ -385,24 +386,33 @@ namespace window
                     emitWindowEvent(eventRegistry.cursorEnterEvents, "window:cursor:enter", window->owner, false);
                     return 0;
                 case WM_MOUSEWHEEL:
-                    emitWindowEvent(eventRegistry.scrollEvents, "window:scroll", window->owner,
+                    emitWindowEvent(eventRegistry.scrollEvents, "window:scroll", window->owner, 0,
                                     (SHORT)HIWORD(wParam) / (double)WHEEL_DELTA);
                     return 0;
                 case WM_MOUSEHWHEEL:
                 {
+                    logInfo("hscroll");
                     // This message is only sent on Windows Vista and later
                     // NOTE: The X-axis is inverted for consistency with macOS and X11
                     emitWindowEvent(eventRegistry.scrollEvents, "window:scroll", window->owner,
-                                    -((SHORT)HIWORD(wParam) / (double)WHEEL_DELTA));
+                                    -((SHORT)HIWORD(wParam) / (double)WHEEL_DELTA), 0);
                     return 0;
                 }
                 case WM_SIZE:
                 {
                     Point2D dimenstions(LOWORD(lParam), HIWORD(lParam));
-                    if (window->minimized != (wParam == SIZE_MINIMIZED))
-                        emitWindowEvent(eventRegistry.minimizeEvents, "window:minimize", window->owner, dimenstions);
-                    if (window->maximized != (wParam == SIZE_MAXIMIZED))
-                        emitWindowEvent(eventRegistry.maximizeEvents, "window:maximize", window->owner, dimenstions);
+                    if ((window->flags & CreationFlagsBits::minimized) != (wParam == SIZE_MINIMIZED))
+                    {
+                        window->flags ^= CreationFlagsBits::minimized;
+                        emitWindowEvent(eventRegistry.minimizeEvents, "window:minimize", window->owner,
+                                        window->flags & CreationFlagsBits::minimized);
+                    }
+                    if ((window->flags & CreationFlagsBits::maximized) != (wParam == SIZE_MAXIMIZED))
+                    {
+                        window->flags ^= CreationFlagsBits::maximized;
+                        emitWindowEvent(eventRegistry.maximizeEvents, "window:maximize", window->owner,
+                                        window->flags & CreationFlagsBits::maximized);
+                    }
                     if (dimenstions != window->dimenstions)
                     {
                         window->dimenstions = dimenstions;
@@ -581,7 +591,14 @@ namespace window
         if (!_platform->hwnd)
             throw std::runtime_error("Failed to create window");
         if (!(flags & CreationFlagsBits::hidden))
-            ShowWindow(_platform->hwnd, SW_SHOWNORMAL);
+        {
+            if (flags & CreationFlagsBits::minimized)
+                ShowWindow(_platform->hwnd, SW_MINIMIZE);
+            else if (flags & CreationFlagsBits::maximized)
+                ShowWindow(_platform->hwnd, SW_MAXIMIZE);
+            else
+                ShowWindow(_platform->hwnd, SW_SHOWNORMAL);
+        }
     }
 
     Window::~Window()
@@ -691,19 +708,22 @@ namespace window
 
     Point2D Window::windowPos() const
     {
-        POINT pos;
-        ClientToScreen(_platform->hwnd, &pos);
-        return {pos.x, pos.y};
+        RECT rect;
+        if (GetWindowRect(_platform->hwnd, &rect))
+            return {rect.left, rect.top};
+        else
+            return {0, 0};
     }
 
     void Window::windowPos(Point2D position)
     {
-        SetWindowPos(_platform->hwnd, NULL, position.x, position.y, _platform->dimenstions.x, _platform->dimenstions.y,
-                     0);
+        SetWindowPos(_platform->hwnd, NULL, position.x, position.y, 0, 0, SWP_NOACTIVATE | SWP_NOZORDER | SWP_NOSIZE);
     }
 
     void Window::centerWindowPos()
     {
+        if (maximized())
+            return;
         RECT workArea = {};
         SystemParametersInfo(SPI_GETWORKAREA, 0, &workArea, 0); // Получаем размеры рабочей области экрана
 
@@ -723,6 +743,10 @@ namespace window
 
         SetWindowPos(_platform->hwnd, NULL, centerX, centerY, windowWidth, windowHeight, SWP_NOZORDER | SWP_NOACTIVATE);
     }
+
+    void Window::minimize() { ShowWindow(_platform->hwnd, SW_MINIMIZE); }
+
+    void Window::maximize() { ShowWindow(_platform->hwnd, maximized() ? SW_RESTORE : SW_MAXIMIZE); }
 
     void waitEvents()
     {
