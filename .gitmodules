@@ -1,6 +1,3 @@
-[submodule "src/deps/internal/core"]
-	path = src/deps/internal/core
-	url = gitea@git.local:app3d/app3d-core.git
 [submodule "src/deps/external/tinyfiledialogs"]
 	path = src/deps/external/tinyfiledialogs
 	url = https://git.code.sf.net/p/tinyfiledialogs/code
