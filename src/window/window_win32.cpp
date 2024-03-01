@@ -152,6 +152,11 @@ namespace window
                 {
                     if (eventRegistry.NCLMouseDown)
                     {
+                        POINT cursorPoint;
+                        GetCursorPos(&cursorPoint);
+                        ScreenToClient(hwnd, &cursorPoint);
+                        if (cursorPoint.y > 0 && cursorPoint.y < env.context->frameY + env.context->padding)
+                            break;
                         LRESULT res{-1};
                         Win32NativeEvent event("window:NCLMouseDown", window->owner, hwnd, uMsg, wParam, lParam, &res);
                         eventRegistry.NCLMouseDown->invoke(event);
@@ -160,7 +165,6 @@ namespace window
                     }
                     break;
                 }
-
                 case WM_LBUTTONDOWN:
                 case WM_RBUTTONDOWN:
                 case WM_MBUTTONDOWN:
@@ -391,7 +395,6 @@ namespace window
                     return 0;
                 case WM_MOUSEHWHEEL:
                 {
-                    logInfo("hscroll");
                     // This message is only sent on Windows Vista and later
                     // NOTE: The X-axis is inverted for consistency with macOS and X11
                     emitWindowEvent(eventRegistry.scrollEvents, "window:scroll", window->owner,
