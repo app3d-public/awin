@@ -10,7 +10,7 @@ namespace window
             if (!bd.KHR_surface || !bd.KHR_win32_surface)
                 return {};
 
-            return {"VK_KHR_surface", "VK_KHR_win32_surface"};
+            return {vk::KHRSurfaceExtensionName, vk::KHRWin32SurfaceExtensionName};
         }
 
         [[nodiscard]] vk::Result createWindowSurface(Window *window, vk::Instance instance, vk::SurfaceKHR &surface)

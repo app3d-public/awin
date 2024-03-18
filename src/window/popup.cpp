@@ -1,6 +1,6 @@
-#include <window/popup.hpp>
 #include <cstring>
 #include <tinyfiledialogs.h>
+#include <window/popup.hpp>
 
 namespace window
 {
@@ -27,7 +27,6 @@ namespace window
                     break;
             }
 
-            // Определение типа кнопок
             switch (buttons)
             {
                 case Buttons::OK:
@@ -42,12 +41,13 @@ namespace window
                 case Buttons::YesNo:
                     buttonType = "yesno";
                     break;
+                case Buttons::YesNoCancel:
+                    buttonType = "yesnocancel";
+                    break;
             }
 
-            // Обработка результата
             int result = tinyfd_messageBox(title, message, buttonType, iconType, 1);
 
-            // Обработка результата
             if (strcmp(buttonType, "ok") == 0)
             {
                 switch (result)
@@ -99,9 +99,7 @@ namespace window
                 }
             }
             else
-            {
-                return Selection::Error; // Возвращаем ошибку для любых других случаев
-            }
+                return Selection::Error;
         }
     } // namespace popup
 } // namespace window

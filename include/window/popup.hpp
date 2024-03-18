@@ -20,7 +20,8 @@ namespace window
             OK,
             OKCancel,
             Quit,
-            YesNo
+            YesNo,
+            YesNoCancel
         };
 
         // Represents the possible user responses in a popup window.
