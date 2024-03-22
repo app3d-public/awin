@@ -1,5 +1,5 @@
 #include <window/vulkan.hpp>
-#include <window/platform_win32.hpp>
+#include <window/platform@win32.hpp>
 
 namespace window
 {

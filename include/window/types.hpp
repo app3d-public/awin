@@ -1,7 +1,7 @@
 #ifndef APP_WINDOW_TYPES_H
 #define APP_WINDOW_TYPES_H
 
-#include <core/std/basic_types.hpp>
+#include <core/std/types@basic.hpp>
 #include <core/std/enum.hpp>
 
 #define KEY_MOD_START_INDEX 106

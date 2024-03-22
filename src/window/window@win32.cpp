@@ -1,5 +1,5 @@
 #include <core/log.hpp>
-#include <window/platform_win32.hpp>
+#include <window/platform@win32.hpp>
 #include <window/window.hpp>
 #include <windowsx.h>
 

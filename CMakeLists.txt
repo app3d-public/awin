@@ -26,8 +26,8 @@ list(APPEND SOURCE_FILES
 
 if(WIN32)
     list(APPEND SOURCE_FILES
-        "src/window/window_win32.cpp"
-        "src/window/vulkan_win32.cpp"
+        "src/window/window@win32.cpp"
+        "src/window/vulkan@win32.cpp"
     )
 endif()
 

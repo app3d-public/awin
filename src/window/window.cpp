@@ -1,7 +1,7 @@
 #include <core/log.hpp>
 #include <window/window.hpp>
 #ifdef _WIN32
-    #include <window/platform_win32.hpp>
+    #include <window/platform@win32.hpp>
 #else
     #error "Unsupported platform"
 #endif
