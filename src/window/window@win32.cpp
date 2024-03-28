@@ -489,7 +489,7 @@ namespace window
                 }
                 case WM_CLOSE:
                     window->readyToClose = true;
-                    break;
+                    return TRUE;
                 case WM_DESTROY:
                     PostQuitMessage(0);
                     return 0;
