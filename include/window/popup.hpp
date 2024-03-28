@@ -1,6 +1,7 @@
 #ifndef APP_WINDOW_POPUP_H
 #define APP_WINDOW_POPUP_H
 
+#include <initializer_list>
 namespace window
 {
     namespace popup
@@ -18,32 +19,20 @@ namespace window
         enum class Buttons
         {
             OK,
-            OKCancel,
-            Quit,
-            YesNo,
-            YesNoCancel
-        };
-
-        // Represents the possible user responses in a popup window.
-        enum class Selection
-        {
-            OK,
-            Cancel,
             Yes,
             No,
-            Quit,
-            Error,
-            None
+            Cancel,
+            Error
         };
 
         // Displays a popup window with a message, title, and configurable style and buttons.
-        Selection show(const char *message, const char *title, Style style = Style::Info,
-                       Buttons buttons = Buttons::OK);
+        Buttons show(const char *message, const char *title, Style style = Style::Info,
+                     std::initializer_list<Buttons> buttons = {Buttons::OK});
 
         // Displays a popup with "Yes" and "No" options, returning true if "Yes" is selected.
         inline bool confirm(const char *message, const char *title)
         {
-            return show(message, title, Style::Question, Buttons::YesNo) == Selection::Yes;
+            return show(message, title, Style::Question, {Buttons::Yes, Buttons::No}) == Buttons::Yes;
         }
     } // namespace popup
 } // namespace window

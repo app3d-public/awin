@@ -73,7 +73,7 @@ namespace window
 
     bool Window::readyToClose() const { return _platform->readyToClose; }
 
-    void Window::close() { _platform->readyToClose = true; }
+    void Window::readyToClose(bool value) { _platform->readyToClose = value; }
 
     void updateEvents()
     {

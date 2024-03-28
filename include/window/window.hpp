@@ -148,14 +148,14 @@ namespace window
         // Check if the window is ready to be closed.
         bool readyToClose() const;
 
+        // Change the window's ready-to-close state.
+        void readyToClose(bool readyToClose);
+
         // Show the window if it is hidden.
         void showWindow();
 
         // Hide the window
         void hideWindow();
-
-        // Close the window
-        void close();
 
         // Get current window position
         Point2D windowPos() const;
@@ -189,7 +189,7 @@ namespace window
     // Events
 #ifdef _WIN32
     // Event specific to Win32 platform, carrying native window message data.
-    struct Win32NativeEvent : public events::IEvent
+    struct Win32NativeEvent : public events::Event
     {
         window::Window *window; // Pointer to the associated Window object.
         HWND hwnd;              // Handle to the window.
@@ -200,14 +200,14 @@ namespace window
 
         explicit Win32NativeEvent(const std::string &name = "", window::Window *window = nullptr, HWND hwnd = 0,
                                   UINT uMsg = 0, WPARAM wParam = 0, LPARAM lParam = 0, LRESULT *lResult = nullptr)
-            : IEvent(name), window(window), hwnd(hwnd), uMsg(uMsg), wParam(wParam), lParam(lParam), lResult(lResult)
+            : Event(name), window(window), hwnd(hwnd), uMsg(uMsg), wParam(wParam), lParam(lParam), lResult(lResult)
         {
         }
     };
 #endif
 
     // Represents a focus change event in a window.
-    struct FocusEvent : public events::IEvent
+    struct FocusEvent : public events::Event
     {
         // Pointer to the associated Window object.
         window::Window *window;
@@ -216,25 +216,25 @@ namespace window
         bool focused;
 
         explicit FocusEvent(const std::string &name = "", window::Window *window = nullptr, bool focused = false)
-            : IEvent(name), window(window), focused(focused)
+            : Event(name), window(window), focused(focused)
         {
         }
     };
 
     // Represents a character input event in a window.
-    struct CharInputEvent : public events::IEvent
+    struct CharInputEvent : public events::Event
     {
         window::Window *window; // Pointer to the associated Window object.
         u32 charCode;           // Unicode character code.
 
         explicit CharInputEvent(const std::string &name = "", window::Window *window = nullptr, u32 charCode = 0)
-            : IEvent(name), window(window), charCode(charCode)
+            : Event(name), window(window), charCode(charCode)
         {
         }
     };
 
     // Represents a keyboard input event in a window.
-    struct KeyInputEvent : public events::IEvent
+    struct KeyInputEvent : public events::Event
     {
         window::Window *window;   // Pointer to the associated Window object.
         io::Key key;              // The key involved in the event.
@@ -244,13 +244,13 @@ namespace window
         explicit KeyInputEvent(const std::string &name = "", window::Window *window = nullptr,
                                io::Key key = io::Key::kUnknown, io::KeyPressState action = io::KeyPressState::release,
                                io::KeyMode mods = io::KeyMode{})
-            : IEvent(name), window(window), key(key), action(action), mods(mods)
+            : Event(name), window(window), key(key), action(action), mods(mods)
         {
         }
     };
 
     // Represents a mouse click event in a window.
-    struct MouseClickEvent : public events::IEvent
+    struct MouseClickEvent : public events::Event
     {
         window::Window *window;   // Pointer to the associated Window object.
         io::MouseKey button;      // The mouse button involved in the event.
@@ -261,49 +261,49 @@ namespace window
                                  io::MouseKey button = io::MouseKey::unknown,
                                  io::KeyPressState action = io::KeyPressState::release,
                                  io::KeyMode mods = io::KeyMode{})
-            : IEvent(name), window(window), button(button), action(action), mods(mods)
+            : Event(name), window(window), button(button), action(action), mods(mods)
         {
         }
     };
 
     // Represents a mouse position event in a window. This one is emitted when the mouse enters or leaves the window.
-    struct CursorEnterEvent : public events::IEvent
+    struct CursorEnterEvent : public events::Event
     {
         window::Window *window; // Pointer to the associated Window object.
         bool entered;           // Whether the mouse entered or left the window.
 
         explicit CursorEnterEvent(const std::string &name = "", window::Window *window = nullptr, bool entered = false)
-            : IEvent(name), window(window), entered(entered)
+            : Event(name), window(window), entered(entered)
         {
         }
     };
 
     // Represents a window state change event in a window.
-    struct StateEvent : public events::IEvent
+    struct StateEvent : public events::Event
     {
         window::Window *window; // Pointer to the associated Window object.
         bool state;             // The new state.
 
         explicit StateEvent(const std::string &name = "", window::Window *window = nullptr, bool state = false)
-            : IEvent(name), window(window), state(state)
+            : Event(name), window(window), state(state)
         {
         }
     };
 
     // Represents a position change event in a window.
-    struct PosEvent : public events::IEvent
+    struct PosEvent : public events::Event
     {
         window::Window *window; // Pointer to the associated Window object.
         Point2D position;       // The new position.
 
         explicit PosEvent(const std::string &name = "", window::Window *window = nullptr, Point2D position = Point2D())
-            : IEvent(name), window(window), position(position)
+            : Event(name), window(window), position(position)
         {
         }
     };
 
     // Represents a scroll event in a window.
-    struct ScrollEvent : public events::IEvent
+    struct ScrollEvent : public events::Event
     {
         window::Window *window; // Pointer to the associated Window object.
         f32 h;                  // The Horizontal scroll value.
@@ -311,13 +311,13 @@ namespace window
 
         explicit ScrollEvent(const std::string &name = "", window::Window *window = nullptr, f32 hscroll = 0.0f,
                              f32 vscroll = 0.0f)
-            : IEvent(name), window(window), h(hscroll), v(vscroll)
+            : Event(name), window(window), h(hscroll), v(vscroll)
         {
         }
     };
 
     // Represents a DPI change event in a window.
-    struct DpiChangedEvent : public events::IEvent
+    struct DpiChangedEvent : public events::Event
     {
         window::Window *window; // Pointer to the associated Window object.
         f32 xDpi;               // New DPI value in the x-axis.
@@ -325,7 +325,7 @@ namespace window
 
         explicit DpiChangedEvent(const std::string &name = "", window::Window *window = nullptr, f32 xDpi = 0.0f,
                                  f32 yDpi = 0.0f)
-            : IEvent(name), window(window), xDpi(xDpi), yDpi(yDpi)
+            : Event(name), window(window), xDpi(xDpi), yDpi(yDpi)
         {
         }
     };
