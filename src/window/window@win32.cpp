@@ -144,9 +144,9 @@ namespace window
                         return HTTOP;
                     if (!eventRegistry.NCHitTest)
                         break;
-                    Win32NativeEvent event("window:NCHitTest", window->owner, hwnd, uMsg, wParam, lParam, &hit);
+                    Win32NativeEvent event("window:NCHitTest", window->owner, hwnd, uMsg, wParam, lParam, hit);
                     eventRegistry.NCHitTest->invoke(event);
-                    return hit;
+                    return event.lResult;
                 }
                 case WM_NCLBUTTONDOWN:
                 {
@@ -157,11 +157,10 @@ namespace window
                         ScreenToClient(hwnd, &cursorPoint);
                         if (cursorPoint.y > 0 && cursorPoint.y < env.context->frameY + env.context->padding)
                             break;
-                        LRESULT res{-1};
-                        Win32NativeEvent event("window:NCLMouseDown", window->owner, hwnd, uMsg, wParam, lParam, &res);
+                        Win32NativeEvent event("window:NCLMouseDown", window->owner, hwnd, uMsg, wParam, lParam);
                         eventRegistry.NCLMouseDown->invoke(event);
-                        if (res != -1)
-                            return res;
+                        if (event.lResult != -1)
+                            return event.lResult;
                     }
                     break;
                 }
@@ -292,7 +291,6 @@ namespace window
                 case WM_KEYUP:
                 case WM_SYSKEYUP:
                 {
-
                     const auto action =
                         (HIWORD(lParam) & KF_UP) ? io::KeyPressState::release : io::KeyPressState::press;
                     const auto mods = getKeyMods();

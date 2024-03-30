@@ -196,10 +196,10 @@ namespace window
         UINT uMsg;              // Windows message identifier.
         WPARAM wParam;          // Additional message information.
         LPARAM lParam;          // Additional message information.
-        LRESULT *lResult;       // Pointer to the result of the message processing.
+        LRESULT lResult;        // Pointer to the result of the message processing.
 
         explicit Win32NativeEvent(const std::string &name = "", window::Window *window = nullptr, HWND hwnd = 0,
-                                  UINT uMsg = 0, WPARAM wParam = 0, LPARAM lParam = 0, LRESULT *lResult = nullptr)
+                                  UINT uMsg = 0, WPARAM wParam = 0, LPARAM lParam = 0, LRESULT lResult = -1)
             : Event(name), window(window), hwnd(hwnd), uMsg(uMsg), wParam(wParam), lParam(lParam), lResult(lResult)
         {
         }

@@ -2,6 +2,9 @@
 #define APP_WINDOW_POPUP_H
 
 #include <initializer_list>
+#include <string>
+#include <core/std/array.hpp>
+
 namespace window
 {
     namespace popup
@@ -34,6 +37,9 @@ namespace window
         {
             return show(message, title, Style::Question, {Buttons::Yes, Buttons::No}) == Buttons::Yes;
         }
+
+        std::string fileSaveDialog(const std::string& title, const Array<const char*> &patterns, const std::string& decription, const std::string& path = "");
+
     } // namespace popup
 } // namespace window
 
