@@ -1,11 +1,11 @@
 #include <window/vulkan.hpp>
-#include <window/platform@win32.hpp>
+#include <window/platform_win32.hpp>
 
 namespace window
 {
     namespace vulkan
     {
-        Array<std::string> getExtensionNames()
+        DArray<std::string> getExtensionNames()
         {
             if (!bd.KHR_surface || !bd.KHR_win32_surface)
                 return {};
@@ -21,10 +21,9 @@ namespace window
                 return vk::Result::eErrorExtensionNotPresent;
             try
             {
-                VkResult err;
                 vk::Win32SurfaceCreateInfoKHR info;
                 auto accessBridge = window->accessBridge();
-                info.setHinstance(accessBridge.instance()).setHwnd(accessBridge.hwnd());
+                info.setHinstance(accessBridge.global()).setHwnd(accessBridge.hwnd());
                 surface = instance.createWin32SurfaceKHR(info, nullptr, *bd.loader);
                 return vk::Result::eSuccess;
             }

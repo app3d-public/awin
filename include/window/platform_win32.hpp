@@ -3,6 +3,7 @@
 
 #include <map>
 #include <windows.h>
+#include "core/api.hpp"
 #include "window.hpp"
 
 namespace window
@@ -152,12 +153,12 @@ namespace window
                                           {VK_APPS, io::Key::kMenu}};
         };
 
-        class AccessBridge
+        class APPLIB_API AccessBridge
         {
         public:
             explicit AccessBridge(WindowPlatformData *impl = nullptr) : _impl(impl) {}
 
-            HINSTANCE instance() const;
+            HINSTANCE global() const;
 
             HWND hwnd() const;
 

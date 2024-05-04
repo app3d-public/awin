@@ -9,7 +9,6 @@
 #define APP_WINDOW_WINDOW_H
 
 #include <core/event/event.hpp>
-#include <core/std/types@basic.hpp>
 #include <string>
 #include "types.hpp"
 #ifdef _WIN32
@@ -37,7 +36,7 @@ namespace window
         class AccessBridge;
 
         // The window environment configuration for window management and interactions within the windowing system.
-        extern struct WindowEnvironment
+        extern APPLIB_API struct WindowEnvironment
         {
             PlatformContext *context;  // Platform-specific context for window operations.
             std::string clipboardData; // Clipboard data storage.
@@ -70,7 +69,7 @@ namespace window
     } // namespace platform
 
     // A window entity in the windowing system
-    class Window
+    class APPLIB_API Window
     {
     public:
         // Initialize a window with a title, dimensions, and creation flags.
@@ -168,11 +167,6 @@ namespace window
 
         // Retrieves the access bridge for interfacing with platform-specific window data.
         const platform::AccessBridge &accessBridge() const { return *_accessBridge; }
-
-        friend Point2D getWindowSize(const Window &window);
-        friend std::string getClipboardString(const Window &window);
-        friend void setClipboardString(const Window &window, const std::string &text);
-
     private:
         platform::WindowPlatformData *_platform;
         const platform::AccessBridge *_accessBridge;
@@ -184,7 +178,7 @@ namespace window
     // to efficiently dispatch events to the appropriate listeners as they occur.
     // Specific actions are taken for different platforms (e.g., Windows-specific event listeners)
     // to ensure compatibility and proper handling across different operating systems.
-    void updateEvents();
+    APPLIB_API void updateEvents();
 
     // Events
 #ifdef _WIN32
@@ -341,43 +335,43 @@ namespace window
         events::EventListener<Win32NativeEvent> *NCHitTest;
 #endif
         // List of event listeners for focus-related events.
-        Array<std::shared_ptr<events::EventListener<FocusEvent>>> focusEvents;
+        DArray<std::shared_ptr<events::EventListener<FocusEvent>>> focusEvents;
 
         // List of event listeners for character input events.
-        Array<std::shared_ptr<events::EventListener<CharInputEvent>>> charInputEvents;
+        DArray<std::shared_ptr<events::EventListener<CharInputEvent>>> charInputEvents;
 
         // List of event listeners for keyboard input events.
-        Array<std::shared_ptr<events::EventListener<KeyInputEvent>>> keyInputEvents;
+        DArray<std::shared_ptr<events::EventListener<KeyInputEvent>>> keyInputEvents;
 
         // List of event listeners for mouse click events.
-        Array<std::shared_ptr<events::EventListener<MouseClickEvent>>> mouseClickEvents;
+        DArray<std::shared_ptr<events::EventListener<MouseClickEvent>>> mouseClickEvents;
 
         // List of event listeners for cursor enter/leave events.
-        Array<std::shared_ptr<events::EventListener<CursorEnterEvent>>> cursorEnterEvents;
+        DArray<std::shared_ptr<events::EventListener<CursorEnterEvent>>> cursorEnterEvents;
 
         //  Listener for handling when the mouse position changes in RAW Input mode.
-        Array<std::shared_ptr<events::EventListener<PosEvent>>> cursorPosEvents;
+        DArray<std::shared_ptr<events::EventListener<PosEvent>>> cursorPosEvents;
 
         //  Listener for handling when the mouse position changes in absolute (per Window dimensions) values
-        Array<std::shared_ptr<events::EventListener<PosEvent>>> cursorPosAbsEvents;
+        DArray<std::shared_ptr<events::EventListener<PosEvent>>> cursorPosAbsEvents;
 
         // List of event listeners for scroll events.
-        Array<std::shared_ptr<events::EventListener<ScrollEvent>>> scrollEvents;
+        DArray<std::shared_ptr<events::EventListener<ScrollEvent>>> scrollEvents;
 
         // List of event listeners for window minimize events.
-        Array<std::shared_ptr<events::EventListener<StateEvent>>> minimizeEvents;
+        DArray<std::shared_ptr<events::EventListener<StateEvent>>> minimizeEvents;
 
         // List of event listeners for window maximize events.
-        Array<std::shared_ptr<events::EventListener<StateEvent>>> maximizeEvents;
+        DArray<std::shared_ptr<events::EventListener<StateEvent>>> maximizeEvents;
 
         // List of event listeners for window resize events.
-        Array<std::shared_ptr<events::EventListener<PosEvent>>> resizeEvents;
+        DArray<std::shared_ptr<events::EventListener<PosEvent>>> resizeEvents;
 
         // List of event listeners for window move events.
-        Array<std::shared_ptr<events::EventListener<PosEvent>>> moveEvents;
+        DArray<std::shared_ptr<events::EventListener<PosEvent>>> moveEvents;
 
         // List of event listeners for DPI (dots per inch) changed events.
-        Array<std::shared_ptr<events::EventListener<DpiChangedEvent>>> dpiChangedEvents;
+        DArray<std::shared_ptr<events::EventListener<DpiChangedEvent>>> dpiChangedEvents;
 
     } eventRegistry;
 
@@ -388,7 +382,7 @@ namespace window
      * @param args event arguments
      */
     template <typename T, typename... Args>
-    inline void emitWindowEvent(const Array<std::shared_ptr<events::EventListener<T>>> &listener, Args &&...args)
+    inline void emitWindowEvent(const DArray<std::shared_ptr<events::EventListener<T>>> &listener, Args &&...args)
     {
         T event(std::forward<Args>(args)...);
         for (const auto &l : listener)
@@ -396,10 +390,10 @@ namespace window
     }
 
     // Get the time elapsed since library initialization in seconds as a floating-point value.
-    f64 getTime();
+    APPLIB_API f64 getTime();
 
     // Set the window library initialization time to the specified value in seconds.
-    void setTime(f64 time);
+    APPLIB_API void setTime(f64 time);
 
     /**
      * Retrieves information about the primary monitor of the system. The primary monitor
@@ -422,48 +416,48 @@ namespace window
      *
      * @return MonitorInfo - A structure containing the position and size of the primary monitor.
      */
-    MonitorInfo getPrimaryMonitorInfo();
+    APPLIB_API MonitorInfo getPrimaryMonitorInfo();
 
     // Processes all pending events in the event queue. This function checks the state
     // of all windows and other event sources, processes those events, and returns
     // control after all events have been processed. Typically used in an application's
     // update loop to handle events as they occur.
-    void pollEvents();
+    APPLIB_API void pollEvents();
 
     // Waits for new events to occur and processes them as soon as they appear.
     // Unlike pollEvents, this function blocks the execution of the program until
     // new events are available. Useful in situations where you want to conserve CPU
     // usage when the application is idle or when you need to wait for user input
     // without continuously polling.
-    void waitEvents();
+    APPLIB_API void waitEvents();
 
     // Waits for events with a specified timeout and processes them. If no events occur
     // within the given timeout period, the function returns. This is useful for
     // scenarios where you want to wait for events but also perform some other action
     // if no events occur within a certain time frame, such as updating the UI or
     // handling non-event-related logic.
-    void waitEventsTimeout(f64 timeout);
+    APPLIB_API void waitEventsTimeout(f64 timeout);
 
     // Pushes an empty event to the event queue.
-    void pushEmptyEvent();
+    APPLIB_API void pushEmptyEvent();
 
     // Retrieves the current dots per inch (DPI) value of the display.
-    f32 getDpi();
+    APPLIB_API f32 getDpi();
 
     // Get the client area size
-    Point2D getWindowSize(const Window &window);
+    APPLIB_API Point2D getWindowSize(const Window &window);
 
     // Get text string from the clipboard buffer
-    std::string getClipboardString(const Window &window);
+    APPLIB_API std::string getClipboardString(const Window &window);
 
     // Set text string in the clipboard buffer
-    void setClipboardString(const Window &window, const std::string &text);
+    APPLIB_API void setClipboardString(const Window &window, const std::string &text);
 
     // Initialize the library.
-    void initLibrary();
+    APPLIB_API void initLibrary();
 
     // Destroy the library and release associated resources.
-    void destroyLibrary();
+    APPLIB_API void destroyLibrary();
 
     namespace platform
     {

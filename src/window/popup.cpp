@@ -1,6 +1,5 @@
 #include <cassert>
-#include <core/std/array.hpp>
-#include <core/std/types@basic.hpp>
+#include <core/std/basic_types.hpp>
 #include <sstream>
 #include <tinyfiledialogs.h>
 #include <window/popup.hpp>
@@ -19,7 +18,7 @@ namespace window
             assert(buttons.size() > 0);
             const char *iconType;
             const char *buttonType;
-            Array<Buttons> btn(buttons);
+            DArray<Buttons> btn(buttons);
             std::sort(btn.begin(), btn.end());
 
             switch (style)
@@ -81,7 +80,7 @@ namespace window
             }
         }
 
-        std::string fileSaveDialog(const std::string &title, const Array<const char *> &patterns,
+        std::string fileSaveDialog(const std::string &title, const DArray<const char *> &patterns,
                                const std::string &decription, const std::string &path)
         {
             const char *result = tinyfd_saveFileDialog(title.c_str(), path.empty() ? nullptr : path.c_str(),

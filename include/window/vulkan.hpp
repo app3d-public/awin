@@ -1,10 +1,9 @@
 #ifndef APP_WINDOW_VULKAN_H
 #define APP_WINDOW_VULKAN_H
 
-#include <core/std/array.hpp>
+#include <core/api.hpp>
 #include <vulkan/vulkan.hpp>
 #include "window.hpp"
-
 
 namespace window
 {
@@ -21,16 +20,16 @@ namespace window
             bool KHR_xlib_surface;
             bool KHR_xcb_surface;
             bool KHR_wayland_surface;
-            Array<std::string> extensitions;
+            DArray<std::string> extensitions;
         } bd;
 
-        Array<std::string> getExtensionNames();
+        APPLIB_API DArray<std::string> getExtensionNames();
 
-        bool init(vk::DispatchLoaderDynamic *loader);
+        APPLIB_API bool init(vk::DispatchLoaderDynamic *loader);
 
-        [[nodiscard]] vk::Result createWindowSurface(Window *window, vk::Instance instance, vk::SurfaceKHR &surface);
+        [[nodiscard]] APPLIB_API vk::Result createWindowSurface(Window *window, vk::Instance instance, vk::SurfaceKHR &surface);
 
-        Array<const char *> requiredInstanceExtensions();
+        APPLIB_API DArray<const char *> requiredInstanceExtensions();
     } // namespace vulkan
 } // namespace window
 

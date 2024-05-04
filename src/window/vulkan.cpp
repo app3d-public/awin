@@ -25,7 +25,7 @@ namespace window
             err = vk::enumerateInstanceExtensionProperties(nullptr, &count, nullptr, *bd.loader);
             if (err != vk::Result::eSuccess)
                 return false;
-            Array<vk::ExtensionProperties> extensions(count);
+            DArray<vk::ExtensionProperties> extensions(count);
             err = vk::enumerateInstanceExtensionProperties(nullptr, &count, extensions.data(), *bd.loader);
             if (err != vk::Result::eSuccess)
                 return false;
@@ -51,10 +51,10 @@ namespace window
             return true;
         }
 
-        Array<const char *> requiredInstanceExtensions()
+        DArray<const char *> requiredInstanceExtensions()
         {
             assert(bd.available);
-            Array<const char *> result;
+            DArray<const char *> result;
             for (auto &extension : bd.extensitions)
                 result.push_back(extension.c_str());
             return result;

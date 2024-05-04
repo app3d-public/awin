@@ -1,5 +1,6 @@
 #include <core/log.hpp>
-#include <window/platform@win32.hpp>
+#include <windef.h>
+#include <window/platform_win32.hpp>
 #include <window/window.hpp>
 #include <windowsx.h>
 
@@ -552,7 +553,7 @@ namespace window
             }
         }
 
-        HINSTANCE AccessBridge::instance() const { return env.context->instance; }
+        HINSTANCE AccessBridge::global() const { return env.context->instance; }
 
         HWND AccessBridge::hwnd() const { return _impl->hwnd; }
     } // namespace platform
@@ -790,7 +791,7 @@ namespace window
     Point2D getWindowSize(const Window &window)
     {
         RECT area;
-        GetClientRect(window._platform->hwnd, &area);
+        GetClientRect(window.accessBridge().hwnd(), &area);
         return {area.right, area.bottom};
     }
 
@@ -801,7 +802,8 @@ namespace window
 
         // NOTE: Retry clipboard opening a few times as some other application may have it
         //       open and also the Windows Clipboard History reads it after each update
-        while (!OpenClipboard(window._platform->hwnd))
+        HWND hwnd = window.accessBridge().hwnd();
+        while (!OpenClipboard(hwnd))
         {
             Sleep(1);
             tries++;
@@ -859,7 +861,8 @@ namespace window
 
         // NOTE: Retry clipboard opening a few times as some other application may have it
         //       open and also the Windows Clipboard History reads it after each update
-        while (!OpenClipboard(window._platform->hwnd))
+        HWND hwnd = window.accessBridge().hwnd();
+        while (!OpenClipboard(hwnd))
         {
             Sleep(1);
             tries++;

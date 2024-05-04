@@ -1,9 +1,11 @@
 #ifndef APP_WINDOW_POPUP_H
 #define APP_WINDOW_POPUP_H
 
+#include <core/api.hpp>
+#include <core/std/darray.hpp>
 #include <initializer_list>
 #include <string>
-#include <core/std/array.hpp>
+
 
 namespace window
 {
@@ -29,8 +31,8 @@ namespace window
         };
 
         // Displays a popup window with a message, title, and configurable style and buttons.
-        Buttons show(const char *message, const char *title, Style style = Style::Info,
-                     std::initializer_list<Buttons> buttons = {Buttons::OK});
+        APPLIB_API Buttons show(const char *message, const char *title, Style style = Style::Info,
+                                std::initializer_list<Buttons> buttons = {Buttons::OK});
 
         // Displays a popup with "Yes" and "No" options, returning true if "Yes" is selected.
         inline bool confirm(const char *message, const char *title)
@@ -38,7 +40,8 @@ namespace window
             return show(message, title, Style::Question, {Buttons::Yes, Buttons::No}) == Buttons::Yes;
         }
 
-        std::string fileSaveDialog(const std::string& title, const Array<const char*> &patterns, const std::string& decription, const std::string& path = "");
+        APPLIB_API std::string fileSaveDialog(const std::string &title, const DArray<const char *> &patterns,
+                                              const std::string &decription, const std::string &path = "");
 
     } // namespace popup
 } // namespace window

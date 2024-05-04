@@ -4,8 +4,6 @@ project(app3d-window
     LANGUAGES CXX C
     DESCRIPTION "App3d Window Lib")
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++ -fexperimental-library")
-add_definitions(-D_LIBCPP_NO_VCRUNTIME)
 add_definitions(-DWINVER=0x0A00)
 
 if(NOT TARGET app3d-core)
@@ -13,6 +11,7 @@ if(NOT TARGET app3d-core)
 endif()
 
 add_library(tinyfiledialogs SHARED "src/deps/external/tinyfiledialogs/tinyfiledialogs.c")
+target_compile_options(tinyfiledialogs PRIVATE)
 
 if(WIN32)
     target_link_libraries(tinyfiledialogs PRIVATE comdlg32 ole32)
@@ -26,12 +25,13 @@ list(APPEND SOURCE_FILES
 
 if(WIN32)
     list(APPEND SOURCE_FILES
-        "src/window/window@win32.cpp"
-        "src/window/vulkan@win32.cpp"
+        "src/window/window_win32.cpp"
+        "src/window/vulkan_win32.cpp"
     )
 endif()
 
 add_library(${PROJECT_NAME} SHARED ${SOURCE_FILES})
+set_target_properties(${PROJECT_NAME} PROPERTIES CXX_VISIBILITY_PRESET hidden)
 target_include_directories(${PROJECT_NAME} PRIVATE $<TARGET_PROPERTY:app3d-core,INCLUDE_DIRECTORIES>)
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/src/deps/external/tinyfiledialogs/")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/include/")

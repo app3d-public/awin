@@ -1,7 +1,8 @@
 #ifndef APP_WINDOW_TYPES_H
 #define APP_WINDOW_TYPES_H
 
-#include <core/std/types@basic.hpp>
+#include <core/api.hpp>
+#include <core/std/basic_types.hpp>
 #include <core/std/enum.hpp>
 
 #define KEY_MOD_START_INDEX 106
@@ -176,7 +177,7 @@ namespace window
         int width;
         int height;
     };
-    class Cursor
+    class APPLIB_API Cursor
     {
         struct PlatformData;
 
