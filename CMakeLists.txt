@@ -17,18 +17,7 @@ if(WIN32)
     target_link_libraries(tinyfiledialogs PRIVATE comdlg32 ole32)
 endif()
 
-list(APPEND SOURCE_FILES
-    "src/window/popup.cpp"
-    "src/window/vulkan.cpp"
-    "src/window/window.cpp"
-)
-
-if(WIN32)
-    list(APPEND SOURCE_FILES
-        "src/window/window_win32.cpp"
-        "src/window/vulkan_win32.cpp"
-    )
-endif()
+add_files(${PROJECT_NAME} "${CMAKE_CURRENT_SOURCE_DIR}/src/window")
 
 add_library(${PROJECT_NAME} SHARED ${SOURCE_FILES})
 set_target_properties(${PROJECT_NAME} PROPERTIES CXX_VISIBILITY_PRESET hidden)
