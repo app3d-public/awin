@@ -601,9 +601,10 @@ namespace window
             else
                 ShowWindow(_platform->hwnd, SW_SHOWNORMAL);
         }
+        logInfo("Created Window descriptor: %p", _platform->hwnd);
     }
 
-    Window::~Window()
+    void Window::destroy()
     {
         if (_accessBridge)
         {
@@ -612,17 +613,20 @@ namespace window
         }
         if (_platform)
         {
-            if (_platform->hwnd)
-            {
-                RemovePropW(_platform->hwnd, L"APP3DWINDOW");
-                DestroyWindow(_platform->hwnd);
-                _platform->hwnd = nullptr;
-            }
             if (_platform->rawInputData)
             {
                 free(_platform->rawInputData);
                 _platform->rawInputData = nullptr;
                 _platform->rawInputSize = 0;
+            }
+            
+            if (_platform->hwnd)
+            {
+                RemovePropW(_platform->hwnd, L"APP3DWINDOW");
+                logInfo("Destroying Window descriptor: %p", _platform->hwnd);
+                HWND hwnd = _platform->hwnd;
+                DestroyWindow(hwnd);
+                _platform->hwnd = nullptr;
             }
 
             delete _platform;

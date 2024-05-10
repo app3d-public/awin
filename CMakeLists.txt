@@ -27,6 +27,11 @@ include_directories("${CMAKE_CURRENT_SOURCE_DIR}/include/")
 
 target_link_libraries(${PROJECT_NAME} PRIVATE app3d-core tinyfiledialogs)
 
+if(USE_ASAN)
+    target_link_options(${PROJECT_NAME} PUBLIC -fsanitize=address -fno-omit-frame-pointer)
+    target_link_options(tinyfiledialogs PUBLIC -fsanitize=address -fno-omit-frame-pointer)
+endif(USE_ASAN)
+
 set_target_properties(${PROJECT_NAME}
     PROPERTIES
     CXX_STANDARD 23

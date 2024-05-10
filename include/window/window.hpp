@@ -76,7 +76,8 @@ namespace window
         explicit Window(const std::string &title, i32 width = WINDOW_DONT_CARE, i32 height = WINDOW_DONT_CARE,
                         CreationFlags flags = WINDOW_DEFAULT_FLAGS);
 
-        ~Window();
+        // Destroy the window
+        void destroy();
 
         // Get the window title
         std::string title() const;
