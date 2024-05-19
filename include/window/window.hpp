@@ -261,7 +261,7 @@ namespace window
         }
     };
 
-    // Represents a mouse position event in a window. This one is emitted when the mouse enters or leaves the window.
+    // Represents a mouse position event in a window. This one is dispatchted when the mouse enters or leaves the window.
     struct CursorEnterEvent : public events::Event
     {
         window::Window *window; // Pointer to the associated Window object.
@@ -377,13 +377,13 @@ namespace window
     } eventRegistry;
 
     /**
-     * Emits a window event to the specified listeners.
+     * dispatchs a window event to the specified listeners.
      *
      * @param listener a list of event listeners
      * @param args event arguments
      */
     template <typename T, typename... Args>
-    inline void emitWindowEvent(const DArray<std::shared_ptr<events::EventListener<T>>> &listener, Args &&...args)
+    inline void dispatchWindowEvent(const DArray<std::shared_ptr<events::EventListener<T>>> &listener, Args &&...args)
     {
         T event(std::forward<Args>(args)...);
         for (const auto &l : listener)

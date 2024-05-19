@@ -26,7 +26,7 @@ namespace window
                 if (repeated)
                     action = io::KeyPressState::repeat;
             }
-            emitWindowEvent(eventRegistry.keyInputEvents, "window:input:key", impl->owner, key, action, mods);
+            dispatchWindowEvent(eventRegistry.keyInputEvents, "window:input:key", impl->owner, key, action, mods);
         }
     } // namespace platform
 

@@ -4,8 +4,6 @@ project(app3d-window
     LANGUAGES CXX C
     DESCRIPTION "App3d Window Lib")
 
-add_definitions(-DWINVER=0x0A00)
-
 if(NOT TARGET app3d-core)
     add_subdirectory("src/deps/internal/core")
 endif()

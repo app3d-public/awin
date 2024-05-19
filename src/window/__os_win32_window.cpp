@@ -85,7 +85,7 @@ namespace window
                     clentRect->bottom -= env.context->frameY + env.context->padding;
 
                     if (isMaximized(hwnd))
-                        clentRect->top += env.context->padding;
+                        clentRect->top += env.context->frameY + env.context->padding;
                     return 0;
                 }
                 case WM_CREATE:
@@ -207,14 +207,14 @@ namespace window
                             action = io::KeyPressState::release;
                             break;
                     };
-                    emitWindowEvent(eventRegistry.mouseClickEvents, "window:input:mouse", window->owner, button,
+                    dispatchWindowEvent(eventRegistry.mouseClickEvents, "window:input:mouse", window->owner, button,
                                     action);
                     break;
                 }
                 case WM_SETFOCUS:
                 {
                     window->focused = true;
-                    emitWindowEvent(eventRegistry.focusEvents, "window:focus", window->owner, true);
+                    dispatchWindowEvent(eventRegistry.focusEvents, "window:focus", window->owner, true);
                     const RAWINPUTDEVICE rid = {0x01, 0x02, RIDEV_INPUTSINK, hwnd};
                     if (!RegisterRawInputDevices(&rid, 1, sizeof(rid)))
                         logError("Failed to register RAWINPUTDEVICE");
@@ -227,7 +227,7 @@ namespace window
                     if (!window)
                         break;
                     window->focused = false;
-                    emitWindowEvent(eventRegistry.focusEvents, "window:focus", window->owner, false);
+                    dispatchWindowEvent(eventRegistry.focusEvents, "window:focus", window->owner, false);
                     if (!window->rawInput)
                         break;
                     const RAWINPUTDEVICE rid = {0x01, 0x02, RIDEV_REMOVE, NULL};
@@ -248,12 +248,12 @@ namespace window
                         {
                             u32 codepoint = (((window->highSurrogate - 0xD800) << 10) | (wParam - 0xDC00)) + 0x10000;
                             window->highSurrogate = 0;
-                            emitWindowEvent(eventRegistry.charInputEvents, "window:input:char", window->owner,
+                            dispatchWindowEvent(eventRegistry.charInputEvents, "window:input:char", window->owner,
                                             codepoint);
                         }
                     }
                     else
-                        emitWindowEvent(eventRegistry.charInputEvents, "window:input:char", window->owner, wParam);
+                        dispatchWindowEvent(eventRegistry.charInputEvents, "window:input:char", window->owner, wParam);
 
                     if (uMsg == WM_SYSCHAR)
                         break;
@@ -269,7 +269,7 @@ namespace window
                         // Returning TRUE here announces support for this message
                         return TRUE;
                     }
-                    emitWindowEvent(eventRegistry.charInputEvents, "window:input:char", window->owner, wParam);
+                    dispatchWindowEvent(eventRegistry.charInputEvents, "window:input:char", window->owner, wParam);
                     return 0;
                 }
                 case WM_SYSCOMMAND:
@@ -306,7 +306,7 @@ namespace window
                             if (action == io::KeyPressState::release)
                             {
                                 // HACK: Release both Shift keys on Shift up event, as when both
-                                //       are pressed the first release does not emit any event
+                                //       are pressed the first release does not dispatch any event
                                 inputKey(window, io::Key::kLeftShift, action, mods);
                                 inputKey(window, io::Key::kRightShift, action, mods);
                             }
@@ -378,25 +378,25 @@ namespace window
                         tme.hwndTrack = window->hwnd;
                         TrackMouseEvent(&tme);
                         window->cursorTracked = true;
-                        emitWindowEvent(eventRegistry.cursorEnterEvents, "window:cursor:enter", window->owner, true);
+                        dispatchWindowEvent(eventRegistry.cursorEnterEvents, "window:cursor:enter", window->owner, true);
                     }
-                    emitWindowEvent(eventRegistry.cursorPosAbsEvents, "window:cursorPosAbs", window->owner,
+                    dispatchWindowEvent(eventRegistry.cursorPosAbsEvents, "window:cursorPosAbs", window->owner,
                                     Point2D(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)));
                     return 0;
                 }
                 case WM_MOUSELEAVE:
                     window->cursorTracked = false;
-                    emitWindowEvent(eventRegistry.cursorEnterEvents, "window:cursor:enter", window->owner, false);
+                    dispatchWindowEvent(eventRegistry.cursorEnterEvents, "window:cursor:enter", window->owner, false);
                     return 0;
                 case WM_MOUSEWHEEL:
-                    emitWindowEvent(eventRegistry.scrollEvents, "window:scroll", window->owner, 0,
+                    dispatchWindowEvent(eventRegistry.scrollEvents, "window:scroll", window->owner, 0,
                                     (SHORT)HIWORD(wParam) / (double)WHEEL_DELTA);
                     return 0;
                 case WM_MOUSEHWHEEL:
                 {
                     // This message is only sent on Windows Vista and later
                     // NOTE: The X-axis is inverted for consistency with macOS and X11
-                    emitWindowEvent(eventRegistry.scrollEvents, "window:scroll", window->owner,
+                    dispatchWindowEvent(eventRegistry.scrollEvents, "window:scroll", window->owner,
                                     -((SHORT)HIWORD(wParam) / (double)WHEEL_DELTA), 0);
                     return 0;
                 }
@@ -406,24 +406,24 @@ namespace window
                     if ((window->flags & CreationFlagsBits::minimized) != (wParam == SIZE_MINIMIZED))
                     {
                         window->flags ^= CreationFlagsBits::minimized;
-                        emitWindowEvent(eventRegistry.minimizeEvents, "window:minimize", window->owner,
+                        dispatchWindowEvent(eventRegistry.minimizeEvents, "window:minimize", window->owner,
                                         window->flags & CreationFlagsBits::minimized);
                     }
                     if ((window->flags & CreationFlagsBits::maximized) != (wParam == SIZE_MAXIMIZED))
                     {
                         window->flags ^= CreationFlagsBits::maximized;
-                        emitWindowEvent(eventRegistry.maximizeEvents, "window:maximize", window->owner,
+                        dispatchWindowEvent(eventRegistry.maximizeEvents, "window:maximize", window->owner,
                                         window->flags & CreationFlagsBits::maximized);
                     }
                     if (dimenstions != window->dimenstions)
                     {
                         window->dimenstions = dimenstions;
-                        emitWindowEvent(eventRegistry.resizeEvents, "window:resize", window->owner, dimenstions);
+                        dispatchWindowEvent(eventRegistry.resizeEvents, "window:resize", window->owner, dimenstions);
                     }
                     return 0;
                 }
                 case WM_MOVE:
-                    emitWindowEvent(eventRegistry.moveEvents, "window:move", window->owner,
+                    dispatchWindowEvent(eventRegistry.moveEvents, "window:move", window->owner,
                                     Point2D(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)));
                     break;
                 case WM_GETMINMAXINFO:
@@ -441,7 +441,7 @@ namespace window
                 {
                     const float xscale = HIWORD(wParam) / 96.0f;
                     const float yscale = LOWORD(wParam) / 96.0f;
-                    emitWindowEvent(eventRegistry.dpiChangedEvents, "window:dpiChanged", window->owner, xscale, yscale);
+                    dispatchWindowEvent(eventRegistry.dpiChangedEvents, "window:dpiChanged", window->owner, xscale, yscale);
                     break;
                 }
                 case WM_SETCURSOR:
@@ -481,7 +481,7 @@ namespace window
                     {
                         i32 dx = raw->data.mouse.lLastX;
                         i32 dy = raw->data.mouse.lLastY;
-                        emitWindowEvent(eventRegistry.cursorPosEvents, "window:cursor:move", window->owner,
+                        dispatchWindowEvent(eventRegistry.cursorPosEvents, "window:cursor:move", window->owner,
                                         Point2D{dx, dy});
                     }
                     return 0;
@@ -790,7 +790,7 @@ namespace window
 
     void pushEmptyEvent() { PostMessageW(NULL, WM_NULL, 0, 0); }
 
-    f32 getDpi() { return static_cast<f32>(platform::env.context->dpi) / 100.0f; }
+    f32 getDpi() { return static_cast<f32>(platform::env.context->dpi) / 96.0f; }
 
     Point2D getWindowSize(const Window &window)
     {
