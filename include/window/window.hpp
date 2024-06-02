@@ -168,6 +168,7 @@ namespace window
 
         // Retrieves the access bridge for interfacing with platform-specific window data.
         const platform::AccessBridge &accessBridge() const { return *_accessBridge; }
+
     private:
         platform::WindowPlatformData *_platform;
         const platform::AccessBridge *_accessBridge;
@@ -261,7 +262,8 @@ namespace window
         }
     };
 
-    // Represents a mouse position event in a window. This one is dispatchted when the mouse enters or leaves the window.
+    // Represents a mouse position event in a window. This one is dispatchted when the mouse enters or leaves the
+    // window.
     struct CursorEnterEvent : public events::Event
     {
         window::Window *window; // Pointer to the associated Window object.
@@ -336,43 +338,43 @@ namespace window
         events::EventListener<Win32NativeEvent> *NCHitTest;
 #endif
         // List of event listeners for focus-related events.
-        DArray<std::shared_ptr<events::EventListener<FocusEvent>>> focusEvents;
+        DArray<events::EventListener<FocusEvent> *> focusEvents;
 
         // List of event listeners for character input events.
-        DArray<std::shared_ptr<events::EventListener<CharInputEvent>>> charInputEvents;
+        DArray<events::EventListener<CharInputEvent> *> charInputEvents;
 
         // List of event listeners for keyboard input events.
-        DArray<std::shared_ptr<events::EventListener<KeyInputEvent>>> keyInputEvents;
+        DArray<events::EventListener<KeyInputEvent> *> keyInputEvents;
 
         // List of event listeners for mouse click events.
-        DArray<std::shared_ptr<events::EventListener<MouseClickEvent>>> mouseClickEvents;
+        DArray<events::EventListener<MouseClickEvent> *> mouseClickEvents;
 
         // List of event listeners for cursor enter/leave events.
-        DArray<std::shared_ptr<events::EventListener<CursorEnterEvent>>> cursorEnterEvents;
+        DArray<events::EventListener<CursorEnterEvent> *> cursorEnterEvents;
 
         //  Listener for handling when the mouse position changes in RAW Input mode.
-        DArray<std::shared_ptr<events::EventListener<PosEvent>>> cursorPosEvents;
+        DArray<events::EventListener<PosEvent> *> cursorPosEvents;
 
         //  Listener for handling when the mouse position changes in absolute (per Window dimensions) values
-        DArray<std::shared_ptr<events::EventListener<PosEvent>>> cursorPosAbsEvents;
+        DArray<events::EventListener<PosEvent> *> cursorPosAbsEvents;
 
         // List of event listeners for scroll events.
-        DArray<std::shared_ptr<events::EventListener<ScrollEvent>>> scrollEvents;
+        DArray<events::EventListener<ScrollEvent> *> scrollEvents;
 
         // List of event listeners for window minimize events.
-        DArray<std::shared_ptr<events::EventListener<StateEvent>>> minimizeEvents;
+        DArray<events::EventListener<StateEvent> *> minimizeEvents;
 
         // List of event listeners for window maximize events.
-        DArray<std::shared_ptr<events::EventListener<StateEvent>>> maximizeEvents;
+        DArray<events::EventListener<StateEvent> *> maximizeEvents;
 
         // List of event listeners for window resize events.
-        DArray<std::shared_ptr<events::EventListener<PosEvent>>> resizeEvents;
+        DArray<events::EventListener<PosEvent> *> resizeEvents;
 
         // List of event listeners for window move events.
-        DArray<std::shared_ptr<events::EventListener<PosEvent>>> moveEvents;
+        DArray<events::EventListener<PosEvent> *> moveEvents;
 
         // List of event listeners for DPI (dots per inch) changed events.
-        DArray<std::shared_ptr<events::EventListener<DpiChangedEvent>>> dpiChangedEvents;
+        DArray<events::EventListener<DpiChangedEvent> *> dpiChangedEvents;
 
     } eventRegistry;
 
@@ -383,7 +385,7 @@ namespace window
      * @param args event arguments
      */
     template <typename T, typename... Args>
-    inline void dispatchWindowEvent(const DArray<std::shared_ptr<events::EventListener<T>>> &listener, Args &&...args)
+    inline void dispatchWindowEvent(const DArray<events::EventListener<T> *> &listener, Args &&...args)
     {
         T event(std::forward<Args>(args)...);
         for (const auto &l : listener)

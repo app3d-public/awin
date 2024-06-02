@@ -80,11 +80,11 @@ namespace window
 #ifdef _WIN32
         auto NCLMouseDownList = events::mng.getListeners<Win32NativeEvent>("window:NCLMouseDown");
         if (!NCLMouseDownList.empty())
-            eventRegistry.NCLMouseDown = NCLMouseDownList[0].get();
+            eventRegistry.NCLMouseDown = NCLMouseDownList[0];
 
         auto NCHitTestList = events::mng.getListeners<Win32NativeEvent>("window:NCHitTest");
         if (!NCHitTestList.empty())
-            eventRegistry.NCHitTest = NCHitTestList[0].get();
+            eventRegistry.NCHitTest = NCHitTestList[0];
 #endif
         eventRegistry.focusEvents = events::mng.getListeners<FocusEvent>("window:focus");
         eventRegistry.scrollEvents = events::mng.getListeners<ScrollEvent>("window:scroll");
