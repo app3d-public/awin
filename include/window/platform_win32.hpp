@@ -1,9 +1,9 @@
 #ifndef APP_WINDOW_PLATFORM_WIN32_H
 #define APP_WINDOW_PLATFORM_WIN32_H
 
+#include <core/api.hpp>
 #include <map>
 #include <windows.h>
-#include "core/api.hpp"
 #include "window.hpp"
 
 namespace window
