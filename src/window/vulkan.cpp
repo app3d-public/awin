@@ -1,63 +1,39 @@
 #include <cassert>
 #include <vulkan/vulkan.hpp>
 #include <window/vulkan.hpp>
+#ifdef _WIN32
+    #include <window/platform_win32.hpp>
+#else
+    #error "Unsupported platform"
+#endif
 
 namespace window
 {
     namespace vulkan
     {
-        BackendData bd = {.available = false,
-                          .KHR_surface = false,
-                          .KHR_win32_surface = false,
-                          .MVK_macos_surface = false,
-                          .EXT_metal_surface = false,
-                          .KHR_xlib_surface = false,
-                          .KHR_xcb_surface = false,
-                          .KHR_wayland_surface = false};
-
-        bool init(vk::DispatchLoaderDynamic *loader)
+        vk::Result CreateCtx::createSurface(vk::Instance &instance, vk::SurfaceKHR &surface,
+                                            vk::DispatchLoaderDynamic &loader)
         {
-            if (bd.available)
-                return true;
-            vk::Result err;
-            u32 count;
-            bd.loader = loader;
-            err = vk::enumerateInstanceExtensionProperties(nullptr, &count, nullptr, *bd.loader);
-            if (err != vk::Result::eSuccess)
-                return false;
-            DArray<vk::ExtensionProperties> extensions(count);
-            err = vk::enumerateInstanceExtensionProperties(nullptr, &count, extensions.data(), *bd.loader);
-            if (err != vk::Result::eSuccess)
-                return false;
-            for (const auto &extension : extensions)
+            try
             {
-                if (strcmp(extension.extensionName, "VK_KHR_surface") == 0)
-                    bd.KHR_surface = true;
-                else if (strcmp(extension.extensionName, "VK_KHR_win32_surface") == 0)
-                    bd.KHR_win32_surface = true;
-                else if (strcmp(extension.extensionName, "VK_MVK_macos_surface") == 0)
-                    bd.MVK_macos_surface = true;
-                else if (strcmp(extension.extensionName, "VK_EXT_metal_surface") == 0)
-                    bd.EXT_metal_surface = true;
-                else if (strcmp(extension.extensionName, "VK_KHR_xlib_surface") == 0)
-                    bd.KHR_xlib_surface = true;
-                else if (strcmp(extension.extensionName, "VK_KHR_xcb_surface") == 0)
-                    bd.KHR_xcb_surface = true;
-                else if (strcmp(extension.extensionName, "VK_KHR_wayland_surface") == 0)
-                    bd.KHR_wayland_surface = true;
+#ifdef _WIN32
+                vk::Win32SurfaceCreateInfoKHR info;
+                auto accessBridge = _window.accessBridge();
+                info.setHinstance(accessBridge.global()).setHwnd(accessBridge.hwnd());
+                surface = instance.createWin32SurfaceKHR(info, nullptr, loader);
+                return vk::Result::eSuccess;
+#else
+    #error "Unsupported platform"
+#endif
             }
-            bd.available = true;
-            bd.extensitions = getExtensionNames();
-            return true;
-        }
-
-        DArray<const char *> requiredInstanceExtensions()
-        {
-            assert(bd.available);
-            DArray<const char *> result;
-            for (auto &extension : bd.extensitions)
-                result.push_back(extension.c_str());
-            return result;
+            catch (const vk::SystemError &e)
+            {
+                return static_cast<vk::Result>(e.code().value());
+            }
+            catch (const std::runtime_error &e)
+            {
+                return vk::Result::eErrorInitializationFailed;
+            }
         }
     } // namespace vulkan
 } // namespace window
