@@ -2,7 +2,7 @@
 #define APP_WINDOW_VULKAN_H
 
 #include <core/api.hpp>
-#include <core/device/device.hpp>
+#include <core/backend/device.hpp>
 #include <vulkan/vulkan.hpp>
 #include "window.hpp"
 
@@ -10,6 +10,7 @@ namespace window
 {
     namespace vulkan
     {
+
         class APPLIB_API CreateCtx final : public DeviceCreateCtx
         {
         public:

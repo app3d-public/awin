@@ -8,7 +8,7 @@
 #ifndef APP_WINDOW_WINDOW_H
 #define APP_WINDOW_WINDOW_H
 
-#include <core/event/event.hpp>
+#include <core/event.hpp>
 #include <string>
 #include "types.hpp"
 #ifdef _WIN32
