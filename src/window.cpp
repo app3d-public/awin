@@ -77,36 +77,38 @@ namespace window
 
     void updateEvents()
     {
+        assert(platform::env.e);
 #ifdef _WIN32
-        auto NCLMouseDownList = events::mng.getListeners<Win32NativeEvent>("window:NCLMouseDown");
+        auto NCLMouseDownList = platform::env.e->getListeners<Win32NativeEvent>("window:NCLMouseDown");
         if (!NCLMouseDownList.empty())
             eventRegistry.NCLMouseDown = NCLMouseDownList[0];
 
-        auto NCHitTestList = events::mng.getListeners<Win32NativeEvent>("window:NCHitTest");
+        auto NCHitTestList = platform::env.e->getListeners<Win32NativeEvent>("window:NCHitTest");
         if (!NCHitTestList.empty())
             eventRegistry.NCHitTest = NCHitTestList[0];
 #endif
-        eventRegistry.focusEvents = events::mng.getListeners<FocusEvent>("window:focus");
-        eventRegistry.scrollEvents = events::mng.getListeners<ScrollEvent>("window:scroll");
-        eventRegistry.minimizeEvents = events::mng.getListeners<StateEvent>("window:minimize");
-        eventRegistry.maximizeEvents = events::mng.getListeners<StateEvent>("window:maximize");
-        eventRegistry.resizeEvents = events::mng.getListeners<PosEvent>("window:resize");
-        eventRegistry.moveEvents = events::mng.getListeners<PosEvent>("window:move");
-        eventRegistry.charInputEvents = events::mng.getListeners<CharInputEvent>("window:input:char");
-        eventRegistry.keyInputEvents = events::mng.getListeners<KeyInputEvent>("window:input:key");
-        eventRegistry.mouseClickEvents = events::mng.getListeners<MouseClickEvent>("window:input:mouse");
-        eventRegistry.cursorEnterEvents = events::mng.getListeners<CursorEnterEvent>("window:cursor:enter");
-        eventRegistry.cursorPosEvents = events::mng.getListeners<PosEvent>("window:cursor:move");
-        eventRegistry.cursorPosAbsEvents = events::mng.getListeners<PosEvent>("window:cursor:move:abs");
-        eventRegistry.dpiChangedEvents = events::mng.getListeners<DpiChangedEvent>("window:dpiChanged");
+        eventRegistry.focusEvents = platform::env.e->getListeners<FocusEvent>("window:focus");
+        eventRegistry.scrollEvents = platform::env.e->getListeners<ScrollEvent>("window:scroll");
+        eventRegistry.minimizeEvents = platform::env.e->getListeners<StateEvent>("window:minimize");
+        eventRegistry.maximizeEvents = platform::env.e->getListeners<StateEvent>("window:maximize");
+        eventRegistry.resizeEvents = platform::env.e->getListeners<PosEvent>("window:resize");
+        eventRegistry.moveEvents = platform::env.e->getListeners<PosEvent>("window:move");
+        eventRegistry.charInputEvents = platform::env.e->getListeners<CharInputEvent>("window:input:char");
+        eventRegistry.keyInputEvents = platform::env.e->getListeners<KeyInputEvent>("window:input:key");
+        eventRegistry.mouseClickEvents = platform::env.e->getListeners<MouseClickEvent>("window:input:mouse");
+        eventRegistry.cursorEnterEvents = platform::env.e->getListeners<CursorEnterEvent>("window:cursor:enter");
+        eventRegistry.cursorPosEvents = platform::env.e->getListeners<PosEvent>("window:cursor:move");
+        eventRegistry.cursorPosAbsEvents = platform::env.e->getListeners<PosEvent>("window:cursor:move:abs");
+        eventRegistry.dpiChangedEvents = platform::env.e->getListeners<DpiChangedEvent>("window:dpiChanged");
     }
 
-    void initLibrary()
+    void initLibrary(events::Manager *e)
     {
         if (!platform::initPlatform())
             throw std::runtime_error("Failed to initialize Window platform");
         platform::initTimer();
         setTime(0.0);
+        platform::env.e = e;
     }
 
     void destroyLibrary()

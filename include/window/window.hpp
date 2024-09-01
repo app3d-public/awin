@@ -45,6 +45,7 @@ namespace window
                 u64 offset;    // Time offset
                 u64 frequency; // Timer frequency
             } timer;           // Timer information for time tracking.
+            events::Manager *e = nullptr;
         } env;
 
         // Initializes the platform-specific components and sets up the windowing system environment.
@@ -457,7 +458,7 @@ namespace window
     APPLIB_API void setClipboardString(const Window &window, const std::string &text);
 
     // Initialize the library.
-    APPLIB_API void initLibrary();
+    APPLIB_API void initLibrary(events::Manager *e);
 
     // Destroy the library and release associated resources.
     APPLIB_API void destroyLibrary();
