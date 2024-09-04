@@ -79,14 +79,5 @@ namespace window
                     return Buttons::Error;
             }
         }
-
-        std::string fileSaveDialog(const std::string &title, const DArray<const char *> &patterns,
-                               const std::string &decription, const std::string &path)
-        {
-            const char *result = tinyfd_saveFileDialog(title.c_str(), path.empty() ? nullptr : path.c_str(),
-                                                       patterns.size(), patterns.data(), decription.c_str());
-            return result ? std::string(result) : "";
-        }
-
     } // namespace popup
 } // namespace window

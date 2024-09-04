@@ -4,7 +4,6 @@
 #include <core/api.hpp>
 #include <core/std/darray.hpp>
 #include <initializer_list>
-#include <string>
 
 
 namespace window
@@ -39,10 +38,6 @@ namespace window
         {
             return show(message, title, Style::Question, {Buttons::Yes, Buttons::No}) == Buttons::Yes;
         }
-
-        APPLIB_API std::string fileSaveDialog(const std::string &title, const DArray<const char *> &patterns,
-                                              const std::string &decription, const std::string &path = "");
-
     } // namespace popup
 } // namespace window
 
