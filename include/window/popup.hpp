@@ -4,7 +4,7 @@
 #include <core/api.hpp>
 #include <core/std/darray.hpp>
 #include <initializer_list>
-
+#include <window/window.hpp>
 
 namespace window
 {
@@ -30,14 +30,29 @@ namespace window
         };
 
         // Displays a popup window with a message, title, and configurable style and buttons.
-        APPLIB_API Buttons show(const char *message, const char *title, Style style = Style::Info,
-                                std::initializer_list<Buttons> buttons = {Buttons::OK});
+        APPLIB_API Buttons msgBox(const char *message, const char *title, Style style = Style::Info,
+                                  std::initializer_list<Buttons> buttons = {Buttons::OK},
+                                  window::Window *parent = nullptr);
 
         // Displays a popup with "Yes" and "No" options, returning true if "Yes" is selected.
-        inline bool confirm(const char *message, const char *title)
+        inline bool confirmMsxBox(const char *message, const char *title, window::Window *parent = nullptr)
         {
-            return show(message, title, Style::Question, {Buttons::Yes, Buttons::No}) == Buttons::Yes;
+            return msgBox(message, title, Style::Question, {Buttons::Yes, Buttons::No}, parent) == Buttons::Yes;
         }
+
+        struct FilePattern
+        {
+            std::string description;
+            DArray<std::string> extensions;
+        };
+
+        APPLIB_API std::string openFileDialog(const char *title, const DArray<FilePattern> &pattern,
+                                              const char *defaultPath, bool multiply);
+
+        APPLIB_API std::string openFolderDialog(const char *title, const char *defaultPath);
+
+        APPLIB_API std::string saveFileDialog(const char *title, const DArray<FilePattern> &pattern,
+                                              const char *defaultPath);
     } // namespace popup
 } // namespace window
 

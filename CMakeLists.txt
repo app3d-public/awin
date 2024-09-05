@@ -4,26 +4,17 @@ project(app3d-window
     LANGUAGES CXX C
     DESCRIPTION "App3d Window Lib")
 
-add_library(tinyfiledialogs SHARED "modules/3rd-party/tinyfiledialogs/tinyfiledialogs.c")
-target_compile_options(tinyfiledialogs PRIVATE)
-
-if(WIN32)
-    target_link_libraries(tinyfiledialogs PRIVATE comdlg32 ole32)
-endif()
-
 add_files(${PROJECT_NAME} "${CMAKE_CURRENT_SOURCE_DIR}/src")
 
 add_library(${PROJECT_NAME} SHARED ${SOURCE_FILES})
 set_target_properties(${PROJECT_NAME} PROPERTIES CXX_VISIBILITY_PRESET hidden)
 target_include_directories(${PROJECT_NAME} PRIVATE $<TARGET_PROPERTY:app3d-core,INCLUDE_DIRECTORIES>)
-include_directories("${CMAKE_CURRENT_SOURCE_DIR}/modules/3rd-party/tinyfiledialogs/")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/include/")
 
-target_link_libraries(${PROJECT_NAME} PRIVATE app3d-core tinyfiledialogs)
+target_link_libraries(${PROJECT_NAME} PRIVATE app3d-core)
 
 if(USE_ASAN)
     target_link_options(${PROJECT_NAME} PUBLIC -fsanitize=address -fno-omit-frame-pointer)
-    target_link_options(tinyfiledialogs PUBLIC -fsanitize=address -fno-omit-frame-pointer)
 endif(USE_ASAN)
 
 set_target_properties(${PROJECT_NAME}
