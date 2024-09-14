@@ -104,6 +104,17 @@ namespace window
                 case WM_NCCREATE:
                     EnableNonClientDpiScaling(hwnd);
                     break;
+                case WM_ERASEBKGND:
+                {
+                    HDC hdc = (HDC)wParam;
+                    HBRUSH hBrush = CreateSolidBrush(RGB(35, 35, 35));
+                    RECT rect;
+                    GetClientRect(hwnd, &rect);
+                    FillRect(hdc, &rect, hBrush);
+                    DeleteObject(hBrush);
+                    return TRUE;
+                }
+
                 case WM_NCHITTEST:
                 {
                     if (window->flags & CreationFlagsBits::decorated) break;
@@ -379,15 +390,18 @@ namespace window
                 case WM_SIZE:
                 {
                     astl::point2D dimenstions(LOWORD(lParam), HIWORD(lParam));
+
                     if ((window->flags & CreationFlagsBits::minimized) != (wParam == SIZE_MINIMIZED))
                     {
-                        window->flags ^= CreationFlagsBits::minimized;
+                        if (!(window->flags & CreationFlagsBits::preinitialized))
+                            window->flags ^= CreationFlagsBits::minimized;
                         dispatchWindowEvent(eventRegistry.minimizeEvents, "window:minimize", window->owner,
                                             window->flags & CreationFlagsBits::minimized);
                     }
                     if ((window->flags & CreationFlagsBits::maximized) != (wParam == SIZE_MAXIMIZED))
                     {
-                        window->flags ^= CreationFlagsBits::maximized;
+                        if (!(window->flags & CreationFlagsBits::preinitialized))
+                            window->flags ^= CreationFlagsBits::maximized;
                         dispatchWindowEvent(eventRegistry.maximizeEvents, "window:maximize", window->owner,
                                             window->flags & CreationFlagsBits::maximized);
                     }
@@ -410,8 +424,6 @@ namespace window
                     mmi->ptMinTrackSize.y = window->resizeLimit.y;
                     return 0;
                 }
-                case WM_ERASEBKGND:
-                    return TRUE;
                 case WM_DPICHANGED:
                 {
                     const float xscale = HIWORD(wParam) / 96.0f;
@@ -529,6 +541,14 @@ namespace window
         HINSTANCE AccessBridge::global() const { return env.context->instance; }
 
         HWND AccessBridge::hwnd() const { return _impl->hwnd; }
+
+        astl::point2D AccessBridge::frameSize() const
+        {
+            astl::point2D point;
+            point.x = (env.context->frameX + env.context->padding) * 2;
+            point.y = env.context->frameY + env.context->padding;
+            return point;
+        }
     } // namespace platform
 
     MonitorInfo getPrimaryMonitorInfo()
@@ -554,15 +574,20 @@ namespace window
         _platform->title = astl::utf8_to_utf16(title);
         _platform->dimenstions = {width == -1 ? CW_USEDEFAULT : width, height == -1 ? CW_USEDEFAULT : height};
         _platform->flags = flags;
+        if (flags & CreationFlagsBits::fullscreen || flags & CreationFlagsBits::maximized ||
+            flags & CreationFlagsBits::maximized)
+            _platform->flags |= CreationFlagsBits::preinitialized;
         _platform->style = platform::getWindowStyle(flags);
         _platform->exStyle = WS_EX_APPWINDOW;
         _platform->hwnd = nullptr;
         _platform->cursor = Cursor::defaultCursor();
         _accessBridge = new platform::AccessBridge(_platform);
-        _platform->hwnd = CreateWindowExW(_platform->exStyle, platform::env.context->win32class.lpszClassName,
-                                          (LPCWSTR)_platform->title.c_str(), _platform->style, CW_USEDEFAULT,
-                                          CW_USEDEFAULT, _platform->dimenstions.x, _platform->dimenstions.y, nullptr,
-                                          nullptr, platform::env.context->instance, (LPVOID)_platform);
+
+        _platform->hwnd = CreateWindowExW(
+            _platform->exStyle, platform::env.context->win32class.lpszClassName, (LPCWSTR)_platform->title.c_str(),
+            _platform->style & ~WS_VISIBLE, CW_USEDEFAULT, CW_USEDEFAULT, _platform->dimenstions.x,
+            _platform->dimenstions.y, nullptr, nullptr, platform::env.context->instance, (LPVOID)_platform);
+
         if (!_platform->hwnd) throw std::runtime_error("Failed to create window");
         if (!(flags & CreationFlagsBits::hidden))
         {
@@ -609,8 +634,12 @@ namespace window
     void Window::showWindow()
     {
         if (!hidden()) return;
-        ShowWindow(_platform->hwnd, SW_SHOWNORMAL);
+        WINDOWPLACEMENT placement = {sizeof(WINDOWPLACEMENT)};
+        GetWindowPlacement(_platform->hwnd, &placement);
+        placement.showCmd = _platform->flags & CreationFlagsBits::maximized ? SW_SHOWMAXIMIZED : SW_NORMAL;
+        SetWindowPlacement(_platform->hwnd, &placement);
         _platform->flags &= ~CreationFlagsBits::hidden;
+        _platform->flags &= ~CreationFlagsBits::preinitialized;
     }
 
     void Window::hideWindow()
@@ -696,7 +725,6 @@ namespace window
 
     void Window::centerWindowPos()
     {
-        if (maximized()) return;
         RECT workArea = {};
         SystemParametersInfo(SPI_GETWORKAREA, 0, &workArea, 0); // Получаем размеры рабочей области экрана
 
@@ -705,7 +733,6 @@ namespace window
         int windowWidth = windowRect.right - windowRect.left;
         int windowHeight = windowRect.bottom - windowRect.top;
 
-        // Вычисляем новые координаты для центрирования окна
         int screenWidth = workArea.right - workArea.left;
         int screenHeight = workArea.bottom - workArea.top;
         int centerX = workArea.left + (screenWidth - windowWidth) / 2;

@@ -227,15 +227,16 @@ namespace window
     // Flags for window creation, stored as u16 for memory efficiency.
     enum class CreationFlagsBits : u16
     {
-        resizable = 0x0001,    // Allows window resizing.
-        snapped = 0x0002,      // Enables window snapping to screen edges.
-        decorated = 0x0004,    // Adds decorations like title bar and borders.
-        fullscreen = 0x0008,   // Enables fullscreen mode.
-        minimizebox = 0x00010, // Includes a minimize button.
-        maximizebox = 0x00020, // Includes a maximize button.
-        hidden = 0x00040,      // Does not show the window on creation.
-        minimized = 0x00080,   // Starts minimized.
-        maximized = 0x00100    // Starts maximized.
+        resizable = 0x0001,      // Allows window resizing.
+        snapped = 0x0002,        // Enables window snapping to screen edges.
+        decorated = 0x0004,      // Adds decorations like title bar and borders.
+        fullscreen = 0x0008,     // Enables fullscreen mode.
+        minimizebox = 0x00010,   // Includes a minimize button.
+        maximizebox = 0x00020,   // Includes a maximize button.
+        hidden = 0x00040,        // Does not show the window on creation.
+        minimized = 0x00080,     // Starts minimized.
+        maximized = 0x00100,     // Starts maximized.
+        preinitialized = 0x00200 // Preinitialized service flag
     };
 
     // Flags for window creation, stored as u8 for memory efficiency.

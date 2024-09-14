@@ -162,6 +162,8 @@ namespace window
 
             HWND hwnd() const;
 
+            astl::point2D frameSize() const;
+            
         private:
             WindowPlatformData *_impl;
         };
