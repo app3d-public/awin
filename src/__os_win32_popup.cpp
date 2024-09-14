@@ -70,9 +70,9 @@ namespace window
             UINT flags = buttonsFlag | iconFlag;
             HWND hwnd = parent ? parent->accessBridge().hwnd() : nullptr;
             if (!hwnd) flags |= MB_TOPMOST;
-            auto wMessage = convertUTF8toUTF16(message);
+            auto wMessage = astl::utf8_to_utf16(message);
             LPCWSTR lpText = reinterpret_cast<LPCWSTR>(wMessage.c_str());
-            auto wTitle = convertUTF8toUTF16(title);
+            auto wTitle = astl::utf8_to_utf16(title);
             LPCWSTR lpCaption = reinterpret_cast<LPCWSTR>(wTitle.c_str());
             switch (MessageBoxW(hwnd, lpText, lpCaption, flags))
             {
@@ -89,19 +89,19 @@ namespace window
             };
         }
 
-        std::string openFileDialog(const char *title, const DArray<FilePattern> &pattern, const char *defaultPath,
+        std::string openFileDialog(const char *title, const astl::vector<FilePattern> &pattern, const char *defaultPath,
                                    bool multiply)
         {
-            std::u16string wTitle = convertUTF8toUTF16(title ? std::string(title) : "");
-            std::u16string wDefaultPath = defaultPath ? convertUTF8toUTF16(std::string(defaultPath)) : u"";
+            std::u16string wTitle = astl::utf8_to_utf16(title ? std::string(title) : "");
+            std::u16string wDefaultPath = defaultPath ? astl::utf8_to_utf16(std::string(defaultPath)) : u"";
 
             std::u16string wFilterPatterns;
             for (const auto &pat : pattern)
             {
-                wFilterPatterns += convertUTF8toUTF16(pat.description) + u'\0';
+                wFilterPatterns += astl::utf8_to_utf16(pat.description) + u'\0';
                 for (size_t i = 0; i < pat.extensions.size(); ++i)
                 {
-                    wFilterPatterns += convertUTF8toUTF16(pat.extensions[i]);
+                    wFilterPatterns += astl::utf8_to_utf16(pat.extensions[i]);
                     if (i < pat.extensions.size() - 1) wFilterPatterns += u';';
                 }
                 wFilterPatterns += u'\0';
@@ -120,7 +120,7 @@ namespace window
             ofn.Flags = OFN_EXPLORER | OFN_NOCHANGEDIR | OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST;
             if (multiply) ofn.Flags |= OFN_ALLOWMULTISELECT;
             if (GetOpenFileNameW(&ofn) == 0) return "";
-            return convertUTF16toUTF8(reinterpret_cast<const std::u16string::value_type *>(lFileName));
+            return astl::utf16_to_utf8(reinterpret_cast<const std::u16string::value_type *>(lFileName));
         }
 
         std::string openFolderDialog(const char *title, const char *defaultPath)
@@ -144,13 +144,13 @@ namespace window
 
             if (title)
             {
-                std::u16string wTitle = convertUTF8toUTF16(title);
+                std::u16string wTitle = astl::utf8_to_utf16(title);
                 pFileOpen->SetTitle(reinterpret_cast<LPCWSTR>(wTitle.c_str()));
             }
 
             if (defaultPath)
             {
-                std::u16string wDefaultPath = convertUTF8toUTF16(defaultPath);
+                std::u16string wDefaultPath = astl::utf8_to_utf16(defaultPath);
                 IShellItem *pItem = nullptr;
                 hr = SHCreateItemFromParsingName(reinterpret_cast<LPCWSTR>(wDefaultPath.c_str()), NULL,
                                                  IID_PPV_ARGS(&pItem));
@@ -173,7 +173,7 @@ namespace window
                     if (SUCCEEDED(hr))
                     {
                         std::string folderPath =
-                            convertUTF16toUTF8(reinterpret_cast<const std::u16string::value_type *>(pszFolderPath));
+                            astl::utf16_to_utf8(reinterpret_cast<const std::u16string::value_type *>(pszFolderPath));
                         CoTaskMemFree(pszFolderPath);
                         pItem->Release();
                         pFileOpen->Release();
@@ -190,10 +190,10 @@ namespace window
             return "";
         }
 
-        std::string saveFileDialog(const char *title, const DArray<FilePattern> &pattern, const char *defaultPath)
+        std::string saveFileDialog(const char *title, const astl::vector<FilePattern> &pattern, const char *defaultPath)
         {
-            std::u16string wTitle = convertUTF8toUTF16(title ? std::string(title) : "");
-            std::u16string wDefaultPath = defaultPath ? convertUTF8toUTF16(std::string(defaultPath)) : u"";
+            std::u16string wTitle = astl::utf8_to_utf16(title ? std::string(title) : "");
+            std::u16string wDefaultPath = defaultPath ? astl::utf8_to_utf16(std::string(defaultPath)) : u"";
 
             wchar_t lFileName[MAX_PATH] = L"";
 
@@ -201,10 +201,10 @@ namespace window
             {
                 DWORD attributes = GetFileAttributesA(defaultPath);
                 if (attributes != INVALID_FILE_ATTRIBUTES && (attributes & FILE_ATTRIBUTE_DIRECTORY))
-                    wDefaultPath = convertUTF8toUTF16(defaultPath);
+                    wDefaultPath = astl::utf8_to_utf16(defaultPath);
                 else
                 {
-                    std::u16string wDefaultFileName = convertUTF8toUTF16(defaultPath);
+                    std::u16string wDefaultFileName = astl::utf8_to_utf16(defaultPath);
                     wcscpy_s(lFileName, MAX_PATH, reinterpret_cast<const wchar_t *>(wDefaultFileName.c_str()));
                 }
             }
@@ -212,10 +212,10 @@ namespace window
             std::u16string wFilterPatterns;
             for (const auto &pat : pattern)
             {
-                wFilterPatterns += convertUTF8toUTF16(pat.description) + u'\0';
+                wFilterPatterns += astl::utf8_to_utf16(pat.description) + u'\0';
                 for (size_t i = 0; i < pat.extensions.size(); ++i)
                 {
-                    wFilterPatterns += convertUTF8toUTF16(pat.extensions[i]);
+                    wFilterPatterns += astl::utf8_to_utf16(pat.extensions[i]);
                     if (i < pat.extensions.size() - 1) wFilterPatterns += u';';
                 }
                 wFilterPatterns += u'\0';
@@ -233,7 +233,7 @@ namespace window
             ofn.Flags = OFN_EXPLORER | OFN_NOCHANGEDIR | OFN_PATHMUSTEXIST | OFN_OVERWRITEPROMPT;
 
             if (GetSaveFileNameW(&ofn) == 0) return "";
-            return convertUTF16toUTF8(reinterpret_cast<const std::u16string::value_type *>(lFileName));
+            return astl::utf16_to_utf8(reinterpret_cast<const std::u16string::value_type *>(lFileName));
         }
     } // namespace popup
 } // namespace window

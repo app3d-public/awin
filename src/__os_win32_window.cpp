@@ -13,44 +13,31 @@ namespace window
         {
             WINDOWPLACEMENT placement = {0};
             placement.length = sizeof(WINDOWPLACEMENT);
-            if (GetWindowPlacement(hwnd, &placement))
-                return placement.showCmd == SW_SHOWMAXIMIZED;
+            if (GetWindowPlacement(hwnd, &placement)) return placement.showCmd == SW_SHOWMAXIMIZED;
             return false;
         }
 
         DWORD getWindowStyle(CreationFlags flags)
         {
             DWORD style = WS_CLIPSIBLINGS | WS_CLIPCHILDREN;
-            if (flags & CreationFlagsBits::fullscreen)
-                style |= WS_POPUP;
-            if (flags & CreationFlagsBits::snapped)
-                style |= WS_SYSMENU;
-            if (flags & CreationFlagsBits::minimizebox)
-                style |= WS_MINIMIZEBOX;
-            if (flags & CreationFlagsBits::maximizebox)
-                style |= WS_MAXIMIZEBOX;
-            if (flags & CreationFlagsBits::resizable)
-                style |= WS_THICKFRAME;
-            if (flags & CreationFlagsBits::decorated)
-                style |= WS_CAPTION;
+            if (flags & CreationFlagsBits::fullscreen) style |= WS_POPUP;
+            if (flags & CreationFlagsBits::snapped) style |= WS_SYSMENU;
+            if (flags & CreationFlagsBits::minimizebox) style |= WS_MINIMIZEBOX;
+            if (flags & CreationFlagsBits::maximizebox) style |= WS_MAXIMIZEBOX;
+            if (flags & CreationFlagsBits::resizable) style |= WS_THICKFRAME;
+            if (flags & CreationFlagsBits::decorated) style |= WS_CAPTION;
             return style;
         }
 
         static io::KeyMode getKeyMods()
         {
             io::KeyMode mods;
-            if (GetKeyState(VK_SHIFT) & 0x8000)
-                mods |= io::KeyModeBits::shift;
-            if (GetKeyState(VK_CONTROL) & 0x8000)
-                mods |= io::KeyModeBits::control;
-            if (GetKeyState(VK_MENU) & 0x8000)
-                mods |= io::KeyModeBits::alt;
-            if ((GetKeyState(VK_LWIN) | GetKeyState(VK_RWIN)) & 0x8000)
-                mods |= io::KeyModeBits::super;
-            if (GetKeyState(VK_CAPITAL) & 1)
-                mods |= io::KeyModeBits::capsLock;
-            if (GetKeyState(VK_NUMLOCK) & 1)
-                mods |= io::KeyModeBits::numLock;
+            if (GetKeyState(VK_SHIFT) & 0x8000) mods |= io::KeyModeBits::shift;
+            if (GetKeyState(VK_CONTROL) & 0x8000) mods |= io::KeyModeBits::control;
+            if (GetKeyState(VK_MENU) & 0x8000) mods |= io::KeyModeBits::alt;
+            if ((GetKeyState(VK_LWIN) | GetKeyState(VK_RWIN)) & 0x8000) mods |= io::KeyModeBits::super;
+            if (GetKeyState(VK_CAPITAL) & 1) mods |= io::KeyModeBits::capsLock;
+            if (GetKeyState(VK_NUMLOCK) & 1) mods |= io::KeyModeBits::numLock;
             return mods;
         }
 
@@ -85,16 +72,14 @@ namespace window
                     clentRect->left += env.context->frameX + env.context->padding;
                     clentRect->bottom -= env.context->frameY + env.context->padding;
 
-                    if (isMaximized(hwnd))
-                        clentRect->top += env.context->frameY + env.context->padding;
+                    if (isMaximized(hwnd)) clentRect->top += env.context->frameY + env.context->padding;
                     return 0;
                 }
                 case WM_CREATE:
                 {
                     CREATESTRUCT *createStruct = reinterpret_cast<CREATESTRUCT *>(lParam);
                     window = reinterpret_cast<WindowPlatformData *>(createStruct->lpCreateParams);
-                    if (!window)
-                        break;
+                    if (!window) break;
                     SetPropW(hwnd, L"APP3DWINDOW", reinterpret_cast<HANDLE>(window));
                     MonitorInfo monitorInfo = getPrimaryMonitorInfo();
                     env.context->screenWidth = monitorInfo.width;
@@ -106,8 +91,7 @@ namespace window
                         return 0;
                     }
 
-                    if (window->flags & CreationFlagsBits::decorated)
-                        break;
+                    if (window->flags & CreationFlagsBits::decorated) break;
                     RECT sizeRect;
                     GetWindowRect(hwnd, &sizeRect);
 
@@ -122,8 +106,7 @@ namespace window
                     break;
                 case WM_NCHITTEST:
                 {
-                    if (window->flags & CreationFlagsBits::decorated)
-                        break;
+                    if (window->flags & CreationFlagsBits::decorated) break;
                     LRESULT hit = DefWindowProcW(hwnd, uMsg, wParam, lParam);
                     switch (hit)
                     {
@@ -142,10 +125,8 @@ namespace window
                     cursorPoint.x = LOWORD(lParam);
                     cursorPoint.y = HIWORD(lParam);
                     ScreenToClient(hwnd, &cursorPoint);
-                    if (cursorPoint.y > 0 && cursorPoint.y < env.context->frameY + env.context->padding)
-                        return HTTOP;
-                    if (!eventRegistry.NCHitTest)
-                        break;
+                    if (cursorPoint.y > 0 && cursorPoint.y < env.context->frameY + env.context->padding) return HTTOP;
+                    if (!eventRegistry.NCHitTest) break;
                     Win32NativeEvent event("window:NCHitTest", window->owner, hwnd, uMsg, wParam, lParam, hit);
                     eventRegistry.NCHitTest->invoke(event);
                     return event.lResult;
@@ -157,12 +138,10 @@ namespace window
                         POINT cursorPoint;
                         GetCursorPos(&cursorPoint);
                         ScreenToClient(hwnd, &cursorPoint);
-                        if (cursorPoint.y > 0 && cursorPoint.y < env.context->frameY + env.context->padding)
-                            break;
+                        if (cursorPoint.y > 0 && cursorPoint.y < env.context->frameY + env.context->padding) break;
                         Win32NativeEvent event("window:NCLMouseDown", window->owner, hwnd, uMsg, wParam, lParam);
                         eventRegistry.NCLMouseDown->invoke(event);
-                        if (event.lResult != -1)
-                            return event.lResult;
+                        if (event.lResult != -1) return event.lResult;
                     }
                     break;
                 }
@@ -225,12 +204,10 @@ namespace window
                 }
                 case WM_KILLFOCUS:
                 {
-                    if (!window)
-                        break;
+                    if (!window) break;
                     window->focused = false;
                     dispatchWindowEvent(eventRegistry.focusEvents, "window:focus", window->owner, false);
-                    if (!window->rawInput)
-                        break;
+                    if (!window->rawInput) break;
                     const RAWINPUTDEVICE rid = {0x01, 0x02, RIDEV_REMOVE, NULL};
                     if (!RegisterRawInputDevices(&rid, 1, sizeof(rid)))
                         logError("Failed to remove raw input device");
@@ -256,8 +233,7 @@ namespace window
                     else
                         dispatchWindowEvent(eventRegistry.charInputEvents, "window:input:char", window->owner, wParam);
 
-                    if (uMsg == WM_SYSCHAR)
-                        break;
+                    if (uMsg == WM_SYSCHAR) break;
                     return 0;
                 }
 
@@ -361,11 +337,9 @@ namespace window
                         }
                     }
 
-                    if (key != io::Key::kUnknown)
-                        inputKey(window, key, action, mods);
+                    if (key != io::Key::kUnknown) inputKey(window, key, action, mods);
                     // Prevent Alt to call Menu Behavior
-                    if (wParam == VK_MENU)
-                        return 0;
+                    if (wParam == VK_MENU) return 0;
                     break;
                 }
                 case WM_MOUSEMOVE:
@@ -383,7 +357,7 @@ namespace window
                                             true);
                     }
                     dispatchWindowEvent(eventRegistry.cursorPosAbsEvents, "window:cursorPosAbs", window->owner,
-                                        Point2D(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)));
+                                        astl::point2D(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)));
                     return 0;
                 }
                 case WM_MOUSELEAVE:
@@ -404,7 +378,7 @@ namespace window
                 }
                 case WM_SIZE:
                 {
-                    Point2D dimenstions(LOWORD(lParam), HIWORD(lParam));
+                    astl::point2D dimenstions(LOWORD(lParam), HIWORD(lParam));
                     if ((window->flags & CreationFlagsBits::minimized) != (wParam == SIZE_MINIMIZED))
                     {
                         window->flags ^= CreationFlagsBits::minimized;
@@ -426,12 +400,11 @@ namespace window
                 }
                 case WM_MOVE:
                     dispatchWindowEvent(eventRegistry.moveEvents, "window:move", window->owner,
-                                        Point2D(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)));
+                                        astl::point2D(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)));
                     break;
                 case WM_GETMINMAXINFO:
                 {
-                    if (!window)
-                        break;
+                    if (!window) break;
                     MINMAXINFO *mmi = (MINMAXINFO *)lParam;
                     mmi->ptMinTrackSize.x = window->resizeLimit.x;
                     mmi->ptMinTrackSize.y = window->resizeLimit.y;
@@ -461,14 +434,12 @@ namespace window
                 }
                 case WM_INPUT:
                 {
-                    if (!window->rawInput)
-                        break;
+                    if (!window->rawInput) break;
                     UINT dwSize;
                     GetRawInputData((HRAWINPUT)lParam, RID_INPUT, NULL, &dwSize, sizeof(RAWINPUTHEADER));
                     if (dwSize > window->rawInputSize)
                     {
-                        if (window->rawInputData)
-                            free(window->rawInputData);
+                        if (window->rawInputData) free(window->rawInputData);
                         window->rawInputData = (LPBYTE)malloc(dwSize);
                         window->rawInputSize = dwSize;
                     }
@@ -485,7 +456,7 @@ namespace window
                         i32 dx = raw->data.mouse.lLastX;
                         i32 dy = raw->data.mouse.lLastY;
                         dispatchWindowEvent(eventRegistry.cursorPosEvents, "window:cursor:move", window->owner,
-                                            Point2D{dx, dy});
+                                            astl::point2D{dx, dy});
                     }
                     return 0;
                 }
@@ -507,8 +478,7 @@ namespace window
             {
                 if (env.context->instance)
                 {
-                    if (env.context->win32class.hIcon)
-                        DestroyIcon(env.context->win32class.hIcon);
+                    if (env.context->win32class.hIcon) DestroyIcon(env.context->win32class.hIcon);
                     UnregisterClassW(env.context->win32class.lpszClassName, env.context->instance);
                 }
                 delete env.context;
@@ -581,7 +551,7 @@ namespace window
     {
         _platform = new platform::WindowPlatformData;
         _platform->owner = this;
-        _platform->title = convertUTF8toUTF16(title);
+        _platform->title = astl::utf8_to_utf16(title);
         _platform->dimenstions = {width == -1 ? CW_USEDEFAULT : width, height == -1 ? CW_USEDEFAULT : height};
         _platform->flags = flags;
         _platform->style = platform::getWindowStyle(flags);
@@ -593,8 +563,7 @@ namespace window
                                           (LPCWSTR)_platform->title.c_str(), _platform->style, CW_USEDEFAULT,
                                           CW_USEDEFAULT, _platform->dimenstions.x, _platform->dimenstions.y, nullptr,
                                           nullptr, platform::env.context->instance, (LPVOID)_platform);
-        if (!_platform->hwnd)
-            throw std::runtime_error("Failed to create window");
+        if (!_platform->hwnd) throw std::runtime_error("Failed to create window");
         if (!(flags & CreationFlagsBits::hidden))
         {
             if (flags & CreationFlagsBits::minimized)
@@ -639,23 +608,21 @@ namespace window
 
     void Window::showWindow()
     {
-        if (!hidden())
-            return;
+        if (!hidden()) return;
         ShowWindow(_platform->hwnd, SW_SHOWNORMAL);
         _platform->flags &= ~CreationFlagsBits::hidden;
     }
 
     void Window::hideWindow()
     {
-        if (hidden())
-            return;
+        if (hidden()) return;
         ShowWindow(_platform->hwnd, SW_HIDE);
         _platform->flags |= CreationFlagsBits::hidden;
     }
 
     void Window::title(const std::string &title)
     {
-        _platform->title = convertUTF8toUTF16(title);
+        _platform->title = astl::utf8_to_utf16(title);
         SetWindowTextW(_platform->hwnd, (LPCWSTR)_platform->title.c_str());
     }
 
@@ -675,7 +642,7 @@ namespace window
                      SWP_SHOWWINDOW);
     }
 
-    Point2D Window::cursorPosition() const
+    astl::point2D Window::cursorPosition() const
     {
         POINT pos;
         if (GetCursorPos(&pos))
@@ -686,7 +653,7 @@ namespace window
         return {};
     }
 
-    void Window::cursorPosition(Point2D position)
+    void Window::cursorPosition(astl::point2D position)
     {
 
         POINT pos = {position.x, position.y};
@@ -696,8 +663,7 @@ namespace window
 
     void Window::showCursor()
     {
-        if (!_platform->isCursorHidden)
-            return;
+        if (!_platform->isCursorHidden) return;
         cursorPosition(_platform->savedCursorPos);
         ReleaseCapture();
         ShowCursor(TRUE);
@@ -706,8 +672,7 @@ namespace window
 
     void Window::hideCursor()
     {
-        if (_platform->isCursorHidden)
-            return;
+        if (_platform->isCursorHidden) return;
         _platform->savedCursorPos = cursorPosition();
         SetCapture(_platform->hwnd);
         ShowCursor(FALSE);
@@ -715,7 +680,7 @@ namespace window
         _platform->isCursorHidden = true;
     }
 
-    Point2D Window::windowPos() const
+    astl::point2D Window::windowPos() const
     {
         RECT rect;
         if (GetWindowRect(_platform->hwnd, &rect))
@@ -724,15 +689,14 @@ namespace window
             return {0, 0};
     }
 
-    void Window::windowPos(Point2D position)
+    void Window::windowPos(astl::point2D position)
     {
         SetWindowPos(_platform->hwnd, NULL, position.x, position.y, 0, 0, SWP_NOACTIVATE | SWP_NOZORDER | SWP_NOSIZE);
     }
 
     void Window::centerWindowPos()
     {
-        if (maximized())
-            return;
+        if (maximized()) return;
         RECT workArea = {};
         SystemParametersInfo(SPI_GETWORKAREA, 0, &workArea, 0); // Получаем размеры рабочей области экрана
 
@@ -747,8 +711,7 @@ namespace window
         int centerX = workArea.left + (screenWidth - windowWidth) / 2;
         int centerY = workArea.top + (screenHeight - windowHeight) / 2;
 
-        if (centerY < workArea.top)
-            centerY = workArea.top;
+        if (centerY < workArea.top) centerY = workArea.top;
 
         SetWindowPos(_platform->hwnd, NULL, centerX, centerY, windowWidth, windowHeight, SWP_NOZORDER | SWP_NOACTIVATE);
     }
@@ -775,12 +738,11 @@ namespace window
         }
 
         platform::WindowPlatformData *window = (platform::WindowPlatformData *)GetPropW(hwnd, L"APP3DWINDOW");
-        if (!window)
-            return;
+        if (!window) return;
 
         if (window->isCursorHidden && window->owner->cursorPosition() != window->savedCursorPos)
         {
-            Point2D pos = window->dimenstions / 2.0f;
+            astl::point2D pos = window->dimenstions / 2.0f;
             window->owner->cursorPosition(pos);
         }
     }
@@ -795,7 +757,7 @@ namespace window
 
     f32 getDpi() { return static_cast<f32>(platform::env.context->dpi) / 96.0f; }
 
-    Point2D getWindowSize(const Window &window)
+    astl::point2D getWindowSize(const Window &window)
     {
         RECT area;
         GetClientRect(window.accessBridge().hwnd(), &area);
@@ -837,7 +799,7 @@ namespace window
             CloseClipboard();
             return "";
         }
-        platform::env.clipboardData = convertUTF16toUTF8(buffer);
+        platform::env.clipboardData = astl::utf16_to_utf8(buffer);
         GlobalUnlock(object);
         CloseClipboard();
         return platform::env.clipboardData;
@@ -845,8 +807,7 @@ namespace window
 
     void setClipboardString(const Window &window, const std::string &text)
     {
-        if (text.empty())
-            return;
+        if (text.empty()) return;
         int tries = 0;
         int characterCount = MultiByteToWideChar(CP_UTF8, 0, text.c_str(), -1, NULL, 0);
         HANDLE object = GlobalAlloc(GMEM_MOVEABLE, characterCount * sizeof(WCHAR));

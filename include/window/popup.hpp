@@ -2,7 +2,7 @@
 #define APP_WINDOW_POPUP_H
 
 #include <core/api.hpp>
-#include <core/std/darray.hpp>
+#include <core/std/vector.hpp>
 #include <initializer_list>
 #include <window/window.hpp>
 
@@ -43,15 +43,15 @@ namespace window
         struct FilePattern
         {
             std::string description;
-            DArray<std::string> extensions;
+            astl::vector<std::string> extensions;
         };
 
-        APPLIB_API std::string openFileDialog(const char *title, const DArray<FilePattern> &pattern,
+        APPLIB_API std::string openFileDialog(const char *title, const astl::vector<FilePattern> &pattern,
                                               const char *defaultPath, bool multiply);
 
         APPLIB_API std::string openFolderDialog(const char *title, const char *defaultPath);
 
-        APPLIB_API std::string saveFileDialog(const char *title, const DArray<FilePattern> &pattern,
+        APPLIB_API std::string saveFileDialog(const char *title, const astl::vector<FilePattern> &pattern,
                                               const char *defaultPath);
     } // namespace popup
 } // namespace window

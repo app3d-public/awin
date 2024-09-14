@@ -87,7 +87,7 @@ namespace window
         void title(const std::string &title);
 
         // Returns the width of the window.
-        Point2D dimensions() const;
+        astl::point2D dimensions() const;
 
         // Check if the window has decorations
         bool decorated() const;
@@ -105,10 +105,10 @@ namespace window
         void disableFullscreen();
 
         // Get the current cursor position.
-        Point2D cursorPosition() const;
+        astl::point2D cursorPosition() const;
 
         // Set the cursor position
-        void cursorPosition(Point2D position);
+        void cursorPosition(astl::point2D position);
 
         // Show the cursor.
         void showCursor();
@@ -141,7 +141,7 @@ namespace window
         bool hidden() const;
 
         // Get the window's resize limits.
-        Point2D resizeLimit() const;
+        astl::point2D resizeLimit() const;
 
         // Set the window's resize limits.
         void resizeLimit(i32 width, i32 height);
@@ -159,10 +159,10 @@ namespace window
         void hideWindow();
 
         // Get current window position
-        Point2D windowPos() const;
+        astl::point2D windowPos() const;
 
         // Set window position
-        void windowPos(Point2D position);
+        void windowPos(astl::point2D position);
 
         // Center the window to the parent
         void centerWindowPos();
@@ -292,9 +292,10 @@ namespace window
     struct PosEvent : public events::IEvent
     {
         window::Window *window; // Pointer to the associated Window object.
-        Point2D position;       // The new position.
+        astl::point2D position; // The new position.
 
-        explicit PosEvent(const std::string &name = "", window::Window *window = nullptr, Point2D position = Point2D())
+        explicit PosEvent(const std::string &name = "", window::Window *window = nullptr,
+                          astl::point2D position = astl::point2D())
             : IEvent(name), window(window), position(position)
         {
         }
@@ -339,43 +340,43 @@ namespace window
         events::EventListener<Win32NativeEvent> *NCHitTest;
 #endif
         // List of event listeners for focus-related events.
-        DArray<events::EventListener<FocusEvent> *> focusEvents;
+        astl::vector<events::EventListener<FocusEvent> *> focusEvents;
 
         // List of event listeners for character input events.
-        DArray<events::EventListener<CharInputEvent> *> charInputEvents;
+        astl::vector<events::EventListener<CharInputEvent> *> charInputEvents;
 
         // List of event listeners for keyboard input events.
-        DArray<events::EventListener<KeyInputEvent> *> keyInputEvents;
+        astl::vector<events::EventListener<KeyInputEvent> *> keyInputEvents;
 
         // List of event listeners for mouse click events.
-        DArray<events::EventListener<MouseClickEvent> *> mouseClickEvents;
+        astl::vector<events::EventListener<MouseClickEvent> *> mouseClickEvents;
 
         // List of event listeners for cursor enter/leave events.
-        DArray<events::EventListener<CursorEnterEvent> *> cursorEnterEvents;
+        astl::vector<events::EventListener<CursorEnterEvent> *> cursorEnterEvents;
 
         //  Listener for handling when the mouse position changes in RAW Input mode.
-        DArray<events::EventListener<PosEvent> *> cursorPosEvents;
+        astl::vector<events::EventListener<PosEvent> *> cursorPosEvents;
 
         //  Listener for handling when the mouse position changes in absolute (per Window dimensions) values
-        DArray<events::EventListener<PosEvent> *> cursorPosAbsEvents;
+        astl::vector<events::EventListener<PosEvent> *> cursorPosAbsEvents;
 
         // List of event listeners for scroll events.
-        DArray<events::EventListener<ScrollEvent> *> scrollEvents;
+        astl::vector<events::EventListener<ScrollEvent> *> scrollEvents;
 
         // List of event listeners for window minimize events.
-        DArray<events::EventListener<StateEvent> *> minimizeEvents;
+        astl::vector<events::EventListener<StateEvent> *> minimizeEvents;
 
         // List of event listeners for window maximize events.
-        DArray<events::EventListener<StateEvent> *> maximizeEvents;
+        astl::vector<events::EventListener<StateEvent> *> maximizeEvents;
 
         // List of event listeners for window resize events.
-        DArray<events::EventListener<PosEvent> *> resizeEvents;
+        astl::vector<events::EventListener<PosEvent> *> resizeEvents;
 
         // List of event listeners for window move events.
-        DArray<events::EventListener<PosEvent> *> moveEvents;
+        astl::vector<events::EventListener<PosEvent> *> moveEvents;
 
         // List of event listeners for DPI (dots per inch) changed events.
-        DArray<events::EventListener<DpiChangedEvent> *> dpiChangedEvents;
+        astl::vector<events::EventListener<DpiChangedEvent> *> dpiChangedEvents;
 
     } eventRegistry;
 
@@ -386,11 +387,10 @@ namespace window
      * @param args event arguments
      */
     template <typename T, typename... Args>
-    inline void dispatchWindowEvent(const DArray<events::EventListener<T> *> &listener, Args &&...args)
+    inline void dispatchWindowEvent(const astl::vector<events::EventListener<T> *> &listener, Args &&...args)
     {
         T event(std::forward<Args>(args)...);
-        for (const auto &l : listener)
-            l->invoke(event);
+        for (const auto &l : listener) l->invoke(event);
     }
 
     // Get the time elapsed since library initialization in seconds as a floating-point value.
@@ -449,7 +449,7 @@ namespace window
     APPLIB_API f32 getDpi();
 
     // Get the client area size
-    APPLIB_API Point2D getWindowSize(const Window &window);
+    APPLIB_API astl::point2D getWindowSize(const Window &window);
 
     // Get text string from the clipboard buffer
     APPLIB_API std::string getClipboardString(const Window &window);
@@ -468,12 +468,12 @@ namespace window
         struct WindowPlatformBase
         {
             Window *owner;
-            Point2D dimenstions;
+            astl::point2D dimenstions;
             CreationFlags flags;
             bool isCursorHidden{false};
             bool focused{false};
             bool readyToClose = false;
-            Point2D resizeLimit{0, 0};
+            astl::point2D resizeLimit{0, 0};
             io::KeyPressState keys[io::Key::kLast + 1];
             Cursor *cursor;
 

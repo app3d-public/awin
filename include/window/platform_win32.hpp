@@ -17,7 +17,7 @@ namespace window
             DWORD exStyle;
             HWND hwnd;
             WCHAR highSurrogate;
-            Point2D savedCursorPos{0, 0};
+            astl::point2D savedCursorPos{0, 0};
             bool cursorTracked{false};
             bool rawInput{false};
             LPBYTE rawInputData{nullptr};

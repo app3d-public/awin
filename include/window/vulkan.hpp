@@ -19,7 +19,7 @@ namespace window
             [[nodiscard]] virtual vk::Result createSurface(vk::Instance &instance, vk::SurfaceKHR &surface,
                                                            vk::DispatchLoaderDynamic &loader) override;
 
-            virtual DArray<const char *> getWindowExtensions() override
+            virtual astl::vector<const char *> getWindowExtensions() override
             {
 #ifdef _WIN32
                 return {vk::KHRSurfaceExtensionName, vk::KHRWin32SurfaceExtensionName};

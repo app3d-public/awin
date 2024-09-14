@@ -18,13 +18,10 @@ namespace window
             if (+key >= 0 && key <= io::Key::kLast)
             {
                 bool repeated{false};
-                if (action == io::KeyPressState::release && impl->keys[+key] == io::KeyPressState::release)
-                    return;
-                if (action == io::KeyPressState::press && impl->keys[+key] == io::KeyPressState::press)
-                    repeated = true;
+                if (action == io::KeyPressState::release && impl->keys[+key] == io::KeyPressState::release) return;
+                if (action == io::KeyPressState::press && impl->keys[+key] == io::KeyPressState::press) repeated = true;
                 impl->keys[+key] = action;
-                if (repeated)
-                    action = io::KeyPressState::repeat;
+                if (repeated) action = io::KeyPressState::repeat;
             }
             dispatchWindowEvent(eventRegistry.keyInputEvents, "window:input:key", impl->owner, key, action, mods);
         }
@@ -32,8 +29,7 @@ namespace window
 
     Cursor::~Cursor()
     {
-        if (_platform)
-            delete _platform;
+        if (_platform) delete _platform;
     }
 
     Cursor &Cursor::operator=(Cursor &&other) noexcept
@@ -47,7 +43,7 @@ namespace window
         return *this;
     }
 
-    Point2D Window::dimensions() const { return _platform->dimenstions; }
+    astl::point2D Window::dimensions() const { return _platform->dimenstions; }
 
     bool Window::decorated() const { return (_platform->flags & window::CreationFlagsBits::decorated) != 0; }
 
@@ -67,7 +63,7 @@ namespace window
 
     bool Window::hidden() const { return (_platform->flags & window::CreationFlagsBits::hidden) != 0; }
 
-    Point2D Window::resizeLimit() const { return _platform->resizeLimit; }
+    astl::point2D Window::resizeLimit() const { return _platform->resizeLimit; }
 
     void Window::resizeLimit(i32 width, i32 height) { _platform->resizeLimit = {width, height}; }
 
@@ -80,12 +76,10 @@ namespace window
         assert(platform::env.e);
 #ifdef _WIN32
         auto NCLMouseDownList = platform::env.e->getListeners<Win32NativeEvent>("window:NCLMouseDown");
-        if (!NCLMouseDownList.empty())
-            eventRegistry.NCLMouseDown = NCLMouseDownList[0];
+        if (!NCLMouseDownList.empty()) eventRegistry.NCLMouseDown = NCLMouseDownList[0];
 
         auto NCHitTestList = platform::env.e->getListeners<Win32NativeEvent>("window:NCHitTest");
-        if (!NCHitTestList.empty())
-            eventRegistry.NCHitTest = NCHitTestList[0];
+        if (!NCHitTestList.empty()) eventRegistry.NCHitTest = NCHitTestList[0];
 #endif
         eventRegistry.focusEvents = platform::env.e->getListeners<FocusEvent>("window:focus");
         eventRegistry.scrollEvents = platform::env.e->getListeners<ScrollEvent>("window:scroll");
@@ -104,8 +98,7 @@ namespace window
 
     void initLibrary(events::Manager *e)
     {
-        if (!platform::initPlatform())
-            throw std::runtime_error("Failed to initialize Window platform");
+        if (!platform::initPlatform()) throw std::runtime_error("Failed to initialize Window platform");
         platform::initTimer();
         setTime(0.0);
         platform::env.e = e;
