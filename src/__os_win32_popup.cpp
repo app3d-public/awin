@@ -1,4 +1,5 @@
 #include <core/std/string.hpp>
+#include <filesystem>
 #include <window/platform_win32.hpp>
 #include <window/popup.hpp>
 #include <windows.h>
@@ -125,13 +126,10 @@ namespace window
 
         std::string openFolderDialog(const char *title, const char *defaultPath)
         {
-            HRESULT hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
-            if (FAILED(hr)) { return ""; }
-
             IFileOpenDialog *pFileOpen = nullptr;
 
-            hr = CoCreateInstance(CLSID_FileOpenDialog, NULL, CLSCTX_ALL, IID_IFileOpenDialog,
-                                  reinterpret_cast<void **>(&pFileOpen));
+            HRESULT hr = CoCreateInstance(CLSID_FileOpenDialog, NULL, CLSCTX_ALL, IID_IFileOpenDialog,
+                                          reinterpret_cast<void **>(&pFileOpen));
             if (FAILED(hr))
             {
                 CoUninitialize();
@@ -177,7 +175,6 @@ namespace window
                         CoTaskMemFree(pszFolderPath);
                         pItem->Release();
                         pFileOpen->Release();
-                        CoUninitialize();
                         return folderPath;
                     }
                     pItem->Release();
@@ -185,55 +182,126 @@ namespace window
             }
 
             pFileOpen->Release();
-            CoUninitialize();
-
             return "";
+        }
+
+        void createDefaultPathOrFolder(const char *path, IFileDialog *pFile)
+        {
+            if (!path || strlen(path) <= 0) return;
+            auto wDefaultPath = astl::utf8_to_utf16(path);
+            DWORD attributes = GetFileAttributesW(reinterpret_cast<const wchar_t *>(wDefaultPath.c_str()));
+
+            std::filesystem::path fsPath(path);
+            auto parentPath = fsPath.parent_path().string();
+            if (!parentPath.empty())
+            {
+                auto wParentPath = astl::utf8_to_utf16(parentPath);
+                IShellItem *pDefaultFolder = nullptr;
+                HRESULT hr = SHCreateItemFromParsingName(reinterpret_cast<const wchar_t *>(wParentPath.c_str()), NULL,
+                                                         IID_PPV_ARGS(&pDefaultFolder));
+                if (SUCCEEDED(hr))
+                {
+                    pFile->SetFolder(pDefaultFolder);
+                    pDefaultFolder->Release();
+                }
+            }
+
+            auto fileName = fsPath.filename().string();
+            if (!fileName.empty())
+            {
+                auto wFileName = astl::utf8_to_utf16(fileName);
+                pFile->SetFileName(reinterpret_cast<const wchar_t *>(wFileName.c_str()));
+            }
+        }
+
+        struct ComFilter
+        {
+            const astl::vector<FilePattern> *pattern;
+            astl::vector<COMDLG_FILTERSPEC> com;
+            astl::vector<std::u16string> descriptions;
+            astl::vector<std::u16string> specs;
+
+            ComFilter(const astl::vector<FilePattern> *pattern) : pattern(pattern)
+            {
+                com.resize(pattern->size());
+                descriptions.resize(pattern->size());
+                specs.resize(pattern->size());
+            }
+        };
+
+        void prepareComFilterPattern(ComFilter &filter, IFileDialog *pFile)
+        {
+            assert(filter.pattern);
+            auto &pattern = *filter.pattern;
+            for (size_t i = 0; i < filter.pattern->size(); ++i)
+            {
+                filter.descriptions[i] = astl::utf8_to_utf16(pattern[i].description);
+                filter.com[i].pszName = reinterpret_cast<const wchar_t *>(filter.descriptions[i].c_str());
+                std::u16string extensions;
+                for (size_t j = 0; j < pattern[i].extensions.size(); ++j)
+                {
+                    if (j > 0) extensions += u";";
+                    extensions += astl::utf8_to_utf16(pattern[i].extensions[j]);
+                }
+                filter.specs[i] = extensions;
+                filter.com[i].pszSpec = reinterpret_cast<const wchar_t *>(filter.specs[i].c_str());
+            }
+            pFile->SetFileTypes(static_cast<UINT>(filter.com.size()), filter.com.data());
+            pFile->SetFileTypeIndex(1);
+
+            if (pattern.empty() || pattern[0].extensions.empty()) return;
+            std::filesystem::path extPath(pattern[0].extensions[0]);
+            std::string defExt = extPath.extension().string();
+            if (!defExt.empty() && defExt[0] == '.') defExt = defExt.substr(1);
+            if (!defExt.empty())
+            {
+                auto wDefExt = astl::utf8_to_utf16(defExt);
+                pFile->SetDefaultExtension(reinterpret_cast<const wchar_t *>(wDefExt.c_str()));
+            }
         }
 
         std::string saveFileDialog(const char *title, const astl::vector<FilePattern> &pattern, const char *defaultPath)
         {
-            std::u16string wTitle = astl::utf8_to_utf16(title ? std::string(title) : "");
-            std::u16string wDefaultPath = defaultPath ? astl::utf8_to_utf16(std::string(defaultPath)) : u"";
+            IFileSaveDialog *pFileSave = nullptr;
+            HRESULT hr = CoCreateInstance(CLSID_FileSaveDialog, nullptr, CLSCTX_ALL, IID_IFileSaveDialog,
+                                          reinterpret_cast<void **>(&pFileSave));
+            if (FAILED(hr)) return "";
 
-            wchar_t lFileName[MAX_PATH] = L"";
-
-            if (defaultPath && strlen(defaultPath) > 0)
+            if (title)
             {
-                DWORD attributes = GetFileAttributesA(defaultPath);
-                if (attributes != INVALID_FILE_ATTRIBUTES && (attributes & FILE_ATTRIBUTE_DIRECTORY))
-                    wDefaultPath = astl::utf8_to_utf16(defaultPath);
-                else
-                {
-                    std::u16string wDefaultFileName = astl::utf8_to_utf16(defaultPath);
-                    wcscpy_s(lFileName, MAX_PATH, reinterpret_cast<const wchar_t *>(wDefaultFileName.c_str()));
-                }
+                auto wTitle = astl::utf8_to_utf16(title);
+                pFileSave->SetTitle(reinterpret_cast<const wchar_t *>(wTitle.c_str()));
             }
 
-            std::u16string wFilterPatterns;
-            for (const auto &pat : pattern)
+            createDefaultPathOrFolder(defaultPath, pFileSave);
+            ComFilter comFilter{&pattern};
+            prepareComFilterPattern(comFilter, pFileSave);
+
+            hr = pFileSave->Show(nullptr);
+            if (SUCCEEDED(hr))
             {
-                wFilterPatterns += astl::utf8_to_utf16(pat.description) + u'\0';
-                for (size_t i = 0; i < pat.extensions.size(); ++i)
+                IShellItem *pItem = nullptr;
+                hr = pFileSave->GetResult(&pItem);
+                if (SUCCEEDED(hr))
                 {
-                    wFilterPatterns += astl::utf8_to_utf16(pat.extensions[i]);
-                    if (i < pat.extensions.size() - 1) wFilterPatterns += u';';
+                    PWSTR pszFilePath = nullptr;
+                    hr = pItem->GetDisplayName(SIGDN_FILESYSPATH, &pszFilePath);
+
+                    if (SUCCEEDED(hr))
+                    {
+                        std::string result =
+                            astl::utf16_to_utf8(reinterpret_cast<const std::u16string::value_type *>(pszFilePath));
+                        CoTaskMemFree(pszFilePath);
+                        pItem->Release();
+                        pFileSave->Release();
+                        return result;
+                    }
+                    pItem->Release();
                 }
-                wFilterPatterns += u'\0';
             }
-            wFilterPatterns += u'\0';
-
-            OPENFILENAMEW ofn = {0};
-            ofn.lStructSize = sizeof(OPENFILENAMEW);
-            ofn.hwndOwner = GetForegroundWindow();
-            ofn.lpstrFilter = reinterpret_cast<LPCWSTR>(wFilterPatterns.c_str());
-            ofn.lpstrFile = lFileName;
-            ofn.nMaxFile = MAX_PATH;
-            ofn.lpstrTitle = reinterpret_cast<LPCWSTR>(wTitle.c_str());
-            ofn.lpstrInitialDir = wDefaultPath.empty() ? NULL : reinterpret_cast<LPCWSTR>(wDefaultPath.c_str());
-            ofn.Flags = OFN_EXPLORER | OFN_NOCHANGEDIR | OFN_PATHMUSTEXIST | OFN_OVERWRITEPROMPT;
-
-            if (GetSaveFileNameW(&ofn) == 0) return "";
-            return astl::utf16_to_utf8(reinterpret_cast<const std::u16string::value_type *>(lFileName));
+            pFileSave->Release();
+            return "";
         }
+
     } // namespace popup
 } // namespace window

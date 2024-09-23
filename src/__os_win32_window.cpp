@@ -1,5 +1,6 @@
 #include <core/log.hpp>
 #include <core/std/string.hpp>
+#include <shlobj.h>
 #include <windef.h>
 #include <window/platform_win32.hpp>
 #include <window/window.hpp>
@@ -527,15 +528,15 @@ namespace window
                 context->win32class.hIcon = LoadIcon(NULL, IDI_APPLICATION);
             }
             if (RegisterClassExW(&context->win32class))
-            {
                 env.context = context;
-                return true;
-            }
             else
             {
                 delete context;
                 return false;
             }
+            // Init platform for using COM objects
+            HRESULT hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
+            return !FAILED(hr);
         }
 
         HINSTANCE AccessBridge::global() const { return env.context->instance; }
@@ -625,6 +626,8 @@ namespace window
                 DestroyWindow(hwnd);
                 _platform->hwnd = nullptr;
             }
+
+            CoUninitialize();
 
             delete _platform;
             _platform = nullptr;
