@@ -199,7 +199,7 @@ namespace window
             notAllowed  // The operation-not-allowed shape.  This is usually a circle with a diagonal line through it.
         };
 
-        explicit Cursor(PlatformData *platform = nullptr) : _platform(platform) {}
+        Cursor(PlatformData *platform = nullptr) : _platform(platform) {}
 
         Cursor(const Cursor &) = delete;
         Cursor &operator=(const Cursor &) = delete;

@@ -494,7 +494,7 @@ namespace window
                     if (env.context->win32class.hIcon) DestroyIcon(env.context->win32class.hIcon);
                     UnregisterClassW(env.context->win32class.lpszClassName, env.context->instance);
                 }
-                delete env.context;
+                astl::release(env.context);
             }
         }
 
@@ -513,7 +513,7 @@ namespace window
         {
             if (!SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2))
                 logWarn("Failed to set process dpi awareness context");
-            PlatformContext *context = new PlatformContext;
+            PlatformContext *context = astl::alloc<PlatformContext>();
             context->instance = GetModuleHandleW(nullptr);
             context->win32class = {sizeof(context->win32class)};
             context->win32class.style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC;
@@ -531,7 +531,7 @@ namespace window
                 env.context = context;
             else
             {
-                delete context;
+                astl::release(context);
                 return false;
             }
             // Init platform for using COM objects
@@ -570,7 +570,7 @@ namespace window
     Window::Window(const std::string &title, i32 width, i32 height, CreationFlags flags)
         : _platform(nullptr), _accessBridge(nullptr)
     {
-        _platform = new platform::WindowPlatformData;
+        _platform = astl::alloc<platform::WindowPlatformData>();
         _platform->owner = this;
         _platform->title = astl::utf8_to_utf16(title);
         _platform->dimenstions = {width == -1 ? CW_USEDEFAULT : width, height == -1 ? CW_USEDEFAULT : height};
@@ -582,7 +582,7 @@ namespace window
         _platform->exStyle = WS_EX_APPWINDOW;
         _platform->hwnd = nullptr;
         _platform->cursor = Cursor::defaultCursor();
-        _accessBridge = new platform::AccessBridge(_platform);
+        _accessBridge = astl::alloc<platform::AccessBridge>(_platform);
 
         _platform->hwnd = CreateWindowExW(
             _platform->exStyle, platform::env.context->win32class.lpszClassName, (LPCWSTR)_platform->title.c_str(),
@@ -606,7 +606,7 @@ namespace window
     {
         if (_accessBridge)
         {
-            delete _accessBridge;
+            astl::release(_accessBridge);
             _accessBridge = nullptr;
         }
         if (_platform)
@@ -629,7 +629,7 @@ namespace window
 
             CoUninitialize();
 
-            delete _platform;
+            astl::release(_platform);
             _platform = nullptr;
         }
     }
@@ -880,44 +880,31 @@ namespace window
 
     Cursor Cursor::create(Cursor::Type type)
     {
-        PlatformData *platform;
         switch (type)
         {
             case Type::arrow:
-                platform = new PlatformData(LoadCursor(NULL, IDC_ARROW));
-                break;
+                return {astl::alloc<PlatformData>(LoadCursor(NULL, IDC_ARROW))};
             case Type::ibeam:
-                platform = new PlatformData(LoadCursor(NULL, IDC_IBEAM));
-                break;
+                return {astl::alloc<PlatformData>(LoadCursor(NULL, IDC_IBEAM))};
             case Type::crosshair:
-                platform = new PlatformData(LoadCursor(NULL, IDC_CROSS));
-                break;
+                return {astl::alloc<PlatformData>(LoadCursor(NULL, IDC_CROSS))};
             case Type::hand:
-                platform = new PlatformData(LoadCursor(NULL, IDC_HAND));
-                break;
+                return {astl::alloc<PlatformData>(LoadCursor(NULL, IDC_HAND))};
             case Type::resizeEW:
-                platform = new PlatformData(LoadCursor(NULL, IDC_SIZEWE));
-                break;
+                return {astl::alloc<PlatformData>(LoadCursor(NULL, IDC_SIZEWE))};
             case Type::resizeNS:
-                platform = new PlatformData(LoadCursor(NULL, IDC_SIZENS));
-                break;
+                return {astl::alloc<PlatformData>(LoadCursor(NULL, IDC_SIZENS))};
             case Type::resizeNESW:
-                platform = new PlatformData(LoadCursor(NULL, IDC_SIZENESW));
-                break;
+                return {astl::alloc<PlatformData>(LoadCursor(NULL, IDC_SIZENESW))};
             case Type::resizeNWSE:
-                platform = new PlatformData(LoadCursor(NULL, IDC_SIZENWSE));
-                break;
+                return {astl::alloc<PlatformData>(LoadCursor(NULL, IDC_SIZENWSE))};
             case Type::resizeAll:
-                platform = new PlatformData(LoadCursor(NULL, IDC_SIZEALL));
-                break;
+                return {astl::alloc<PlatformData>(LoadCursor(NULL, IDC_SIZEALL))};
             case Type::notAllowed:
-                platform = new PlatformData(LoadCursor(NULL, IDC_NO));
-                break;
+                return {astl::alloc<PlatformData>(LoadCursor(NULL, IDC_NO))};
             default:
-                platform = nullptr;
-                break;
+                return {};
         }
-        return Cursor(platform);
     }
 
     Cursor *Cursor::defaultCursor()

@@ -27,16 +27,13 @@ namespace window
         }
     } // namespace platform
 
-    Cursor::~Cursor()
-    {
-        if (_platform) delete _platform;
-    }
+    Cursor::~Cursor() { astl::release(_platform); }
 
     Cursor &Cursor::operator=(Cursor &&other) noexcept
     {
         if (this != &other)
         {
-            delete _platform;
+            astl::release(_platform);
             _platform = other._platform;
             other._platform = nullptr;
         }

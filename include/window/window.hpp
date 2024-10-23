@@ -172,7 +172,7 @@ namespace window
 
     private:
         platform::WindowPlatformData *_platform;
-        const platform::AccessBridge *_accessBridge;
+        platform::AccessBridge *_accessBridge;
     };
 
     // Updates the event registry by associating different types of window events with their listeners.
