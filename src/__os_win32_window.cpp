@@ -452,8 +452,8 @@ namespace window
                     GetRawInputData((HRAWINPUT)lParam, RID_INPUT, NULL, &dwSize, sizeof(RAWINPUTHEADER));
                     if (dwSize > window->rawInputSize)
                     {
-                        if (window->rawInputData) free(window->rawInputData);
-                        window->rawInputData = (LPBYTE)malloc(dwSize);
+                        astl::release(window->rawInputData);
+                        window->rawInputData = astl::alloc_n<BYTE>(dwSize);
                         window->rawInputSize = dwSize;
                     }
                     if (GetRawInputData((HRAWINPUT)lParam, RID_INPUT, window->rawInputData, &dwSize,
