@@ -613,7 +613,7 @@ namespace window
         {
             if (_platform->rawInputData)
             {
-                free(_platform->rawInputData);
+                astl::release(_platform->rawInputData);
                 _platform->rawInputData = nullptr;
                 _platform->rawInputSize = 0;
             }
