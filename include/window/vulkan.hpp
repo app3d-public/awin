@@ -2,7 +2,7 @@
 #define APP_WINDOW_VULKAN_H
 
 #include <core/api.hpp>
-#include <core/backend/device.hpp>
+#include <backend/device.hpp>
 #include <vulkan/vulkan.hpp>
 #include "window.hpp"
 
