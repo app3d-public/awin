@@ -723,7 +723,14 @@ namespace window
 
     void Window::windowPos(astl::point2D position)
     {
-        SetWindowPos(_platform->hwnd, NULL, position.x, position.y, 0, 0, SWP_NOACTIVATE | SWP_NOZORDER | SWP_NOSIZE);
+        WINDOWPLACEMENT wp = {sizeof(WINDOWPLACEMENT)};
+        GetWindowPlacement(_platform->hwnd, &wp);
+        auto dimenstions = getWindowSize(*this);
+        wp.rcNormalPosition.left = position.x;
+        wp.rcNormalPosition.top = position.y;
+        wp.rcNormalPosition.right = position.x + dimenstions.x;
+        wp.rcNormalPosition.bottom = position.y + dimenstions.y;
+        SetWindowPlacement(_platform->hwnd, &wp);
     }
 
     void Window::centerWindowPos()
