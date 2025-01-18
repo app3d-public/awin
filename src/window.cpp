@@ -40,7 +40,7 @@ namespace window
         return *this;
     }
 
-    astl::point2D Window::dimensions() const { return _platform->dimenstions; }
+    astl::point2D<i32>Window::dimensions() const { return _platform->dimenstions; }
 
     bool Window::decorated() const { return (_platform->flags & window::CreationFlagsBits::decorated) != 0; }
 
@@ -60,7 +60,7 @@ namespace window
 
     bool Window::hidden() const { return (_platform->flags & window::CreationFlagsBits::hidden) != 0; }
 
-    astl::point2D Window::resizeLimit() const { return _platform->resizeLimit; }
+    astl::point2D<i32>Window::resizeLimit() const { return _platform->resizeLimit; }
 
     void Window::resizeLimit(i32 width, i32 height) { _platform->resizeLimit = {width, height}; }
 

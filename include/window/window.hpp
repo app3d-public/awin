@@ -87,7 +87,7 @@ namespace window
         void title(const std::string &title);
 
         // Returns the width of the window.
-        astl::point2D dimensions() const;
+        astl::point2D<i32> dimensions() const;
 
         // Check if the window has decorations
         bool decorated() const;
@@ -105,10 +105,10 @@ namespace window
         void disableFullscreen();
 
         // Get the current cursor position.
-        astl::point2D cursorPosition() const;
+        astl::point2D<i32> cursorPosition() const;
 
         // Set the cursor position
-        void cursorPosition(astl::point2D position);
+        void cursorPosition(astl::point2D<i32> position);
 
         // Show the cursor.
         void showCursor();
@@ -141,7 +141,7 @@ namespace window
         bool hidden() const;
 
         // Get the window's resize limits.
-        astl::point2D resizeLimit() const;
+        astl::point2D<i32> resizeLimit() const;
 
         // Set the window's resize limits.
         void resizeLimit(i32 width, i32 height);
@@ -159,10 +159,10 @@ namespace window
         void hideWindow();
 
         // Get current window position
-        astl::point2D windowPos() const;
+        astl::point2D<i32>windowPos() const;
 
         // Set window position
-        void windowPos(astl::point2D position);
+        void windowPos(astl::point2D<i32>position);
 
         // Center the window to the parent
         void centerWindowPos();
@@ -292,10 +292,10 @@ namespace window
     struct PosEvent : public events::IEvent
     {
         window::Window *window; // Pointer to the associated Window object.
-        astl::point2D position; // The new position.
+        astl::point2D<i32>position; // The new position.
 
         explicit PosEvent(const std::string &name = "", window::Window *window = nullptr,
-                          astl::point2D position = astl::point2D())
+                          astl::point2D<i32>position = astl::point2D())
             : IEvent(name), window(window), position(position)
         {
         }
@@ -449,7 +449,7 @@ namespace window
     APPLIB_API f32 getDpi();
 
     // Get the client area size
-    APPLIB_API astl::point2D getWindowSize(const Window &window);
+    APPLIB_API astl::point2D<i32>getWindowSize(const Window &window);
 
     // Get text string from the clipboard buffer
     APPLIB_API std::string getClipboardString(const Window &window);
@@ -468,12 +468,12 @@ namespace window
         struct WindowPlatformBase
         {
             Window *owner;
-            astl::point2D dimenstions;
+            astl::point2D<i32>dimenstions;
             CreationFlags flags;
             bool isCursorHidden{false};
             bool focused{false};
             bool readyToClose = false;
-            astl::point2D resizeLimit{0, 0};
+            astl::point2D<i32>resizeLimit{0, 0};
             io::KeyPressState keys[io::Key::kLast + 1];
             Cursor *cursor;
 

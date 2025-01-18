@@ -17,7 +17,7 @@ namespace window
             DWORD exStyle;
             HWND hwnd;
             WCHAR highSurrogate;
-            astl::point2D savedCursorPos{0, 0};
+            astl::point2D<i32>savedCursorPos{0, 0};
             bool cursorTracked{false};
             bool rawInput{false};
             LPBYTE rawInputData{nullptr};
@@ -162,7 +162,7 @@ namespace window
 
             HWND hwnd() const;
 
-            astl::point2D frameSize() const;
+            astl::point2D<i32>frameSize() const;
             
         private:
             WindowPlatformData *_impl;

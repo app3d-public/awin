@@ -390,7 +390,7 @@ namespace window
                 }
                 case WM_SIZE:
                 {
-                    astl::point2D dimenstions(LOWORD(lParam), HIWORD(lParam));
+                    astl::point2D<i32>dimenstions(LOWORD(lParam), HIWORD(lParam));
 
                     if ((window->flags & CreationFlagsBits::minimized) != (wParam == SIZE_MINIMIZED))
                     {
@@ -543,9 +543,9 @@ namespace window
 
         HWND AccessBridge::hwnd() const { return _impl->hwnd; }
 
-        astl::point2D AccessBridge::frameSize() const
+        astl::point2D<i32>AccessBridge::frameSize() const
         {
-            astl::point2D point;
+            astl::point2D<i32>point;
             point.x = (env.context->frameX + env.context->padding) * 2;
             point.y = env.context->frameY + env.context->padding;
             return point;
@@ -674,7 +674,7 @@ namespace window
                      SWP_SHOWWINDOW);
     }
 
-    astl::point2D Window::cursorPosition() const
+    astl::point2D<i32>Window::cursorPosition() const
     {
         POINT pos;
         if (GetCursorPos(&pos))
@@ -685,7 +685,7 @@ namespace window
         return {};
     }
 
-    void Window::cursorPosition(astl::point2D position)
+    void Window::cursorPosition(astl::point2D<i32>position)
     {
 
         POINT pos = {position.x, position.y};
@@ -712,7 +712,7 @@ namespace window
         _platform->isCursorHidden = true;
     }
 
-    astl::point2D Window::windowPos() const
+    astl::point2D<i32>Window::windowPos() const
     {
         RECT rect;
         if (GetWindowRect(_platform->hwnd, &rect))
@@ -721,7 +721,7 @@ namespace window
             return {0, 0};
     }
 
-    void Window::windowPos(astl::point2D position)
+    void Window::windowPos(astl::point2D<i32>position)
     {
         WINDOWPLACEMENT wp = {sizeof(WINDOWPLACEMENT)};
         GetWindowPlacement(_platform->hwnd, &wp);
@@ -779,7 +779,7 @@ namespace window
 
         if (window->isCursorHidden && window->owner->cursorPosition() != window->savedCursorPos)
         {
-            astl::point2D pos = window->dimenstions / 2.0f;
+            astl::point2D<i32>pos = window->dimenstions / 2.0f;
             window->owner->cursorPosition(pos);
         }
     }
@@ -794,7 +794,7 @@ namespace window
 
     f32 getDpi() { return static_cast<f32>(platform::env.context->dpi) / 96.0f; }
 
-    astl::point2D getWindowSize(const Window &window)
+    astl::point2D<i32>getWindowSize(const Window &window)
     {
         RECT area;
         GetClientRect(window.accessBridge().hwnd(), &area);
