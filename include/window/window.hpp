@@ -13,9 +13,10 @@
 #include "types.hpp"
 #ifdef _WIN32
     #include <windows.h>
+    #include "platform_win32.hpp"
 #endif
 
-#define WINDOW_DONT_CARE -1
+#define WINDOW_DONT_CARE   -1
 
 namespace window
 {
@@ -34,19 +35,6 @@ namespace window
         // Serves as a gateway for higher-level APIs to interact with platform-specific window data, abstracting the
         // details of the platform to provide a consistent interface for window manipulation.
         class AccessBridge;
-
-        // The window environment configuration for window management and interactions within the windowing system.
-        extern APPLIB_API struct WindowEnvironment
-        {
-            PlatformContext *context;  // Platform-specific context for window operations.
-            std::string clipboardData; // Clipboard data storage.
-            struct Timer
-            {
-                u64 offset;    // Time offset
-                u64 frequency; // Timer frequency
-            } timer;           // Timer information for time tracking.
-            events::Manager *e = nullptr;
-        } env;
 
         // Initializes the platform-specific components and sets up the windowing system environment.
         bool initPlatform();
@@ -87,16 +75,16 @@ namespace window
         void title(const std::string &title);
 
         // Returns the width of the window.
-        astl::point2D<i32> dimensions() const;
+        astl::point2D<i32> dimensions() const { return _platform->dimenstions; }
 
         // Check if the window has decorations
-        bool decorated() const;
+        inline bool decorated() const { return (_platform->flags & window::CreationFlagsBits::decorated) != 0; }
 
         // Check if the window is resizable.
-        bool resizable() const;
+        inline bool resizable() const { return (_platform->flags & window::CreationFlagsBits::resizable) != 0; }
 
         // Check if the window is in fullscreen mode.
-        bool fullscreen() const;
+        bool fullscreen() const { return (_platform->flags & window::CreationFlagsBits::fullscreen) != 0; }
 
         // Enable fullscreen mode.
         void enableFullscreen();
@@ -117,40 +105,40 @@ namespace window
         void hideCursor();
 
         // Check if the cursor is hidden.
-        bool isCursorHidden() const;
+        inline bool isCursorHidden() const { return _platform->isCursorHidden; }
 
         // Set cursor
-        void setCursor(Cursor *cursor);
+        inline void setCursor(Cursor *cursor) { _platform->cursor = cursor; }
 
         // Check if the window is focused.
-        bool focused() const;
+        inline bool focused() const { return _platform->focused; }
 
         // Check if the window is minimized.
-        bool minimized() const;
+        inline bool minimized() const { return _platform->flags & window::CreationFlagsBits::minimized; }
 
         // Minimize the window
         void minimize();
 
         // Check if the window is maximized.
-        bool maximized() const;
+        inline bool maximized() const { return _platform->flags & window::CreationFlagsBits::maximized; }
 
         // Maximize the window
         void maximize();
 
         // Check if the window is hidden.
-        bool hidden() const;
+        inline bool hidden() const { return (_platform->flags & window::CreationFlagsBits::hidden) != 0; }
 
         // Get the window's resize limits.
-        astl::point2D<i32> resizeLimit() const;
+        inline astl::point2D<i32> resizeLimit() const { return _platform->resizeLimit; }
 
         // Set the window's resize limits.
-        void resizeLimit(i32 width, i32 height);
+        inline void resizeLimit(i32 width, i32 height) { _platform->resizeLimit = {width, height}; }
 
         // Check if the window is ready to be closed.
-        bool readyToClose() const;
+        inline bool readyToClose() const { return _platform->readyToClose; }
 
         // Change the window's ready-to-close state.
-        void readyToClose(bool readyToClose);
+        inline void readyToClose(bool readyToClose) { _platform->readyToClose = readyToClose; }
 
         // Show the window if it is hidden.
         void showWindow();
@@ -159,10 +147,10 @@ namespace window
         void hideWindow();
 
         // Get current window position
-        astl::point2D<i32>windowPos() const;
+        astl::point2D<i32> windowPos() const;
 
         // Set window position
-        void windowPos(astl::point2D<i32>position);
+        void windowPos(astl::point2D<i32> position);
 
         // Center the window to the parent
         void centerWindowPos();
@@ -291,11 +279,11 @@ namespace window
     // Represents a position change event in a window.
     struct PosEvent : public events::IEvent
     {
-        window::Window *window; // Pointer to the associated Window object.
-        astl::point2D<i32>position; // The new position.
+        window::Window *window;      // Pointer to the associated Window object.
+        astl::point2D<i32> position; // The new position.
 
         explicit PosEvent(const std::string &name = "", window::Window *window = nullptr,
-                          astl::point2D<i32>position = astl::point2D())
+                          astl::point2D<i32> position = astl::point2D())
             : IEvent(name), window(window), position(position)
         {
         }
@@ -435,12 +423,12 @@ namespace window
     // without continuously polling.
     APPLIB_API void waitEvents();
 
-    // Waits for events with a specified timeout and processes them. If no events occur
+    // Waits for events with a global timeout and processes them. If no events occur
     // within the given timeout period, the function returns. This is useful for
     // scenarios where you want to wait for events but also perform some other action
     // if no events occur within a certain time frame, such as updating the UI or
     // handling non-event-related logic.
-    APPLIB_API void waitEventsTimeout(f64 timeout);
+    APPLIB_API void waitEventsTimeout();
 
     // Pushes an empty event to the event queue.
     APPLIB_API void pushEmptyEvent();
@@ -449,7 +437,7 @@ namespace window
     APPLIB_API f32 getDpi();
 
     // Get the client area size
-    APPLIB_API astl::point2D<i32>getWindowSize(const Window &window);
+    APPLIB_API astl::point2D<i32> getWindowSize(const Window &window);
 
     // Get text string from the clipboard buffer
     APPLIB_API std::string getClipboardString(const Window &window);
@@ -463,22 +451,7 @@ namespace window
     // Destroy the library and release associated resources.
     APPLIB_API void destroyLibrary();
 
-    namespace platform
-    {
-        struct WindowPlatformBase
-        {
-            Window *owner;
-            astl::point2D<i32>dimenstions;
-            CreationFlags flags;
-            bool isCursorHidden{false};
-            bool focused{false};
-            bool readyToClose = false;
-            astl::point2D<i32>resizeLimit{0, 0};
-            io::KeyPressState keys[io::Key::kLast + 1];
-            Cursor *cursor;
-
-            virtual ~WindowPlatformBase() = default;
-        };
-    } // namespace platform
+    inline Cursor::~Cursor() { astl::release(_platform); }
 } // namespace window
+
 #endif

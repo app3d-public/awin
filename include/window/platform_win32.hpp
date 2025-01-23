@@ -4,7 +4,7 @@
 #include <core/api.hpp>
 #include <map>
 #include <windows.h>
-#include "window.hpp"
+#include "platform.hpp"
 
 namespace window
 {
@@ -160,10 +160,7 @@ namespace window
 
             HINSTANCE global() const;
 
-            HWND hwnd() const;
-
-            astl::point2D<i32>frameSize() const;
-            
+            HWND hwnd() const;            
         private:
             WindowPlatformData *_impl;
         };

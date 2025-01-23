@@ -1,10 +1,5 @@
 #include <core/log.hpp>
 #include <window/window.hpp>
-#ifdef _WIN32
-    #include <window/platform_win32.hpp>
-#else
-    #error "Unsupported platform"
-#endif
 
 namespace window
 {
@@ -27,8 +22,6 @@ namespace window
         }
     } // namespace platform
 
-    Cursor::~Cursor() { astl::release(_platform); }
-
     Cursor &Cursor::operator=(Cursor &&other) noexcept
     {
         if (this != &other)
@@ -39,34 +32,6 @@ namespace window
         }
         return *this;
     }
-
-    astl::point2D<i32>Window::dimensions() const { return _platform->dimenstions; }
-
-    bool Window::decorated() const { return (_platform->flags & window::CreationFlagsBits::decorated) != 0; }
-
-    bool Window::resizable() const { return (_platform->flags & window::CreationFlagsBits::resizable) != 0; }
-
-    bool Window::fullscreen() const { return (_platform->flags & window::CreationFlagsBits::fullscreen) != 0; }
-
-    void Window::setCursor(Cursor *cursor) { _platform->cursor = cursor; }
-
-    bool Window::isCursorHidden() const { return _platform->isCursorHidden; }
-
-    bool Window::focused() const { return _platform->focused; }
-
-    bool Window::minimized() const { return _platform->flags & window::CreationFlagsBits::minimized; }
-
-    bool Window::maximized() const { return _platform->flags & window::CreationFlagsBits::maximized; }
-
-    bool Window::hidden() const { return (_platform->flags & window::CreationFlagsBits::hidden) != 0; }
-
-    astl::point2D<i32>Window::resizeLimit() const { return _platform->resizeLimit; }
-
-    void Window::resizeLimit(i32 width, i32 height) { _platform->resizeLimit = {width, height}; }
-
-    bool Window::readyToClose() const { return _platform->readyToClose; }
-
-    void Window::readyToClose(bool value) { _platform->readyToClose = value; }
 
     void updateEvents()
     {

@@ -1,11 +1,6 @@
 #include <cassert>
 #include <vulkan/vulkan.hpp>
 #include <window/vulkan.hpp>
-#ifdef _WIN32
-    #include <window/platform_win32.hpp>
-#else
-    #error "Unsupported platform"
-#endif
 
 namespace window
 {
