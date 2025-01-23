@@ -395,6 +395,7 @@ namespace window
                     {
                         if (!(window->flags & CreationFlagsBits::preinitialized))
                             window->flags ^= CreationFlagsBits::minimized;
+                        if (window->flags & CreationFlagsBits::minimized) dimenstions = {0, 0};
                         dispatchWindowEvent(eventRegistry.minimizeEvents, "window:minimize", window->owner,
                                             window->flags & CreationFlagsBits::minimized);
                     }
