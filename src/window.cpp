@@ -33,6 +33,8 @@ namespace window
         return *this;
     }
 
+    Cursor::~Cursor() { astl::release(_platform); }
+
     void updateEvents()
     {
         assert(platform::env.e);

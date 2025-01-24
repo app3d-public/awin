@@ -450,8 +450,6 @@ namespace window
 
     // Destroy the library and release associated resources.
     APPLIB_API void destroyLibrary();
-
-    inline Cursor::~Cursor() { astl::release(_platform); }
 } // namespace window
 
 #endif

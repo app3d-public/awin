@@ -177,6 +177,7 @@ namespace window
         int width;
         int height;
     };
+    
     class APPLIB_API Cursor
     {
         struct PlatformData;
