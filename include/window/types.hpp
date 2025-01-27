@@ -1,7 +1,7 @@
 #ifndef APP_WINDOW_TYPES_H
 #define APP_WINDOW_TYPES_H
 
-#include <astl/basic_types.hpp>
+#include <astl/scalars.hpp>
 #include <astl/enum.hpp>
 #include <core/api.hpp>
 

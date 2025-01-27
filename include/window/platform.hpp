@@ -1,5 +1,6 @@
 #pragma once
 
+#include <astl/point2d.hpp>
 #include <core/event.hpp>
 #include "types.hpp"
 
