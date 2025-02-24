@@ -13,8 +13,7 @@ namespace window
             {
 #ifdef _WIN32
                 vk::Win32SurfaceCreateInfoKHR info;
-                auto accessBridge = _window.accessBridge();
-                info.setHinstance(accessBridge.global()).setHwnd(accessBridge.hwnd());
+                info.setHinstance(platform::ctx.instance).setHwnd(platform::native_access::getHWND(_window));
                 surface = instance.createWin32SurfaceKHR(info, nullptr, loader);
                 return vk::Result::eSuccess;
 #else

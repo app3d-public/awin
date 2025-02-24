@@ -12,11 +12,10 @@
 #include <string>
 #include "types.hpp"
 #ifdef _WIN32
-    #include <windows.h>
-    #include "platform_win32.hpp"
+    #include "platform.hpp"
 #endif
 
-#define WINDOW_DONT_CARE   -1
+#define WINDOW_DONT_CARE -1
 
 namespace window
 {
@@ -24,18 +23,6 @@ namespace window
     // exchange with external API interfaces.
     namespace platform
     {
-        //  Data and state related to a specific window instance. It acts as a direct representative of a window in the
-        //  platform's context.
-        struct WindowPlatformData;
-
-        // Captures the necessary context for platform initialization and overall operation, storing global settings and
-        // state that are essential for the platform's functionality within the windowing system.
-        struct PlatformContext;
-
-        // Serves as a gateway for higher-level APIs to interact with platform-specific window data, abstracting the
-        // details of the platform to provide a consistent interface for window manipulation.
-        class AccessBridge;
-
         // Initializes the platform-specific components and sets up the windowing system environment.
         bool initPlatform();
 
@@ -54,7 +41,7 @@ namespace window
         // A utility function responsible for processing keyboard input events specific to a particular window
         // implementation. It manages key presses, releases, and key modifiers, facilitating their propagation to the
         // appropriate event handlers.
-        void inputKey(WindowPlatformData *impl, io::Key key, io::KeyPressState action, io::KeyMode mods);
+        void inputKey(WindowData *data, io::Key key, io::KeyPressState action, io::KeyMode mods);
     } // namespace platform
 
     // A window entity in the windowing system
@@ -75,16 +62,16 @@ namespace window
         void title(const std::string &title);
 
         // Returns the width of the window.
-        astl::point2D<i32> dimensions() const { return _platform->dimenstions; }
+        astl::point2D<i32> dimensions() const { return _platform.dimenstions; }
 
         // Check if the window has decorations
-        inline bool decorated() const { return (_platform->flags & window::CreationFlagsBits::decorated) != 0; }
+        inline bool decorated() const { return (_platform.flags & window::CreationFlagsBits::decorated) != 0; }
 
         // Check if the window is resizable.
-        inline bool resizable() const { return (_platform->flags & window::CreationFlagsBits::resizable) != 0; }
+        inline bool resizable() const { return (_platform.flags & window::CreationFlagsBits::resizable) != 0; }
 
         // Check if the window is in fullscreen mode.
-        bool fullscreen() const { return (_platform->flags & window::CreationFlagsBits::fullscreen) != 0; }
+        bool fullscreen() const { return (_platform.flags & window::CreationFlagsBits::fullscreen) != 0; }
 
         // Enable fullscreen mode.
         void enableFullscreen();
@@ -105,40 +92,40 @@ namespace window
         void hideCursor();
 
         // Check if the cursor is hidden.
-        inline bool isCursorHidden() const { return _platform->isCursorHidden; }
+        inline bool isCursorHidden() const { return _platform.isCursorHidden; }
 
         // Set cursor
-        inline void setCursor(Cursor *cursor) { _platform->cursor = cursor; }
+        inline void setCursor(Cursor *cursor) { _platform.cursor = cursor; }
 
         // Check if the window is focused.
-        inline bool focused() const { return _platform->focused; }
+        inline bool focused() const { return _platform.focused; }
 
         // Check if the window is minimized.
-        inline bool minimized() const { return _platform->flags & window::CreationFlagsBits::minimized; }
+        inline bool minimized() const { return _platform.flags & window::CreationFlagsBits::minimized; }
 
         // Minimize the window
         void minimize();
 
         // Check if the window is maximized.
-        inline bool maximized() const { return _platform->flags & window::CreationFlagsBits::maximized; }
+        inline bool maximized() const { return _platform.flags & window::CreationFlagsBits::maximized; }
 
         // Maximize the window
         void maximize();
 
         // Check if the window is hidden.
-        inline bool hidden() const { return (_platform->flags & window::CreationFlagsBits::hidden) != 0; }
+        inline bool hidden() const { return (_platform.flags & window::CreationFlagsBits::hidden) != 0; }
 
         // Get the window's resize limits.
-        inline astl::point2D<i32> resizeLimit() const { return _platform->resizeLimit; }
+        inline astl::point2D<i32> resizeLimit() const { return _platform.resizeLimit; }
 
         // Set the window's resize limits.
-        inline void resizeLimit(i32 width, i32 height) { _platform->resizeLimit = {width, height}; }
+        inline void resizeLimit(i32 width, i32 height) { _platform.resizeLimit = {width, height}; }
 
         // Check if the window is ready to be closed.
-        inline bool readyToClose() const { return _platform->readyToClose; }
+        inline bool readyToClose() const { return _platform.readyToClose; }
 
         // Change the window's ready-to-close state.
-        inline void readyToClose(bool readyToClose) { _platform->readyToClose = readyToClose; }
+        inline void readyToClose(bool readyToClose) { _platform.readyToClose = readyToClose; }
 
         // Show the window if it is hidden.
         void showWindow();
@@ -154,13 +141,10 @@ namespace window
 
         // Center the window to the parent
         void centerWindowPos();
-
-        // Retrieves the access bridge for interfacing with platform-specific window data.
-        const platform::AccessBridge &accessBridge() const { return *_accessBridge; }
-
     private:
-        platform::WindowPlatformData *_platform;
-        platform::AccessBridge *_accessBridge;
+        platform::WindowData _platform;
+
+        friend platform::native_access;
     };
 
     // Updates the event registry by associating different types of window events with their listeners.

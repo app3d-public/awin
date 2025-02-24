@@ -9,6 +9,8 @@ namespace window
 {
     namespace platform
     {
+        Win32Ctx ctx;
+
         static bool isMaximized(HWND hwnd)
         {
             WINDOWPLACEMENT placement = {0};
@@ -43,7 +45,7 @@ namespace window
 
         LRESULT CALLBACK wndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         {
-            WindowPlatformData *window = (WindowPlatformData *)GetPropW(hwnd, L"APP3DWINDOW");
+            WindowData *window = (WindowData *)GetPropW(hwnd, L"APP3DWINDOW");
             switch (uMsg)
             {
                     // Handling this event allows us to extend client (paintable) area into the title bar region
@@ -56,11 +58,11 @@ namespace window
                     //   removing the standard frame.
                 case WM_NCCALCSIZE:
                 {
-                    window = reinterpret_cast<WindowPlatformData *>(GetPropW(hwnd, L"APP3DWINDOW"));
-                    env.context->dpi = GetDpiForWindow(hwnd);
-                    env.context->frameX = GetSystemMetricsForDpi(SM_CXFRAME, env.context->dpi);
-                    env.context->frameY = GetSystemMetricsForDpi(SM_CYFRAME, env.context->dpi);
-                    env.context->padding = GetSystemMetricsForDpi(SM_CXPADDEDBORDER, env.context->dpi);
+                    window = reinterpret_cast<WindowData *>(GetPropW(hwnd, L"APP3DWINDOW"));
+                    ctx.dpi = GetDpiForWindow(hwnd);
+                    ctx.frameX = GetSystemMetricsForDpi(SM_CXFRAME, ctx.dpi);
+                    ctx.frameY = GetSystemMetricsForDpi(SM_CYFRAME, ctx.dpi);
+                    ctx.padding = GetSystemMetricsForDpi(SM_CXPADDEDBORDER, ctx.dpi);
 
                     if (!wParam || !window || (window->flags & CreationFlagsBits::decorated) ||
                         (window->flags & CreationFlagsBits::fullscreen))
@@ -68,26 +70,25 @@ namespace window
 
                     NCCALCSIZE_PARAMS *params = (NCCALCSIZE_PARAMS *)lParam;
                     RECT *clentRect = params->rgrc;
-                    clentRect->right -= env.context->frameX + env.context->padding;
-                    clentRect->left += env.context->frameX + env.context->padding;
-                    clentRect->bottom -= env.context->frameY + env.context->padding;
+                    clentRect->right -= ctx.frameX + ctx.padding;
+                    clentRect->left += ctx.frameX + ctx.padding;
+                    clentRect->bottom -= ctx.frameY + ctx.padding;
 
-                    if (isMaximized(hwnd)) clentRect->top += env.context->frameY + env.context->padding;
+                    if (isMaximized(hwnd)) clentRect->top += ctx.frameY + ctx.padding;
                     return 0;
                 }
                 case WM_CREATE:
                 {
                     CREATESTRUCT *createStruct = reinterpret_cast<CREATESTRUCT *>(lParam);
-                    window = reinterpret_cast<WindowPlatformData *>(createStruct->lpCreateParams);
+                    window = reinterpret_cast<WindowData *>(createStruct->lpCreateParams);
                     if (!window) break;
                     SetPropW(hwnd, L"APP3DWINDOW", reinterpret_cast<HANDLE>(window));
                     MonitorInfo monitorInfo = getPrimaryMonitorInfo();
-                    env.context->screenWidth = monitorInfo.width;
-                    env.context->screenHeight = monitorInfo.height;
+                    ctx.screenWidth = monitorInfo.width;
+                    ctx.screenHeight = monitorInfo.height;
                     if (window->flags & CreationFlagsBits::fullscreen)
                     {
-                        SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, env.context->screenWidth, env.context->screenHeight,
-                                     SWP_SHOWWINDOW);
+                        SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, ctx.screenWidth, ctx.screenHeight, SWP_SHOWWINDOW);
                         return 0;
                     }
 
@@ -136,7 +137,7 @@ namespace window
                     cursorPoint.x = LOWORD(lParam);
                     cursorPoint.y = HIWORD(lParam);
                     ScreenToClient(hwnd, &cursorPoint);
-                    if (cursorPoint.y > 0 && cursorPoint.y < env.context->frameY + env.context->padding) return HTTOP;
+                    if (cursorPoint.y > 0 && cursorPoint.y < ctx.frameY + ctx.padding) return HTTOP;
                     if (!eventRegistry.NCHitTest) break;
                     Win32NativeEvent event("window:NCHitTest", window->owner, hwnd, uMsg, wParam, lParam, hit);
                     eventRegistry.NCHitTest->invoke(event);
@@ -149,7 +150,7 @@ namespace window
                         POINT cursorPoint;
                         GetCursorPos(&cursorPoint);
                         ScreenToClient(hwnd, &cursorPoint);
-                        if (cursorPoint.y > 0 && cursorPoint.y < env.context->frameY + env.context->padding) break;
+                        if (cursorPoint.y > 0 && cursorPoint.y < ctx.frameY + ctx.padding) break;
                         Win32NativeEvent event("window:NCLMouseDown", window->owner, hwnd, uMsg, wParam, lParam);
                         eventRegistry.NCLMouseDown->invoke(event);
                         if (event.lResult != -1) return event.lResult;
@@ -210,7 +211,7 @@ namespace window
                     if (!RegisterRawInputDevices(&rid, 1, sizeof(rid)))
                         logError("Failed to register RAWINPUTDEVICE");
                     else
-                        window->rawInput = true;
+                        window->backend.rawInput = true;
                     break;
                 }
                 case WM_KILLFOCUS:
@@ -218,25 +219,26 @@ namespace window
                     if (!window) break;
                     window->focused = false;
                     dispatchWindowEvent(eventRegistry.focusEvents, "window:focus", window->owner, false);
-                    if (!window->rawInput) break;
+                    if (!window->backend.rawInput) break;
                     const RAWINPUTDEVICE rid = {0x01, 0x02, RIDEV_REMOVE, NULL};
                     if (!RegisterRawInputDevices(&rid, 1, sizeof(rid)))
                         logError("Failed to remove raw input device");
                     else
-                        window->rawInput = false;
+                        window->backend.rawInput = false;
                     break;
                 }
                 case WM_CHAR:
                 case WM_SYSCHAR:
                 {
                     if (IS_HIGH_SURROGATE(wParam))
-                        window->highSurrogate = wParam;
+                        window->backend.highSurrogate = wParam;
                     else if (IS_LOW_SURROGATE(wParam))
                     {
-                        if (window->highSurrogate)
+                        if (window->backend.highSurrogate)
                         {
-                            u32 codepoint = (((window->highSurrogate - 0xD800) << 10) | (wParam - 0xDC00)) + 0x10000;
-                            window->highSurrogate = 0;
+                            u32 codepoint =
+                                (((window->backend.highSurrogate - 0xD800) << 10) | (wParam - 0xDC00)) + 0x10000;
+                            window->backend.highSurrogate = 0;
                             dispatchWindowEvent(eventRegistry.charInputEvents, "window:input:char", window->owner,
                                                 codepoint);
                         }
@@ -342,8 +344,8 @@ namespace window
                             break;
                         default:
                         {
-                            auto it = env.context->keymap.find(wParam);
-                            key = it != env.context->keymap.end() ? it->second : io::Key::kUnknown;
+                            auto it = ctx.keymap.find(wParam);
+                            key = it != ctx.keymap.end() ? it->second : io::Key::kUnknown;
                             break;
                         }
                     }
@@ -355,15 +357,15 @@ namespace window
                 }
                 case WM_MOUSEMOVE:
                 {
-                    if (!window->cursorTracked)
+                    if (!window->backend.cursorTracked)
                     {
                         TRACKMOUSEEVENT tme;
                         ZeroMemory(&tme, sizeof(tme));
                         tme.cbSize = sizeof(tme);
                         tme.dwFlags = TME_LEAVE;
-                        tme.hwndTrack = window->hwnd;
+                        tme.hwndTrack = window->backend.hwnd;
                         TrackMouseEvent(&tme);
-                        window->cursorTracked = true;
+                        window->backend.cursorTracked = true;
                         dispatchWindowEvent(eventRegistry.cursorEnterEvents, "window:cursor:enter", window->owner,
                                             true);
                     }
@@ -372,7 +374,7 @@ namespace window
                     return 0;
                 }
                 case WM_MOUSELEAVE:
-                    window->cursorTracked = false;
+                    window->backend.cursorTracked = false;
                     dispatchWindowEvent(eventRegistry.cursorEnterEvents, "window:cursor:enter", window->owner, false);
                     return 0;
                 case WM_MOUSEWHEEL:
@@ -447,22 +449,22 @@ namespace window
                 }
                 case WM_INPUT:
                 {
-                    if (!window->rawInput) break;
+                    if (!window->backend.rawInput) break;
                     UINT dwSize;
                     GetRawInputData((HRAWINPUT)lParam, RID_INPUT, NULL, &dwSize, sizeof(RAWINPUTHEADER));
-                    if (dwSize > window->rawInputSize)
+                    if (dwSize > window->backend.rawInputSize)
                     {
-                        astl::release(window->rawInputData);
-                        window->rawInputData = astl::alloc_n<BYTE>(dwSize);
-                        window->rawInputSize = dwSize;
+                        astl::release(window->backend.rawInputData);
+                        window->backend.rawInputData = astl::alloc_n<BYTE>(dwSize);
+                        window->backend.rawInputSize = dwSize;
                     }
-                    if (GetRawInputData((HRAWINPUT)lParam, RID_INPUT, window->rawInputData, &dwSize,
+                    if (GetRawInputData((HRAWINPUT)lParam, RID_INPUT, window->backend.rawInputData, &dwSize,
                                         sizeof(RAWINPUTHEADER)) != dwSize)
                     {
                         logError("GetRawInputData does not return correct size");
                         break;
                     }
-                    RAWINPUT *raw = (RAWINPUT *)window->rawInputData;
+                    RAWINPUT *raw = (RAWINPUT *)window->backend.rawInputData;
 
                     if (raw->header.dwType == RIM_TYPEMOUSE)
                     {
@@ -487,14 +489,10 @@ namespace window
 
         void destroyPlatform()
         {
-            if (env.context)
+            if (ctx.instance)
             {
-                if (env.context->instance)
-                {
-                    if (env.context->win32class.hIcon) DestroyIcon(env.context->win32class.hIcon);
-                    UnregisterClassW(env.context->win32class.lpszClassName, env.context->instance);
-                }
-                astl::release(env.context);
+                if (ctx.win32class.hIcon) DestroyIcon(ctx.win32class.hIcon);
+                UnregisterClassW(ctx.win32class.lpszClassName, ctx.instance);
             }
         }
 
@@ -513,35 +511,24 @@ namespace window
         {
             if (!SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2))
                 logWarn("Failed to set process dpi awareness context");
-            PlatformContext *context = astl::alloc<PlatformContext>();
-            context->instance = GetModuleHandleW(nullptr);
-            context->win32class = {sizeof(context->win32class)};
-            context->win32class.style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC;
-            context->win32class.lpfnWndProc = wndProc;
-            context->win32class.hInstance = context->instance;
-            context->win32class.lpszClassName = L"APP3DWINDOWLIB";
-            context->win32class.hCursor = LoadCursor(NULL, IDC_ARROW);
-            context->win32class.hIcon = LoadIconW(context->instance, L"WINDOW_ICON");
-            if (!context->win32class.hIcon)
+            ctx.instance = GetModuleHandleW(nullptr);
+            ctx.win32class = {sizeof(ctx.win32class)};
+            ctx.win32class.style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC;
+            ctx.win32class.lpfnWndProc = wndProc;
+            ctx.win32class.hInstance = ctx.instance;
+            ctx.win32class.lpszClassName = L"APP3DWINDOWLIB";
+            ctx.win32class.hCursor = LoadCursor(NULL, IDC_ARROW);
+            ctx.win32class.hIcon = LoadIconW(ctx.instance, L"WINDOW_ICON");
+            if (!ctx.win32class.hIcon)
             {
                 logWarn("Failed to load window icon");
-                context->win32class.hIcon = LoadIcon(NULL, IDI_APPLICATION);
+                ctx.win32class.hIcon = LoadIcon(NULL, IDI_APPLICATION);
             }
-            if (RegisterClassExW(&context->win32class))
-                env.context = context;
-            else
-            {
-                astl::release(context);
-                return false;
-            }
+            if (!RegisterClassExW(&ctx.win32class)) return false;
             // Init platform for using COM objects
             HRESULT hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
             return !FAILED(hr);
         }
-
-        HINSTANCE AccessBridge::global() const { return env.context->instance; }
-
-        HWND AccessBridge::hwnd() const { return _impl->hwnd; }
     } // namespace platform
 
     MonitorInfo getPrimaryMonitorInfo()
@@ -559,110 +546,96 @@ namespace window
             return {};
     }
 
-    Window::Window(const std::string &title, i32 width, i32 height, CreationFlags flags)
-        : _platform(nullptr), _accessBridge(nullptr)
+    Window::Window(const std::string &title, i32 width, i32 height, CreationFlags flags) : _platform(nullptr)
     {
-        _platform = astl::alloc<platform::WindowPlatformData>();
-        _platform->owner = this;
-        _platform->title = astl::utf8_to_utf16(title);
-        _platform->dimenstions = {width == -1 ? CW_USEDEFAULT : width, height == -1 ? CW_USEDEFAULT : height};
-        _platform->flags = flags;
+        _platform.owner = this;
+        _platform.backend.title = astl::utf8_to_utf16(title);
+        _platform.dimenstions = {width == -1 ? CW_USEDEFAULT : width, height == -1 ? CW_USEDEFAULT : height};
+        _platform.flags = flags;
         if (flags & CreationFlagsBits::fullscreen || flags & CreationFlagsBits::maximized ||
             flags & CreationFlagsBits::maximized)
-            _platform->flags |= CreationFlagsBits::preinitialized;
-        _platform->style = platform::getWindowStyle(flags);
-        _platform->exStyle = WS_EX_APPWINDOW;
-        _platform->hwnd = nullptr;
-        _platform->cursor = Cursor::defaultCursor();
-        _accessBridge = astl::alloc<platform::AccessBridge>(_platform);
+            _platform.flags |= CreationFlagsBits::preinitialized;
+        _platform.backend.style = platform::getWindowStyle(flags);
+        _platform.backend.exStyle = WS_EX_APPWINDOW;
+        _platform.backend.hwnd = nullptr;
+        _platform.cursor = Cursor::defaultCursor();
 
-        _platform->hwnd = CreateWindowExW(
-            _platform->exStyle, platform::env.context->win32class.lpszClassName, (LPCWSTR)_platform->title.c_str(),
-            _platform->style & ~WS_VISIBLE, CW_USEDEFAULT, CW_USEDEFAULT, _platform->dimenstions.x,
-            _platform->dimenstions.y, nullptr, nullptr, platform::env.context->instance, (LPVOID)_platform);
+        _platform.backend.hwnd = CreateWindowExW(
+            _platform.backend.exStyle, platform::ctx.win32class.lpszClassName, (LPCWSTR)_platform.backend.title.c_str(),
+            _platform.backend.style & ~WS_VISIBLE, CW_USEDEFAULT, CW_USEDEFAULT, _platform.dimenstions.x,
+            _platform.dimenstions.y, nullptr, nullptr, platform::ctx.instance, (LPVOID)&_platform);
 
-        if (!_platform->hwnd) throw std::runtime_error("Failed to create window");
+        if (!_platform.backend.hwnd) throw std::runtime_error("Failed to create window");
         if (!(flags & CreationFlagsBits::hidden))
         {
             if (flags & CreationFlagsBits::minimized)
-                ShowWindow(_platform->hwnd, SW_MINIMIZE);
+                ShowWindow(_platform.backend.hwnd, SW_MINIMIZE);
             else if (flags & CreationFlagsBits::maximized)
-                ShowWindow(_platform->hwnd, SW_MAXIMIZE);
+                ShowWindow(_platform.backend.hwnd, SW_MAXIMIZE);
             else
-                ShowWindow(_platform->hwnd, SW_SHOWNORMAL);
+                ShowWindow(_platform.backend.hwnd, SW_SHOWNORMAL);
         }
-        logInfo("Created Window descriptor: %p", _platform->hwnd);
+        logInfo("Created Window descriptor: %p", _platform.backend.hwnd);
     }
 
     void Window::destroy()
     {
-        if (_accessBridge)
+        if (_platform.backend.rawInputData)
         {
-            astl::release(_accessBridge);
-            _accessBridge = nullptr;
+            astl::release(_platform.backend.rawInputData);
+            _platform.backend.rawInputData = nullptr;
+            _platform.backend.rawInputSize = 0;
         }
-        if (_platform)
+
+        if (_platform.backend.hwnd)
         {
-            if (_platform->rawInputData)
-            {
-                astl::release(_platform->rawInputData);
-                _platform->rawInputData = nullptr;
-                _platform->rawInputSize = 0;
-            }
-
-            if (_platform->hwnd)
-            {
-                RemovePropW(_platform->hwnd, L"APP3DWINDOW");
-                logInfo("Destroying Window descriptor: %p", _platform->hwnd);
-                HWND hwnd = _platform->hwnd;
-                DestroyWindow(hwnd);
-                _platform->hwnd = nullptr;
-            }
-
-            CoUninitialize();
-
-            astl::release(_platform);
-            _platform = nullptr;
+            RemovePropW(_platform.backend.hwnd, L"APP3DWINDOW");
+            logInfo("Destroying Window descriptor: %p", _platform.backend.hwnd);
+            HWND hwnd = _platform.backend.hwnd;
+            DestroyWindow(hwnd);
+            _platform.backend.hwnd = nullptr;
         }
+
+        CoUninitialize();
     }
 
     void Window::showWindow()
     {
         if (!hidden()) return;
         WINDOWPLACEMENT placement = {sizeof(WINDOWPLACEMENT)};
-        GetWindowPlacement(_platform->hwnd, &placement);
-        placement.showCmd = _platform->flags & CreationFlagsBits::maximized ? SW_SHOWMAXIMIZED : SW_NORMAL;
-        SetWindowPlacement(_platform->hwnd, &placement);
-        _platform->flags &= ~CreationFlagsBits::hidden;
-        _platform->flags &= ~CreationFlagsBits::preinitialized;
+        GetWindowPlacement(_platform.backend.hwnd, &placement);
+        placement.showCmd = _platform.flags & CreationFlagsBits::maximized ? SW_SHOWMAXIMIZED : SW_NORMAL;
+        SetWindowPlacement(_platform.backend.hwnd, &placement);
+        _platform.flags &= ~CreationFlagsBits::hidden;
+        _platform.flags &= ~CreationFlagsBits::preinitialized;
     }
 
     void Window::hideWindow()
     {
         if (hidden()) return;
-        ShowWindow(_platform->hwnd, SW_HIDE);
-        _platform->flags |= CreationFlagsBits::hidden;
+        ShowWindow(_platform.backend.hwnd, SW_HIDE);
+        _platform.flags |= CreationFlagsBits::hidden;
     }
 
     void Window::title(const std::string &title)
     {
-        _platform->title = astl::utf8_to_utf16(title);
-        SetWindowTextW(_platform->hwnd, (LPCWSTR)_platform->title.c_str());
+        _platform.backend.title = astl::utf8_to_utf16(title);
+        SetWindowTextW(_platform.backend.hwnd, (LPCWSTR)_platform.backend.title.c_str());
     }
 
     void Window::enableFullscreen()
     {
-        _platform->flags |= CreationFlagsBits::fullscreen;
-        SetWindowLongPtr(_platform->hwnd, GWL_STYLE, WS_VISIBLE | WS_POPUP);
-        SetWindowPos(_platform->hwnd, HWND_TOPMOST, 0, 0, platform::env.context->screenWidth,
-                     platform::env.context->screenHeight, SWP_SHOWWINDOW);
+        _platform.flags |= CreationFlagsBits::fullscreen;
+        SetWindowLongPtr(_platform.backend.hwnd, GWL_STYLE, WS_VISIBLE | WS_POPUP);
+        SetWindowPos(_platform.backend.hwnd, HWND_TOPMOST, 0, 0, platform::ctx.screenWidth, platform::ctx.screenHeight,
+                     SWP_SHOWWINDOW);
     }
 
     void Window::disableFullscreen()
     {
-        _platform->flags &= ~CreationFlagsBits::fullscreen;
-        SetWindowLongPtr(_platform->hwnd, GWL_STYLE, _platform->style);
-        SetWindowPos(_platform->hwnd, HWND_NOTOPMOST, 0, 0, _platform->dimenstions.x, _platform->dimenstions.y,
+        _platform.flags &= ~CreationFlagsBits::fullscreen;
+        SetWindowLongPtr(_platform.backend.hwnd, GWL_STYLE, _platform.backend.style);
+        SetWindowPos(_platform.backend.hwnd, HWND_NOTOPMOST, 0, 0, _platform.dimenstions.x, _platform.dimenstions.y,
                      SWP_SHOWWINDOW);
     }
 
@@ -671,7 +644,7 @@ namespace window
         POINT pos;
         if (GetCursorPos(&pos))
         {
-            ScreenToClient(_platform->hwnd, &pos);
+            ScreenToClient(_platform.backend.hwnd, &pos);
             return {pos.x, pos.y};
         }
         return {};
@@ -681,33 +654,33 @@ namespace window
     {
 
         POINT pos = {position.x, position.y};
-        ClientToScreen(_platform->hwnd, &pos);
+        ClientToScreen(_platform.backend.hwnd, &pos);
         SetCursorPos(pos.x, pos.y);
     }
 
     void Window::showCursor()
     {
-        if (!_platform->isCursorHidden) return;
-        cursorPosition(_platform->savedCursorPos);
+        if (!_platform.isCursorHidden) return;
+        cursorPosition(_platform.backend.savedCursorPos);
         ReleaseCapture();
         ShowCursor(TRUE);
-        _platform->isCursorHidden = false;
+        _platform.isCursorHidden = false;
     }
 
     void Window::hideCursor()
     {
-        if (_platform->isCursorHidden) return;
-        _platform->savedCursorPos = cursorPosition();
-        SetCapture(_platform->hwnd);
+        if (_platform.isCursorHidden) return;
+        _platform.backend.savedCursorPos = cursorPosition();
+        SetCapture(_platform.backend.hwnd);
         ShowCursor(FALSE);
         ClipCursor(NULL);
-        _platform->isCursorHidden = true;
+        _platform.isCursorHidden = true;
     }
 
     astl::point2D<i32> Window::windowPos() const
     {
         RECT rect;
-        if (GetWindowRect(_platform->hwnd, &rect))
+        if (GetWindowRect(_platform.backend.hwnd, &rect))
             return {rect.left, rect.top};
         else
             return {0, 0};
@@ -716,13 +689,13 @@ namespace window
     void Window::windowPos(astl::point2D<i32> position)
     {
         WINDOWPLACEMENT wp = {sizeof(WINDOWPLACEMENT)};
-        GetWindowPlacement(_platform->hwnd, &wp);
+        GetWindowPlacement(_platform.backend.hwnd, &wp);
         auto dimenstions = getWindowSize(*this);
         wp.rcNormalPosition.left = position.x;
         wp.rcNormalPosition.top = position.y;
         wp.rcNormalPosition.right = position.x + dimenstions.x;
         wp.rcNormalPosition.bottom = position.y + dimenstions.y;
-        SetWindowPlacement(_platform->hwnd, &wp);
+        SetWindowPlacement(_platform.backend.hwnd, &wp);
     }
 
     void Window::centerWindowPos()
@@ -731,7 +704,7 @@ namespace window
         SystemParametersInfo(SPI_GETWORKAREA, 0, &workArea, 0); // Получаем размеры рабочей области экрана
 
         RECT windowRect;
-        GetWindowRect(_platform->hwnd, &windowRect);
+        GetWindowRect(_platform.backend.hwnd, &windowRect);
         int windowWidth = windowRect.right - windowRect.left;
         int windowHeight = windowRect.bottom - windowRect.top;
 
@@ -742,12 +715,13 @@ namespace window
 
         if (centerY < workArea.top) centerY = workArea.top;
 
-        SetWindowPos(_platform->hwnd, NULL, centerX, centerY, windowWidth, windowHeight, SWP_NOZORDER | SWP_NOACTIVATE);
+        SetWindowPos(_platform.backend.hwnd, NULL, centerX, centerY, windowWidth, windowHeight,
+                     SWP_NOZORDER | SWP_NOACTIVATE);
     }
 
-    void Window::minimize() { ShowWindow(_platform->hwnd, SW_MINIMIZE); }
+    void Window::minimize() { ShowWindow(_platform.backend.hwnd, SW_MINIMIZE); }
 
-    void Window::maximize() { ShowWindow(_platform->hwnd, maximized() ? SW_RESTORE : SW_MAXIMIZE); }
+    void Window::maximize() { ShowWindow(_platform.backend.hwnd, maximized() ? SW_RESTORE : SW_MAXIMIZE); }
 
     void waitEvents()
     {
@@ -766,10 +740,10 @@ namespace window
             DispatchMessageW(&msg);
         }
 
-        platform::WindowPlatformData *window = (platform::WindowPlatformData *)GetPropW(hwnd, L"APP3DWINDOW");
+        platform::WindowData *window = (platform::WindowData *)GetPropW(hwnd, L"APP3DWINDOW");
         if (!window) return;
 
-        if (window->isCursorHidden && window->owner->cursorPosition() != window->savedCursorPos)
+        if (window->isCursorHidden && window->owner->cursorPosition() != window->backend.savedCursorPos)
         {
             astl::point2D<i32> pos = window->dimenstions / 2.0f;
             window->owner->cursorPosition(pos);
@@ -790,12 +764,12 @@ namespace window
 
     void pushEmptyEvent() { PostMessageW(NULL, WM_NULL, 0, 0); }
 
-    f32 getDpi() { return static_cast<f32>(platform::env.context->dpi) / 96.0f; }
+    f32 getDpi() { return static_cast<f32>(platform::ctx.dpi) / 96.0f; }
 
     astl::point2D<i32> getWindowSize(const Window &window)
     {
         RECT area;
-        GetClientRect(window.accessBridge().hwnd(), &area);
+        GetClientRect(platform::native_access::getHWND(window), &area);
         return {area.right, area.bottom};
     }
 
@@ -806,7 +780,7 @@ namespace window
 
         // NOTE: Retry clipboard opening a few times as some other application may have it
         //       open and also the Windows Clipboard History reads it after each update
-        HWND hwnd = window.accessBridge().hwnd();
+        HWND hwnd = platform::native_access::getHWND(window);
         while (!OpenClipboard(hwnd))
         {
             Sleep(1);
@@ -864,7 +838,7 @@ namespace window
 
         // NOTE: Retry clipboard opening a few times as some other application may have it
         //       open and also the Windows Clipboard History reads it after each update
-        HWND hwnd = window.accessBridge().hwnd();
+        HWND hwnd = platform::native_access::getHWND(window);
         while (!OpenClipboard(hwnd))
         {
             Sleep(1);
@@ -888,27 +862,27 @@ namespace window
         switch (type)
         {
             case Type::arrow:
-                return {astl::alloc<PlatformData>(LoadCursor(NULL, IDC_ARROW))};
+                return {platform::Win32Cursor(LoadCursor(NULL, IDC_ARROW))};
             case Type::ibeam:
-                return {astl::alloc<PlatformData>(LoadCursor(NULL, IDC_IBEAM))};
+                return {platform::Win32Cursor(LoadCursor(NULL, IDC_IBEAM))};
             case Type::crosshair:
-                return {astl::alloc<PlatformData>(LoadCursor(NULL, IDC_CROSS))};
+                return {platform::Win32Cursor(LoadCursor(NULL, IDC_CROSS))};
             case Type::hand:
-                return {astl::alloc<PlatformData>(LoadCursor(NULL, IDC_HAND))};
+                return {platform::Win32Cursor(LoadCursor(NULL, IDC_HAND))};
             case Type::resizeEW:
-                return {astl::alloc<PlatformData>(LoadCursor(NULL, IDC_SIZEWE))};
+                return {platform::Win32Cursor(LoadCursor(NULL, IDC_SIZEWE))};
             case Type::resizeNS:
-                return {astl::alloc<PlatformData>(LoadCursor(NULL, IDC_SIZENS))};
+                return {platform::Win32Cursor(LoadCursor(NULL, IDC_SIZENS))};
             case Type::resizeNESW:
-                return {astl::alloc<PlatformData>(LoadCursor(NULL, IDC_SIZENESW))};
+                return {platform::Win32Cursor(LoadCursor(NULL, IDC_SIZENESW))};
             case Type::resizeNWSE:
-                return {astl::alloc<PlatformData>(LoadCursor(NULL, IDC_SIZENWSE))};
+                return {platform::Win32Cursor(LoadCursor(NULL, IDC_SIZENWSE))};
             case Type::resizeAll:
-                return {astl::alloc<PlatformData>(LoadCursor(NULL, IDC_SIZEALL))};
+                return {platform::Win32Cursor(LoadCursor(NULL, IDC_SIZEALL))};
             case Type::notAllowed:
-                return {astl::alloc<PlatformData>(LoadCursor(NULL, IDC_NO))};
+                return {platform::Win32Cursor(LoadCursor(NULL, IDC_NO))};
             default:
-                return {};
+                return platform::Win32Cursor();
         }
     }
 
@@ -918,6 +892,8 @@ namespace window
         return &cursor;
     }
 
-    void Cursor::assign() { SetCursor(_platform->cursor); }
+    void Cursor::assign() { SetCursor(_platform.cursor); }
+
+    HWND platform::native_access::getHWND(const Window &window) { return window._platform.backend.hwnd; }
 
 } // namespace window

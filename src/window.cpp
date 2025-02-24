@@ -6,19 +6,19 @@ namespace window
     DefaultRegistry eventRegistry(nullptr);
     namespace platform
     {
-        WindowEnvironment env{nullptr};
+        WindowEnvironment env;
 
-        void inputKey(WindowPlatformData *impl, io::Key key, io::KeyPressState action, io::KeyMode mods)
+        void inputKey(WindowData *data, io::Key key, io::KeyPressState action, io::KeyMode mods)
         {
             if (+key >= 0 && key <= io::Key::kLast)
             {
                 bool repeated{false};
-                if (action == io::KeyPressState::release && impl->keys[+key] == io::KeyPressState::release) return;
-                if (action == io::KeyPressState::press && impl->keys[+key] == io::KeyPressState::press) repeated = true;
-                impl->keys[+key] = action;
+                if (action == io::KeyPressState::release && data->keys[+key] == io::KeyPressState::release) return;
+                if (action == io::KeyPressState::press && data->keys[+key] == io::KeyPressState::press) repeated = true;
+                data->keys[+key] = action;
                 if (repeated) action = io::KeyPressState::repeat;
             }
-            dispatchWindowEvent(eventRegistry.keyInputEvents, "window:input:key", impl->owner, key, action, mods);
+            dispatchWindowEvent(eventRegistry.keyInputEvents, "window:input:key", data->owner, key, action, mods);
         }
     } // namespace platform
 
@@ -26,14 +26,11 @@ namespace window
     {
         if (this != &other)
         {
-            astl::release(_platform);
             _platform = other._platform;
-            other._platform = nullptr;
+            other._platform.cursor = NULL;
         }
         return *this;
     }
-
-    Cursor::~Cursor() { astl::release(_platform); }
 
     void updateEvents()
     {

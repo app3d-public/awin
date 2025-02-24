@@ -68,7 +68,7 @@ namespace window
             UINT iconFlag = styleToIcon(style);
             UINT buttonsFlag = buttonsToFlags(buttons);
             UINT flags = buttonsFlag | iconFlag;
-            HWND hwnd = parent ? parent->accessBridge().hwnd() : nullptr;
+            HWND hwnd = parent ? platform::native_access::getHWND(*parent) : nullptr;
             if (!hwnd) flags |= MB_TOPMOST;
             auto wMessage = astl::utf8_to_utf16(message);
             LPCWSTR lpText = reinterpret_cast<LPCWSTR>(wMessage.c_str());

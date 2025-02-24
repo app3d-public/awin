@@ -1,9 +1,13 @@
 #ifndef APP_WINDOW_TYPES_H
 #define APP_WINDOW_TYPES_H
 
-#include <astl/basic_types.hpp>
 #include <astl/enum.hpp>
+#include <astl/scalars.hpp>
 #include <core/api.hpp>
+
+#ifdef _WIN32
+    #include "win32/cursor.hpp"
+#endif
 
 #define KEY_MOD_START_INDEX 106
 
@@ -156,17 +160,21 @@ namespace window
             repeat
         };
 
-        enum class KeyModeBits : i8
+        struct KeyModeBits
         {
-            shift = 0x0001,
-            control = 0x0002,
-            alt = 0x0004,
-            super = 0x0008,
-            capsLock = 0x0010,
-            numLock = 0x0020
+            enum enum_type : i8
+            {
+                shift = 0x0001,
+                control = 0x0002,
+                alt = 0x0004,
+                super = 0x0008,
+                capsLock = 0x0010,
+                numLock = 0x0020
+            };
+            using flag_bitmask = std::true_type;
         };
 
-        using KeyMode = Flags<KeyModeBits>;
+        using KeyMode = astl::flags<KeyModeBits>;
     } // namespace io
 
     // Basic information about a monitor/display.
@@ -177,11 +185,9 @@ namespace window
         int width;
         int height;
     };
-    
+
     class APPLIB_API Cursor
     {
-        struct PlatformData;
-
     public:
         enum class Type
         {
@@ -200,17 +206,15 @@ namespace window
             notAllowed  // The operation-not-allowed shape.  This is usually a circle with a diagonal line through it.
         };
 
-        Cursor(PlatformData *platform = nullptr) : _platform(platform) {}
+        Cursor(const platform::native_cursor_t &cursor = platform::native_cursor_t()) : _platform(cursor) {}
 
         Cursor(const Cursor &) = delete;
         Cursor &operator=(const Cursor &) = delete;
 
         Cursor &operator=(Cursor &&other) noexcept;
 
-        ~Cursor();
-
         // Check if cursor is valid and was initialized.
-        bool valid() const { return _platform != nullptr; }
+        bool valid() const { return _platform.valid(); }
 
         // Create a new cursor with the given type.
         static Cursor create(Type type);
@@ -222,51 +226,33 @@ namespace window
         void assign();
 
     private:
-        PlatformData *_platform;
+        platform::native_cursor_t _platform;
     };
 
     // Flags for window creation, stored as u16 for memory efficiency.
-    enum class CreationFlagsBits : u16
+    struct CreationFlagsBits
     {
-        resizable = 0x0001,      // Allows window resizing.
-        snapped = 0x0002,        // Enables window snapping to screen edges.
-        decorated = 0x0004,      // Adds decorations like title bar and borders.
-        fullscreen = 0x0008,     // Enables fullscreen mode.
-        minimizebox = 0x00010,   // Includes a minimize button.
-        maximizebox = 0x00020,   // Includes a maximize button.
-        hidden = 0x00040,        // Does not show the window on creation.
-        minimized = 0x00080,     // Starts minimized.
-        maximized = 0x00100,     // Starts maximized.
-        preinitialized = 0x00200 // Preinitialized service flag
+        enum enum_type : u16
+        {
+            resizable = 0x0001,      // Allows window resizing.
+            snapped = 0x0002,        // Enables window snapping to screen edges.
+            decorated = 0x0004,      // Adds decorations like title bar and borders.
+            fullscreen = 0x0008,     // Enables fullscreen mode.
+            minimizebox = 0x00010,   // Includes a minimize button.
+            maximizebox = 0x00020,   // Includes a maximize button.
+            hidden = 0x00040,        // Does not show the window on creation.
+            minimized = 0x00080,     // Starts minimized.
+            maximized = 0x00100,     // Starts maximized.
+            preinitialized = 0x00200 // Preinitialized service flag
+        };
+        using flag_bitmask = std::true_type;
     };
 
     // Flags for window creation, stored as u8 for memory efficiency.
-    using CreationFlags = Flags<CreationFlagsBits>;
+    using CreationFlags = astl::flags<CreationFlagsBits>;
 
 #define WINDOW_DEFAULT_FLAGS                                                                         \
     CreationFlagsBits::resizable | CreationFlagsBits::minimizebox | CreationFlagsBits::maximizebox | \
         CreationFlagsBits::decorated | CreationFlagsBits::snapped
 } // namespace window
-
-template <>
-struct FlagTraits<window::CreationFlagsBits>
-{
-    static constexpr bool isBitmask = true;
-    static constexpr window::CreationFlags allFlags =
-        (window::CreationFlagsBits::resizable | window::CreationFlagsBits::snapped |
-         window::CreationFlagsBits::decorated | window::CreationFlagsBits::fullscreen |
-         window::CreationFlagsBits::minimizebox | window::CreationFlagsBits::maximizebox |
-         window::CreationFlagsBits::hidden | window::CreationFlagsBits::minimized |
-         window::CreationFlagsBits::maximized);
-};
-
-template <>
-struct FlagTraits<window::io::KeyModeBits>
-{
-    static constexpr bool isBitmask = true;
-    static constexpr window::io::KeyMode allFlags =
-        window::io::KeyModeBits::shift | window::io::KeyModeBits::control | window::io::KeyModeBits::alt |
-        window::io::KeyModeBits::super | window::io::KeyModeBits::capsLock | window::io::KeyModeBits::numLock;
-};
-
 #endif

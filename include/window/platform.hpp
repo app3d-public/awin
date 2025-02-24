@@ -2,6 +2,9 @@
 
 #include <core/event.hpp>
 #include "types.hpp"
+#ifdef _WIN32
+    #include "win32/platform.hpp"
+#endif
 
 #define WINDOW_TIMEOUT_INF -1
 
@@ -10,11 +13,9 @@ namespace window
     class Window;
     namespace platform
     {
-        struct PlatformContext;
         // The window environment configuration for window management and interactions within the windowing system.
         extern APPLIB_API struct WindowEnvironment
         {
-            PlatformContext *context;  // Platform-specific context for window operations.
             std::string clipboardData; // Clipboard data storage.
             struct Timer
             {
@@ -25,7 +26,7 @@ namespace window
             events::Manager *e = nullptr;
         } env;
 
-        struct WindowPlatformBase
+        struct WindowData
         {
             Window *owner;
             astl::point2D<i32> dimenstions;
@@ -36,8 +37,7 @@ namespace window
             astl::point2D<i32> resizeLimit{0, 0};
             io::KeyPressState keys[io::Key::kLast + 1];
             Cursor *cursor;
-
-            virtual ~WindowPlatformBase() = default;
+            platform_data_t backend;
         };
     } // namespace platform
 
