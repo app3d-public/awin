@@ -139,7 +139,7 @@ namespace window
                     ScreenToClient(hwnd, &cursorPoint);
                     if (cursorPoint.y > 0 && cursorPoint.y < ctx.frameY + ctx.padding) return HTTOP;
                     if (!eventRegistry.NCHitTest) break;
-                    Win32NativeEvent event("window:NCHitTest", window->owner, hwnd, uMsg, wParam, lParam, hit);
+                    Win32NativeEvent event(event_id::NCHitTest, window->owner, hwnd, uMsg, wParam, lParam, hit);
                     eventRegistry.NCHitTest->invoke(event);
                     return event.lResult;
                 }
@@ -151,7 +151,7 @@ namespace window
                         GetCursorPos(&cursorPoint);
                         ScreenToClient(hwnd, &cursorPoint);
                         if (cursorPoint.y > 0 && cursorPoint.y < ctx.frameY + ctx.padding) break;
-                        Win32NativeEvent event("window:NCLMouseDown", window->owner, hwnd, uMsg, wParam, lParam);
+                        Win32NativeEvent event(event_id::NCMouseDown, window->owner, hwnd, uMsg, wParam, lParam);
                         eventRegistry.NCLMouseDown->invoke(event);
                         if (event.lResult != -1) return event.lResult;
                     }
@@ -199,14 +199,13 @@ namespace window
                             action = io::KeyPressState::release;
                             break;
                     };
-                    dispatchWindowEvent(eventRegistry.mouseClickEvents, "window:input:mouse", window->owner, button,
-                                        action);
+                    dispatchWindowEvent(eventRegistry.mouseClick, window->owner, button, action);
                     break;
                 }
                 case WM_SETFOCUS:
                 {
                     window->focused = true;
-                    dispatchWindowEvent(eventRegistry.focusEvents, "window:focus", window->owner, true);
+                    dispatchWindowEvent(eventRegistry.focus, window->owner, true);
                     const RAWINPUTDEVICE rid = {0x01, 0x02, RIDEV_INPUTSINK, hwnd};
                     if (!RegisterRawInputDevices(&rid, 1, sizeof(rid)))
                         logError("Failed to register RAWINPUTDEVICE");
@@ -218,7 +217,7 @@ namespace window
                 {
                     if (!window) break;
                     window->focused = false;
-                    dispatchWindowEvent(eventRegistry.focusEvents, "window:focus", window->owner, false);
+                    dispatchWindowEvent(eventRegistry.focus, window->owner, false);
                     if (!window->backend.rawInput) break;
                     const RAWINPUTDEVICE rid = {0x01, 0x02, RIDEV_REMOVE, NULL};
                     if (!RegisterRawInputDevices(&rid, 1, sizeof(rid)))
@@ -239,12 +238,11 @@ namespace window
                             u32 codepoint =
                                 (((window->backend.highSurrogate - 0xD800) << 10) | (wParam - 0xDC00)) + 0x10000;
                             window->backend.highSurrogate = 0;
-                            dispatchWindowEvent(eventRegistry.charInputEvents, "window:input:char", window->owner,
-                                                codepoint);
+                            dispatchWindowEvent(eventRegistry.charInput, window->owner, codepoint);
                         }
                     }
                     else
-                        dispatchWindowEvent(eventRegistry.charInputEvents, "window:input:char", window->owner, wParam);
+                        dispatchWindowEvent(eventRegistry.charInput, window->owner, wParam);
 
                     if (uMsg == WM_SYSCHAR) break;
                     return 0;
@@ -259,7 +257,7 @@ namespace window
                         // Returning TRUE here announces support for this message
                         return TRUE;
                     }
-                    dispatchWindowEvent(eventRegistry.charInputEvents, "window:input:char", window->owner, wParam);
+                    dispatchWindowEvent(eventRegistry.charInput, window->owner, wParam);
                     return 0;
                 }
                 case WM_SYSCOMMAND:
@@ -366,27 +364,26 @@ namespace window
                         tme.hwndTrack = window->backend.hwnd;
                         TrackMouseEvent(&tme);
                         window->backend.cursorTracked = true;
-                        dispatchWindowEvent(eventRegistry.cursorEnterEvents, "window:cursor:enter", window->owner,
-                                            true);
+                        dispatchWindowEvent(eventRegistry.mouseEnter, window->owner, true);
                     }
-                    dispatchWindowEvent(eventRegistry.cursorPosAbsEvents, "window:cursorPosAbs", window->owner,
+                    dispatchWindowEvent(eventRegistry.mouseMoveAbs, event_id::mouseMoveAbs, window->owner,
                                         astl::point2D(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)));
                     return 0;
                 }
                 case WM_MOUSELEAVE:
                     window->backend.cursorTracked = false;
-                    dispatchWindowEvent(eventRegistry.cursorEnterEvents, "window:cursor:enter", window->owner, false);
+                    dispatchWindowEvent(eventRegistry.mouseEnter, window->owner, false);
                     return 0;
                 case WM_MOUSEWHEEL:
-                    dispatchWindowEvent(eventRegistry.scrollEvents, "window:scroll", window->owner, 0,
-                                        (SHORT)HIWORD(wParam) / (double)WHEEL_DELTA);
+                    dispatchWindowEvent(eventRegistry.scroll, window->owner, 0,
+                                        (SHORT)HIWORD(wParam) / (f64)WHEEL_DELTA);
                     return 0;
                 case WM_MOUSEHWHEEL:
                 {
                     // This message is only sent on Windows Vista and later
                     // NOTE: The X-axis is inverted for consistency with macOS and X11
-                    dispatchWindowEvent(eventRegistry.scrollEvents, "window:scroll", window->owner,
-                                        -((SHORT)HIWORD(wParam) / (double)WHEEL_DELTA), 0);
+                    dispatchWindowEvent(eventRegistry.scroll, window->owner,
+                                        -((SHORT)HIWORD(wParam) / (f64)WHEEL_DELTA), 0);
                     return 0;
                 }
                 case WM_SIZE:
@@ -398,25 +395,25 @@ namespace window
                         if (!(window->flags & CreationFlagsBits::preinitialized))
                             window->flags ^= CreationFlagsBits::minimized;
                         if (window->flags & CreationFlagsBits::minimized) dimenstions = {0, 0};
-                        dispatchWindowEvent(eventRegistry.minimizeEvents, "window:minimize", window->owner,
+                        dispatchWindowEvent(eventRegistry.minimize, event_id::minimize, window->owner,
                                             window->flags & CreationFlagsBits::minimized);
                     }
                     if ((window->flags & CreationFlagsBits::maximized) != (wParam == SIZE_MAXIMIZED))
                     {
                         if (!(window->flags & CreationFlagsBits::preinitialized))
                             window->flags ^= CreationFlagsBits::maximized;
-                        dispatchWindowEvent(eventRegistry.maximizeEvents, "window:maximize", window->owner,
+                        dispatchWindowEvent(eventRegistry.maximize, event_id::maximize, window->owner,
                                             window->flags & CreationFlagsBits::maximized);
                     }
                     if (dimenstions != window->dimenstions)
                     {
                         window->dimenstions = dimenstions;
-                        dispatchWindowEvent(eventRegistry.resizeEvents, "window:resize", window->owner, dimenstions);
+                        dispatchWindowEvent(eventRegistry.resize, event_id::resize, window->owner, dimenstions);
                     }
                     return 0;
                 }
                 case WM_MOVE:
-                    dispatchWindowEvent(eventRegistry.moveEvents, "window:move", window->owner,
+                    dispatchWindowEvent(eventRegistry.move, event_id::move, window->owner,
                                         astl::point2D(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)));
                     break;
                 case WM_GETMINMAXINFO:
@@ -431,8 +428,7 @@ namespace window
                 {
                     const float xscale = HIWORD(wParam) / 96.0f;
                     const float yscale = LOWORD(wParam) / 96.0f;
-                    dispatchWindowEvent(eventRegistry.dpiChangedEvents, "window:dpiChanged", window->owner, xscale,
-                                        yscale);
+                    dispatchWindowEvent(eventRegistry.dpiChanged, window->owner, xscale, yscale);
                     break;
                 }
                 case WM_SETCURSOR:
@@ -468,10 +464,8 @@ namespace window
 
                     if (raw->header.dwType == RIM_TYPEMOUSE)
                     {
-                        i32 dx = raw->data.mouse.lLastX;
-                        i32 dy = raw->data.mouse.lLastY;
-                        dispatchWindowEvent(eventRegistry.cursorPosEvents, "window:cursor:move", window->owner,
-                                            astl::point2D{dx, dy});
+                        astl::point2D<i32> delta{raw->data.mouse.lLastX, raw->data.mouse.lLastY};
+                        dispatchWindowEvent(eventRegistry.mouseMove, event_id::mouseMove, window->owner, delta);
                     }
                     return 0;
                 }

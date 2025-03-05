@@ -141,6 +141,7 @@ namespace window
 
         // Center the window to the parent
         void centerWindowPos();
+
     private:
         platform::WindowData _platform;
 
@@ -156,6 +157,31 @@ namespace window
     APPLIB_API void updateEvents();
 
     // Events
+    namespace event_id
+    {
+        enum : u64
+        {
+            none = 0x0,
+#ifdef _WIN32
+            NCHitTest = 0x2D5AA1F9EE962269,
+            NCMouseDown = 0x12D7ACB8440B7678,
+#endif
+            focus = 0x05AC2ABF9E301AD1,
+            charInput = 0x0B37F6873EA5B017,
+            keyInput = 0x0E8A91707EFCEB90,
+            mouseClick = 0x06254FC551B67986,
+            mouseEnter = 0x1DFE0E9A4D85B1EE,
+            mouseMove = 0x15F068FC45DB86CE,
+            mouseMoveAbs = 0x037E8253212E7276,
+            scroll = 0x0D66A892FC053357,
+            dpiChanged = 0x37516DB961C1BF7A,
+            minimize = 0x16AB16E6670A5AC2,
+            maximize = 0x0A8C9013D84CEC08,
+            resize = 0x1FB82ED0F4C701CB,
+            move = 0x2A5416AB994F5AAE
+        };
+    }; // namespace event_id
+
 #ifdef _WIN32
     // Event specific to Win32 platform, carrying native window message data.
     struct Win32NativeEvent : public events::IEvent
@@ -167,9 +193,9 @@ namespace window
         LPARAM lParam;          // Additional message information.
         LRESULT lResult;        // Pointer to the result of the message processing.
 
-        explicit Win32NativeEvent(const std::string &name = "", window::Window *window = nullptr, HWND hwnd = 0,
-                                  UINT uMsg = 0, WPARAM wParam = 0, LPARAM lParam = 0, LRESULT lResult = -1)
-            : IEvent(name), window(window), hwnd(hwnd), uMsg(uMsg), wParam(wParam), lParam(lParam), lResult(lResult)
+        explicit Win32NativeEvent(u64 id = 0, window::Window *window = nullptr, HWND hwnd = 0, UINT uMsg = 0,
+                                  WPARAM wParam = 0, LPARAM lParam = 0, LRESULT lResult = -1)
+            : IEvent(id), window(window), hwnd(hwnd), uMsg(uMsg), wParam(wParam), lParam(lParam), lResult(lResult)
         {
         }
     };
@@ -184,8 +210,8 @@ namespace window
         // Whether the window is focused or not.
         bool focused;
 
-        explicit FocusEvent(const std::string &name = "", window::Window *window = nullptr, bool focused = false)
-            : IEvent(name), window(window), focused(focused)
+        explicit FocusEvent(window::Window *window = nullptr, bool focused = false)
+            : IEvent(event_id::focus), window(window), focused(focused)
         {
         }
     };
@@ -196,8 +222,8 @@ namespace window
         window::Window *window; // Pointer to the associated Window object.
         u32 charCode;           // Unicode character code.
 
-        explicit CharInputEvent(const std::string &name = "", window::Window *window = nullptr, u32 charCode = 0)
-            : IEvent(name), window(window), charCode(charCode)
+        explicit CharInputEvent(window::Window *window = nullptr, u32 charCode = 0)
+            : IEvent(event_id::charInput), window(window), charCode(charCode)
         {
         }
     };
@@ -210,10 +236,9 @@ namespace window
         io::KeyPressState action; // The action (press, release, repeat) associated with the key.
         io::KeyMode mods;         // The key modifiers associated with the key.
 
-        explicit KeyInputEvent(const std::string &name = "", window::Window *window = nullptr,
-                               io::Key key = io::Key::kUnknown, io::KeyPressState action = io::KeyPressState::release,
-                               io::KeyMode mods = io::KeyMode{})
-            : IEvent(name), window(window), key(key), action(action), mods(mods)
+        explicit KeyInputEvent(window::Window *window = nullptr, io::Key key = io::Key::kUnknown,
+                               io::KeyPressState action = io::KeyPressState::release, io::KeyMode mods = io::KeyMode{})
+            : IEvent(event_id::keyInput), window(window), key(key), action(action), mods(mods)
         {
         }
     };
@@ -226,24 +251,23 @@ namespace window
         io::KeyPressState action; // The action (press, release, repeat) associated with the key.
         io::KeyMode mods;         // The key modifiers associated with the key.
 
-        explicit MouseClickEvent(const std::string &name = "", window::Window *window = nullptr,
-                                 io::MouseKey button = io::MouseKey::unknown,
+        explicit MouseClickEvent(window::Window *window = nullptr, io::MouseKey button = io::MouseKey::unknown,
                                  io::KeyPressState action = io::KeyPressState::release,
                                  io::KeyMode mods = io::KeyMode{})
-            : IEvent(name), window(window), button(button), action(action), mods(mods)
+            : IEvent(event_id::mouseClick), window(window), button(button), action(action), mods(mods)
         {
         }
     };
 
     // Represents a mouse position event in a window. This one is dispatchted when the mouse enters or leaves the
     // window.
-    struct CursorEnterEvent : public events::IEvent
+    struct MouseEnterEvent : public events::IEvent
     {
         window::Window *window; // Pointer to the associated Window object.
         bool entered;           // Whether the mouse entered or left the window.
 
-        explicit CursorEnterEvent(const std::string &name = "", window::Window *window = nullptr, bool entered = false)
-            : IEvent(name), window(window), entered(entered)
+        explicit MouseEnterEvent(window::Window *window = nullptr, bool entered = false)
+            : IEvent(event_id::mouseEnter), window(window), entered(entered)
         {
         }
     };
@@ -254,8 +278,8 @@ namespace window
         window::Window *window; // Pointer to the associated Window object.
         bool state;             // The new state.
 
-        explicit StateEvent(const std::string &name = "", window::Window *window = nullptr, bool state = false)
-            : IEvent(name), window(window), state(state)
+        explicit StateEvent(u64 id, window::Window *window = nullptr, bool state = false)
+            : IEvent(id), window(window), state(state)
         {
         }
     };
@@ -266,9 +290,8 @@ namespace window
         window::Window *window;      // Pointer to the associated Window object.
         astl::point2D<i32> position; // The new position.
 
-        explicit PosEvent(const std::string &name = "", window::Window *window = nullptr,
-                          astl::point2D<i32> position = astl::point2D())
-            : IEvent(name), window(window), position(position)
+        explicit PosEvent(u64 id = 0, window::Window *window = nullptr, astl::point2D<i32> position = {})
+            : IEvent(id), window(window), position(position)
         {
         }
     };
@@ -280,9 +303,8 @@ namespace window
         f32 h;                  // The Horizontal scroll value.
         f32 v;                  // The Vertical scroll value.
 
-        explicit ScrollEvent(const std::string &name = "", window::Window *window = nullptr, f32 hscroll = 0.0f,
-                             f32 vscroll = 0.0f)
-            : IEvent(name), window(window), h(hscroll), v(vscroll)
+        explicit ScrollEvent(window::Window *window = nullptr, f32 hscroll = 0.0f, f32 vscroll = 0.0f)
+            : IEvent(event_id::scroll), window(window), h(hscroll), v(vscroll)
         {
         }
     };
@@ -294,9 +316,8 @@ namespace window
         f32 xDpi;               // New DPI value in the x-axis.
         f32 yDpi;               // New DPI value in the y-axis.
 
-        explicit DpiChangedEvent(const std::string &name = "", window::Window *window = nullptr, f32 xDpi = 0.0f,
-                                 f32 yDpi = 0.0f)
-            : IEvent(name), window(window), xDpi(xDpi), yDpi(yDpi)
+        explicit DpiChangedEvent(window::Window *window = nullptr, f32 xDpi = 0.0f, f32 yDpi = 0.0f)
+            : IEvent(event_id::dpiChanged), window(window), xDpi(xDpi), yDpi(yDpi)
         {
         }
     };
@@ -312,43 +333,43 @@ namespace window
         events::EventListener<Win32NativeEvent> *NCHitTest;
 #endif
         // List of event listeners for focus-related events.
-        astl::vector<events::EventListener<FocusEvent> *> focusEvents;
+        astl::vector<events::EventListener<FocusEvent> *> focus;
 
         // List of event listeners for character input events.
-        astl::vector<events::EventListener<CharInputEvent> *> charInputEvents;
+        astl::vector<events::EventListener<CharInputEvent> *> charInput;
 
         // List of event listeners for keyboard input events.
-        astl::vector<events::EventListener<KeyInputEvent> *> keyInputEvents;
+        astl::vector<events::EventListener<KeyInputEvent> *> keyInput;
 
         // List of event listeners for mouse click events.
-        astl::vector<events::EventListener<MouseClickEvent> *> mouseClickEvents;
+        astl::vector<events::EventListener<MouseClickEvent> *> mouseClick;
 
         // List of event listeners for cursor enter/leave events.
-        astl::vector<events::EventListener<CursorEnterEvent> *> cursorEnterEvents;
+        astl::vector<events::EventListener<MouseEnterEvent> *> mouseEnter;
 
         //  Listener for handling when the mouse position changes in RAW Input mode.
-        astl::vector<events::EventListener<PosEvent> *> cursorPosEvents;
+        astl::vector<events::EventListener<PosEvent> *> mouseMove;
 
         //  Listener for handling when the mouse position changes in absolute (per Window dimensions) values
-        astl::vector<events::EventListener<PosEvent> *> cursorPosAbsEvents;
+        astl::vector<events::EventListener<PosEvent> *> mouseMoveAbs;
 
         // List of event listeners for scroll events.
-        astl::vector<events::EventListener<ScrollEvent> *> scrollEvents;
+        astl::vector<events::EventListener<ScrollEvent> *> scroll;
 
         // List of event listeners for window minimize events.
-        astl::vector<events::EventListener<StateEvent> *> minimizeEvents;
+        astl::vector<events::EventListener<StateEvent> *> minimize;
 
         // List of event listeners for window maximize events.
-        astl::vector<events::EventListener<StateEvent> *> maximizeEvents;
+        astl::vector<events::EventListener<StateEvent> *> maximize;
 
         // List of event listeners for window resize events.
-        astl::vector<events::EventListener<PosEvent> *> resizeEvents;
+        astl::vector<events::EventListener<PosEvent> *> resize;
 
         // List of event listeners for window move events.
-        astl::vector<events::EventListener<PosEvent> *> moveEvents;
+        astl::vector<events::EventListener<PosEvent> *> move;
 
         // List of event listeners for DPI (dots per inch) changed events.
-        astl::vector<events::EventListener<DpiChangedEvent> *> dpiChangedEvents;
+        astl::vector<events::EventListener<DpiChangedEvent> *> dpiChanged;
 
     } eventRegistry;
 
