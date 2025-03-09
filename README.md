@@ -1,3 +1,3 @@
-# app3d-window
+# awin
 
-App3d Window Lib
+App3d Window Library
