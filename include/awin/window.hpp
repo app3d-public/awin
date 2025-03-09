@@ -8,7 +8,7 @@
 #ifndef APP_WINDOW_WINDOW_H
 #define APP_WINDOW_WINDOW_H
 
-#include <core/event.hpp>
+#include <acul/event.hpp>
 #include <string>
 #include "types.hpp"
 #ifdef _WIN32
@@ -17,7 +17,7 @@
 
 #define WINDOW_DONT_CARE -1
 
-namespace window
+namespace awin
 {
     // Data structures and platform-specific functions that are utilized by internal Window API and offer secure data
     // exchange with external API interfaces.
@@ -65,13 +65,13 @@ namespace window
         astl::point2D<i32> dimensions() const { return _platform.dimenstions; }
 
         // Check if the window has decorations
-        inline bool decorated() const { return (_platform.flags & window::CreationFlagsBits::decorated) != 0; }
+        inline bool decorated() const { return (_platform.flags & awin::CreationFlagsBits::decorated) != 0; }
 
         // Check if the window is resizable.
-        inline bool resizable() const { return (_platform.flags & window::CreationFlagsBits::resizable) != 0; }
+        inline bool resizable() const { return (_platform.flags & awin::CreationFlagsBits::resizable) != 0; }
 
         // Check if the window is in fullscreen mode.
-        bool fullscreen() const { return (_platform.flags & window::CreationFlagsBits::fullscreen) != 0; }
+        bool fullscreen() const { return (_platform.flags & awin::CreationFlagsBits::fullscreen) != 0; }
 
         // Enable fullscreen mode.
         void enableFullscreen();
@@ -101,19 +101,19 @@ namespace window
         inline bool focused() const { return _platform.focused; }
 
         // Check if the window is minimized.
-        inline bool minimized() const { return _platform.flags & window::CreationFlagsBits::minimized; }
+        inline bool minimized() const { return _platform.flags & awin::CreationFlagsBits::minimized; }
 
         // Minimize the window
         void minimize();
 
         // Check if the window is maximized.
-        inline bool maximized() const { return _platform.flags & window::CreationFlagsBits::maximized; }
+        inline bool maximized() const { return _platform.flags & awin::CreationFlagsBits::maximized; }
 
         // Maximize the window
         void maximize();
 
         // Check if the window is hidden.
-        inline bool hidden() const { return (_platform.flags & window::CreationFlagsBits::hidden) != 0; }
+        inline bool hidden() const { return (_platform.flags & awin::CreationFlagsBits::hidden) != 0; }
 
         // Get the window's resize limits.
         inline astl::point2D<i32> resizeLimit() const { return _platform.resizeLimit; }
@@ -186,14 +186,14 @@ namespace window
     // Event specific to Win32 platform, carrying native window message data.
     struct Win32NativeEvent : public events::IEvent
     {
-        window::Window *window; // Pointer to the associated Window object.
-        HWND hwnd;              // Handle to the window.
-        UINT uMsg;              // Windows message identifier.
-        WPARAM wParam;          // Additional message information.
-        LPARAM lParam;          // Additional message information.
-        LRESULT lResult;        // Pointer to the result of the message processing.
+        awin::Window *window; // Pointer to the associated Window object.
+        HWND hwnd;            // Handle to the window.
+        UINT uMsg;            // Windows message identifier.
+        WPARAM wParam;        // Additional message information.
+        LPARAM lParam;        // Additional message information.
+        LRESULT lResult;      // Pointer to the result of the message processing.
 
-        explicit Win32NativeEvent(u64 id = 0, window::Window *window = nullptr, HWND hwnd = 0, UINT uMsg = 0,
+        explicit Win32NativeEvent(u64 id = 0, awin::Window *window = nullptr, HWND hwnd = 0, UINT uMsg = 0,
                                   WPARAM wParam = 0, LPARAM lParam = 0, LRESULT lResult = -1)
             : IEvent(id), window(window), hwnd(hwnd), uMsg(uMsg), wParam(wParam), lParam(lParam), lResult(lResult)
         {
@@ -205,12 +205,12 @@ namespace window
     struct FocusEvent : public events::IEvent
     {
         // Pointer to the associated Window object.
-        window::Window *window;
+        awin::Window *window;
 
         // Whether the window is focused or not.
         bool focused;
 
-        explicit FocusEvent(window::Window *window = nullptr, bool focused = false)
+        explicit FocusEvent(awin::Window *window = nullptr, bool focused = false)
             : IEvent(event_id::focus), window(window), focused(focused)
         {
         }
@@ -219,10 +219,10 @@ namespace window
     // Represents a character input event in a window.
     struct CharInputEvent : public events::IEvent
     {
-        window::Window *window; // Pointer to the associated Window object.
-        u32 charCode;           // Unicode character code.
+        awin::Window *window; // Pointer to the associated Window object.
+        u32 charCode;         // Unicode character code.
 
-        explicit CharInputEvent(window::Window *window = nullptr, u32 charCode = 0)
+        explicit CharInputEvent(awin::Window *window = nullptr, u32 charCode = 0)
             : IEvent(event_id::charInput), window(window), charCode(charCode)
         {
         }
@@ -231,12 +231,12 @@ namespace window
     // Represents a keyboard input event in a window.
     struct KeyInputEvent : public events::IEvent
     {
-        window::Window *window;   // Pointer to the associated Window object.
+        awin::Window *window;     // Pointer to the associated Window object.
         io::Key key;              // The key involved in the event.
         io::KeyPressState action; // The action (press, release, repeat) associated with the key.
         io::KeyMode mods;         // The key modifiers associated with the key.
 
-        explicit KeyInputEvent(window::Window *window = nullptr, io::Key key = io::Key::kUnknown,
+        explicit KeyInputEvent(awin::Window *window = nullptr, io::Key key = io::Key::kUnknown,
                                io::KeyPressState action = io::KeyPressState::release, io::KeyMode mods = io::KeyMode{})
             : IEvent(event_id::keyInput), window(window), key(key), action(action), mods(mods)
         {
@@ -246,12 +246,12 @@ namespace window
     // Represents a mouse click event in a window.
     struct MouseClickEvent : public events::IEvent
     {
-        window::Window *window;   // Pointer to the associated Window object.
+        awin::Window *window;     // Pointer to the associated Window object.
         io::MouseKey button;      // The mouse button involved in the event.
         io::KeyPressState action; // The action (press, release, repeat) associated with the key.
         io::KeyMode mods;         // The key modifiers associated with the key.
 
-        explicit MouseClickEvent(window::Window *window = nullptr, io::MouseKey button = io::MouseKey::unknown,
+        explicit MouseClickEvent(awin::Window *window = nullptr, io::MouseKey button = io::MouseKey::unknown,
                                  io::KeyPressState action = io::KeyPressState::release,
                                  io::KeyMode mods = io::KeyMode{})
             : IEvent(event_id::mouseClick), window(window), button(button), action(action), mods(mods)
@@ -263,10 +263,10 @@ namespace window
     // window.
     struct MouseEnterEvent : public events::IEvent
     {
-        window::Window *window; // Pointer to the associated Window object.
-        bool entered;           // Whether the mouse entered or left the window.
+        awin::Window *window; // Pointer to the associated Window object.
+        bool entered;         // Whether the mouse entered or left the window.
 
-        explicit MouseEnterEvent(window::Window *window = nullptr, bool entered = false)
+        explicit MouseEnterEvent(awin::Window *window = nullptr, bool entered = false)
             : IEvent(event_id::mouseEnter), window(window), entered(entered)
         {
         }
@@ -275,10 +275,10 @@ namespace window
     // Represents a window state change event in a window.
     struct StateEvent : public events::IEvent
     {
-        window::Window *window; // Pointer to the associated Window object.
-        bool state;             // The new state.
+        awin::Window *window; // Pointer to the associated Window object.
+        bool state;           // The new state.
 
-        explicit StateEvent(u64 id, window::Window *window = nullptr, bool state = false)
+        explicit StateEvent(u64 id, awin::Window *window = nullptr, bool state = false)
             : IEvent(id), window(window), state(state)
         {
         }
@@ -287,10 +287,10 @@ namespace window
     // Represents a position change event in a window.
     struct PosEvent : public events::IEvent
     {
-        window::Window *window;      // Pointer to the associated Window object.
+        awin::Window *window;        // Pointer to the associated Window object.
         astl::point2D<i32> position; // The new position.
 
-        explicit PosEvent(u64 id = 0, window::Window *window = nullptr, astl::point2D<i32> position = {})
+        explicit PosEvent(u64 id = 0, awin::Window *window = nullptr, astl::point2D<i32> position = {})
             : IEvent(id), window(window), position(position)
         {
         }
@@ -299,11 +299,11 @@ namespace window
     // Represents a scroll event in a window.
     struct ScrollEvent : public events::IEvent
     {
-        window::Window *window; // Pointer to the associated Window object.
-        f32 h;                  // The Horizontal scroll value.
-        f32 v;                  // The Vertical scroll value.
+        awin::Window *window; // Pointer to the associated Window object.
+        f32 h;                // The Horizontal scroll value.
+        f32 v;                // The Vertical scroll value.
 
-        explicit ScrollEvent(window::Window *window = nullptr, f32 hscroll = 0.0f, f32 vscroll = 0.0f)
+        explicit ScrollEvent(awin::Window *window = nullptr, f32 hscroll = 0.0f, f32 vscroll = 0.0f)
             : IEvent(event_id::scroll), window(window), h(hscroll), v(vscroll)
         {
         }
@@ -312,11 +312,11 @@ namespace window
     // Represents a DPI change event in a window.
     struct DpiChangedEvent : public events::IEvent
     {
-        window::Window *window; // Pointer to the associated Window object.
-        f32 xDpi;               // New DPI value in the x-axis.
-        f32 yDpi;               // New DPI value in the y-axis.
+        awin::Window *window; // Pointer to the associated Window object.
+        f32 xDpi;             // New DPI value in the x-axis.
+        f32 yDpi;             // New DPI value in the y-axis.
 
-        explicit DpiChangedEvent(window::Window *window = nullptr, f32 xDpi = 0.0f, f32 yDpi = 0.0f)
+        explicit DpiChangedEvent(awin::Window *window = nullptr, f32 xDpi = 0.0f, f32 yDpi = 0.0f)
             : IEvent(event_id::dpiChanged), window(window), xDpi(xDpi), yDpi(yDpi)
         {
         }
@@ -455,6 +455,6 @@ namespace window
 
     // Destroy the library and release associated resources.
     APPLIB_API void destroyLibrary();
-} // namespace window
+} // namespace awin
 
 #endif

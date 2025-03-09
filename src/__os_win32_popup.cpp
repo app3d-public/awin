@@ -1,8 +1,7 @@
 #include <astl/string.hpp>
+#include <awin/popup.hpp>
 #include <filesystem>
-#include <window/popup.hpp>
 #include <windows.h>
-
 // Include windows first
 #include <commdlg.h>
 #include <shlobj.h>
@@ -13,7 +12,7 @@
 #define BTN_YES    0x4
 #define BTN_NO     0x8
 
-namespace window
+namespace awin
 {
     namespace popup
     {
@@ -63,7 +62,7 @@ namespace window
         }
 
         Buttons msgBox(const char *message, const char *title, Style style, std::initializer_list<Buttons> buttons,
-                       window::Window *parent)
+                       awin::Window *parent)
         {
             UINT iconFlag = styleToIcon(style);
             UINT buttonsFlag = buttonsToFlags(buttons);
@@ -188,7 +187,6 @@ namespace window
         {
             if (!path || strlen(path) <= 0) return;
             auto wDefaultPath = astl::utf8_to_utf16(path);
-            DWORD attributes = GetFileAttributesW(reinterpret_cast<const wchar_t *>(wDefaultPath.c_str()));
 
             std::filesystem::path fsPath(path);
             auto parentPath = fsPath.parent_path().string();
@@ -303,4 +301,4 @@ namespace window
         }
 
     } // namespace popup
-} // namespace window
+} // namespace awin

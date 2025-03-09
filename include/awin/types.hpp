@@ -1,9 +1,9 @@
 #ifndef APP_WINDOW_TYPES_H
 #define APP_WINDOW_TYPES_H
 
+#include <acul/api.hpp>
 #include <astl/enum.hpp>
 #include <astl/scalars.hpp>
-#include <core/api.hpp>
 
 #ifdef _WIN32
     #include "win32/cursor.hpp"
@@ -12,7 +12,7 @@
 #define KEY_MOD_START_INDEX 106
 
 // Keys
-namespace window
+namespace awin
 {
     namespace io
     {
@@ -254,5 +254,5 @@ namespace window
 #define WINDOW_DEFAULT_FLAGS                                                                         \
     CreationFlagsBits::resizable | CreationFlagsBits::minimizebox | CreationFlagsBits::maximizebox | \
         CreationFlagsBits::decorated | CreationFlagsBits::snapped
-} // namespace window
+} // namespace awin
 #endif

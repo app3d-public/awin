@@ -1,14 +1,14 @@
 #ifndef APP_WINDOW_PLATFORM_WIN32_H
 #define APP_WINDOW_PLATFORM_WIN32_H
 
+#include <acul/api.hpp>
 #include <astl/map.hpp>
 #include <astl/point2d.hpp>
-#include <core/api.hpp>
 #include <string>
 #include <windows.h>
 #include "../types.hpp"
 
-namespace window
+namespace awin
 {
     class Window;
     namespace platform
@@ -165,6 +165,6 @@ namespace window
                                            {VK_APPS, io::Key::kMenu}};
         } ctx;
     } // namespace platform
-} // namespace window
+} // namespace awin
 
 #endif

@@ -1,7 +1,7 @@
 #pragma once
 
+#include <acul/event.hpp>
 #include <astl/point2d.hpp>
-#include <core/event.hpp>
 #include "types.hpp"
 #ifdef _WIN32
     #include "win32/platform.hpp"
@@ -9,7 +9,7 @@
 
 #define WINDOW_TIMEOUT_INF -1
 
-namespace window
+namespace awin
 {
     class Window;
     namespace platform
@@ -43,4 +43,4 @@ namespace window
     } // namespace platform
 
     inline void updateTimeout(f64 timeout) { platform::env.timeout = std::max(platform::env.timeout, timeout); }
-} // namespace window
+} // namespace awin

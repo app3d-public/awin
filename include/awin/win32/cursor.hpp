@@ -1,7 +1,7 @@
 #pragma once
 #include <windef.h>
 
-namespace window
+namespace awin
 {
     namespace platform
     {
@@ -16,4 +16,4 @@ namespace window
 
         using native_cursor_t = Win32Cursor;
     } // namespace platform
-} // namespace window
+} // namespace awin

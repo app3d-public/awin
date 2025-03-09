@@ -1,11 +1,11 @@
+#include <acul/log.hpp>
 #include <astl/string.hpp>
-#include <core/log.hpp>
+#include <awin/window.hpp>
 #include <shlobj.h>
 #include <windef.h>
-#include <window/window.hpp>
 #include <windowsx.h>
 
-namespace window
+namespace awin
 {
     namespace platform
     {
@@ -512,7 +512,7 @@ namespace window
             ctx.win32class.hInstance = ctx.instance;
             ctx.win32class.lpszClassName = L"APP3DWINDOWLIB";
             ctx.win32class.hCursor = LoadCursor(NULL, IDC_ARROW);
-            ctx.win32class.hIcon = LoadIconW(ctx.instance, L"WINDOW_ICON");
+            ctx.win32class.hIcon = LoadIconW(ctx.instance, L"APP_ICON");
             if (!ctx.win32class.hIcon)
             {
                 logWarn("Failed to load window icon");
@@ -890,4 +890,4 @@ namespace window
 
     HWND platform::native_access::getHWND(const Window &window) { return window._platform.backend.hwnd; }
 
-} // namespace window
+} // namespace awin

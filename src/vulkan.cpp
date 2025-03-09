@@ -2,7 +2,7 @@
 #include <vulkan/vulkan.hpp>
 #include <window/vulkan.hpp>
 
-namespace window
+namespace awin
 {
     namespace vulkan
     {
@@ -30,4 +30,4 @@ namespace window
             }
         }
     } // namespace vulkan
-} // namespace window
+} // namespace awin

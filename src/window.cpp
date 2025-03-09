@@ -1,7 +1,7 @@
-#include <core/log.hpp>
-#include <window/window.hpp>
+#include <acul/log.hpp>
+#include <awin/window.hpp>
 
-namespace window
+namespace awin
 {
     DefaultRegistry eventRegistry(nullptr);
     namespace platform
@@ -85,4 +85,4 @@ namespace window
         }
         platform::env.timer.offset = platform::getTimeValue() - static_cast<u64>(time * platform::getTimeFrequency());
     }
-} // namespace window
+} // namespace awin
