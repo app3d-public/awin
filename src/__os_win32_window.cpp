@@ -1,5 +1,5 @@
 #include <acul/log.hpp>
-#include <astl/string.hpp>
+#include <acul/string.hpp>
 #include <awin/window.hpp>
 #include <shlobj.h>
 #include <windef.h>
@@ -367,7 +367,7 @@ namespace awin
                         dispatchWindowEvent(eventRegistry.mouseEnter, window->owner, true);
                     }
                     dispatchWindowEvent(eventRegistry.mouseMoveAbs, event_id::mouseMoveAbs, window->owner,
-                                        astl::point2D(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)));
+                                        acul::point2D(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)));
                     return 0;
                 }
                 case WM_MOUSELEAVE:
@@ -388,7 +388,7 @@ namespace awin
                 }
                 case WM_SIZE:
                 {
-                    astl::point2D<i32> dimenstions(LOWORD(lParam), HIWORD(lParam));
+                    acul::point2D<i32> dimenstions(LOWORD(lParam), HIWORD(lParam));
 
                     if ((window->flags & CreationFlagsBits::minimized) != (wParam == SIZE_MINIMIZED))
                     {
@@ -414,7 +414,7 @@ namespace awin
                 }
                 case WM_MOVE:
                     dispatchWindowEvent(eventRegistry.move, event_id::move, window->owner,
-                                        astl::point2D(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)));
+                                        acul::point2D(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)));
                     break;
                 case WM_GETMINMAXINFO:
                 {
@@ -450,8 +450,8 @@ namespace awin
                     GetRawInputData((HRAWINPUT)lParam, RID_INPUT, NULL, &dwSize, sizeof(RAWINPUTHEADER));
                     if (dwSize > window->backend.rawInputSize)
                     {
-                        astl::release(window->backend.rawInputData);
-                        window->backend.rawInputData = astl::alloc_n<BYTE>(dwSize);
+                        acul::release(window->backend.rawInputData);
+                        window->backend.rawInputData = acul::alloc_n<BYTE>(dwSize);
                         window->backend.rawInputSize = dwSize;
                     }
                     if (GetRawInputData((HRAWINPUT)lParam, RID_INPUT, window->backend.rawInputData, &dwSize,
@@ -464,7 +464,7 @@ namespace awin
 
                     if (raw->header.dwType == RIM_TYPEMOUSE)
                     {
-                        astl::point2D<i32> delta{raw->data.mouse.lLastX, raw->data.mouse.lLastY};
+                        acul::point2D<i32> delta{raw->data.mouse.lLastX, raw->data.mouse.lLastY};
                         dispatchWindowEvent(eventRegistry.mouseMove, event_id::mouseMove, window->owner, delta);
                     }
                     return 0;
@@ -543,7 +543,7 @@ namespace awin
     Window::Window(const std::string &title, i32 width, i32 height, CreationFlags flags) : _platform(nullptr)
     {
         _platform.owner = this;
-        _platform.backend.title = astl::utf8_to_utf16(title);
+        _platform.backend.title = acul::utf8_to_utf16(title);
         _platform.dimenstions = {width == -1 ? CW_USEDEFAULT : width, height == -1 ? CW_USEDEFAULT : height};
         _platform.flags = flags;
         if (flags & CreationFlagsBits::fullscreen || flags & CreationFlagsBits::maximized ||
@@ -576,7 +576,7 @@ namespace awin
     {
         if (_platform.backend.rawInputData)
         {
-            astl::release(_platform.backend.rawInputData);
+            acul::release(_platform.backend.rawInputData);
             _platform.backend.rawInputData = nullptr;
             _platform.backend.rawInputSize = 0;
         }
@@ -613,7 +613,7 @@ namespace awin
 
     void Window::title(const std::string &title)
     {
-        _platform.backend.title = astl::utf8_to_utf16(title);
+        _platform.backend.title = acul::utf8_to_utf16(title);
         SetWindowTextW(_platform.backend.hwnd, (LPCWSTR)_platform.backend.title.c_str());
     }
 
@@ -633,7 +633,7 @@ namespace awin
                      SWP_SHOWWINDOW);
     }
 
-    astl::point2D<i32> Window::cursorPosition() const
+    acul::point2D<i32> Window::cursorPosition() const
     {
         POINT pos;
         if (GetCursorPos(&pos))
@@ -644,7 +644,7 @@ namespace awin
         return {};
     }
 
-    void Window::cursorPosition(astl::point2D<i32> position)
+    void Window::cursorPosition(acul::point2D<i32> position)
     {
 
         POINT pos = {position.x, position.y};
@@ -671,7 +671,7 @@ namespace awin
         _platform.isCursorHidden = true;
     }
 
-    astl::point2D<i32> Window::windowPos() const
+    acul::point2D<i32> Window::windowPos() const
     {
         RECT rect;
         if (GetWindowRect(_platform.backend.hwnd, &rect))
@@ -680,7 +680,7 @@ namespace awin
             return {0, 0};
     }
 
-    void Window::windowPos(astl::point2D<i32> position)
+    void Window::windowPos(acul::point2D<i32> position)
     {
         WINDOWPLACEMENT wp = {sizeof(WINDOWPLACEMENT)};
         GetWindowPlacement(_platform.backend.hwnd, &wp);
@@ -739,7 +739,7 @@ namespace awin
 
         if (window->isCursorHidden && window->owner->cursorPosition() != window->backend.savedCursorPos)
         {
-            astl::point2D<i32> pos = window->dimenstions / 2.0f;
+            acul::point2D<i32> pos = window->dimenstions / 2.0f;
             window->owner->cursorPosition(pos);
         }
     }
@@ -760,7 +760,7 @@ namespace awin
 
     f32 getDpi() { return static_cast<f32>(platform::ctx.dpi) / 96.0f; }
 
-    astl::point2D<i32> getWindowSize(const Window &window)
+    acul::point2D<i32> getWindowSize(const Window &window)
     {
         RECT area;
         GetClientRect(platform::native_access::getHWND(window), &area);
@@ -802,7 +802,7 @@ namespace awin
             CloseClipboard();
             return "";
         }
-        platform::env.clipboardData = astl::utf16_to_utf8(buffer);
+        platform::env.clipboardData = acul::utf16_to_utf8(buffer);
         GlobalUnlock(object);
         CloseClipboard();
         return platform::env.clipboardData;

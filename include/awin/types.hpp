@@ -2,8 +2,8 @@
 #define APP_WINDOW_TYPES_H
 
 #include <acul/api.hpp>
-#include <astl/enum.hpp>
-#include <astl/scalars.hpp>
+#include <acul/enum.hpp>
+#include <acul/scalars.hpp>
 
 #ifdef _WIN32
     #include "win32/cursor.hpp"
@@ -174,7 +174,7 @@ namespace awin
             using flag_bitmask = std::true_type;
         };
 
-        using KeyMode = astl::flags<KeyModeBits>;
+        using KeyMode = acul::flags<KeyModeBits>;
     } // namespace io
 
     // Basic information about a monitor/display.
@@ -249,7 +249,7 @@ namespace awin
     };
 
     // Flags for window creation, stored as u8 for memory efficiency.
-    using CreationFlags = astl::flags<CreationFlagsBits>;
+    using CreationFlags = acul::flags<CreationFlagsBits>;
 
 #define WINDOW_DEFAULT_FLAGS                                                                         \
     CreationFlagsBits::resizable | CreationFlagsBits::minimizebox | CreationFlagsBits::maximizebox | \

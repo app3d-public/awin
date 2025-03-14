@@ -1,7 +1,7 @@
 #pragma once
 
 #include <acul/event.hpp>
-#include <astl/point2d.hpp>
+#include <acul/point2d.hpp>
 #include "types.hpp"
 #ifdef _WIN32
     #include "win32/platform.hpp"
@@ -30,12 +30,12 @@ namespace awin
         struct WindowData
         {
             Window *owner;
-            astl::point2D<i32> dimenstions;
+            acul::point2D<i32> dimenstions;
             CreationFlags flags;
             bool isCursorHidden{false};
             bool focused{false};
             bool readyToClose = false;
-            astl::point2D<i32> resizeLimit{0, 0};
+            acul::point2D<i32> resizeLimit{0, 0};
             io::KeyPressState keys[io::Key::kLast + 1];
             Cursor *cursor;
             platform_data_t backend;

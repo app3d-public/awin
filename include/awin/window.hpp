@@ -62,7 +62,7 @@ namespace awin
         void title(const std::string &title);
 
         // Returns the width of the window.
-        astl::point2D<i32> dimensions() const { return _platform.dimenstions; }
+        acul::point2D<i32> dimensions() const { return _platform.dimenstions; }
 
         // Check if the window has decorations
         inline bool decorated() const { return (_platform.flags & awin::CreationFlagsBits::decorated) != 0; }
@@ -80,10 +80,10 @@ namespace awin
         void disableFullscreen();
 
         // Get the current cursor position.
-        astl::point2D<i32> cursorPosition() const;
+        acul::point2D<i32> cursorPosition() const;
 
         // Set the cursor position
-        void cursorPosition(astl::point2D<i32> position);
+        void cursorPosition(acul::point2D<i32> position);
 
         // Show the cursor.
         void showCursor();
@@ -116,7 +116,7 @@ namespace awin
         inline bool hidden() const { return (_platform.flags & awin::CreationFlagsBits::hidden) != 0; }
 
         // Get the window's resize limits.
-        inline astl::point2D<i32> resizeLimit() const { return _platform.resizeLimit; }
+        inline acul::point2D<i32> resizeLimit() const { return _platform.resizeLimit; }
 
         // Set the window's resize limits.
         inline void resizeLimit(i32 width, i32 height) { _platform.resizeLimit = {width, height}; }
@@ -134,10 +134,10 @@ namespace awin
         void hideWindow();
 
         // Get current window position
-        astl::point2D<i32> windowPos() const;
+        acul::point2D<i32> windowPos() const;
 
         // Set window position
-        void windowPos(astl::point2D<i32> position);
+        void windowPos(acul::point2D<i32> position);
 
         // Center the window to the parent
         void centerWindowPos();
@@ -288,9 +288,9 @@ namespace awin
     struct PosEvent : public events::IEvent
     {
         awin::Window *window;        // Pointer to the associated Window object.
-        astl::point2D<i32> position; // The new position.
+        acul::point2D<i32> position; // The new position.
 
-        explicit PosEvent(u64 id = 0, awin::Window *window = nullptr, astl::point2D<i32> position = {})
+        explicit PosEvent(u64 id = 0, awin::Window *window = nullptr, acul::point2D<i32> position = {})
             : IEvent(id), window(window), position(position)
         {
         }
@@ -333,43 +333,43 @@ namespace awin
         events::EventListener<Win32NativeEvent> *NCHitTest;
 #endif
         // List of event listeners for focus-related events.
-        astl::vector<events::EventListener<FocusEvent> *> focus;
+        acul::vector<events::EventListener<FocusEvent> *> focus;
 
         // List of event listeners for character input events.
-        astl::vector<events::EventListener<CharInputEvent> *> charInput;
+        acul::vector<events::EventListener<CharInputEvent> *> charInput;
 
         // List of event listeners for keyboard input events.
-        astl::vector<events::EventListener<KeyInputEvent> *> keyInput;
+        acul::vector<events::EventListener<KeyInputEvent> *> keyInput;
 
         // List of event listeners for mouse click events.
-        astl::vector<events::EventListener<MouseClickEvent> *> mouseClick;
+        acul::vector<events::EventListener<MouseClickEvent> *> mouseClick;
 
         // List of event listeners for cursor enter/leave events.
-        astl::vector<events::EventListener<MouseEnterEvent> *> mouseEnter;
+        acul::vector<events::EventListener<MouseEnterEvent> *> mouseEnter;
 
         //  Listener for handling when the mouse position changes in RAW Input mode.
-        astl::vector<events::EventListener<PosEvent> *> mouseMove;
+        acul::vector<events::EventListener<PosEvent> *> mouseMove;
 
         //  Listener for handling when the mouse position changes in absolute (per Window dimensions) values
-        astl::vector<events::EventListener<PosEvent> *> mouseMoveAbs;
+        acul::vector<events::EventListener<PosEvent> *> mouseMoveAbs;
 
         // List of event listeners for scroll events.
-        astl::vector<events::EventListener<ScrollEvent> *> scroll;
+        acul::vector<events::EventListener<ScrollEvent> *> scroll;
 
         // List of event listeners for window minimize events.
-        astl::vector<events::EventListener<StateEvent> *> minimize;
+        acul::vector<events::EventListener<StateEvent> *> minimize;
 
         // List of event listeners for window maximize events.
-        astl::vector<events::EventListener<StateEvent> *> maximize;
+        acul::vector<events::EventListener<StateEvent> *> maximize;
 
         // List of event listeners for window resize events.
-        astl::vector<events::EventListener<PosEvent> *> resize;
+        acul::vector<events::EventListener<PosEvent> *> resize;
 
         // List of event listeners for window move events.
-        astl::vector<events::EventListener<PosEvent> *> move;
+        acul::vector<events::EventListener<PosEvent> *> move;
 
         // List of event listeners for DPI (dots per inch) changed events.
-        astl::vector<events::EventListener<DpiChangedEvent> *> dpiChanged;
+        acul::vector<events::EventListener<DpiChangedEvent> *> dpiChanged;
 
     } eventRegistry;
 
@@ -380,7 +380,7 @@ namespace awin
      * @param args event arguments
      */
     template <typename T, typename... Args>
-    inline void dispatchWindowEvent(const astl::vector<events::EventListener<T> *> &listener, Args &&...args)
+    inline void dispatchWindowEvent(const acul::vector<events::EventListener<T> *> &listener, Args &&...args)
     {
         T event(std::forward<Args>(args)...);
         for (const auto &l : listener) l->invoke(event);
@@ -442,7 +442,7 @@ namespace awin
     APPLIB_API f32 getDpi();
 
     // Get the client area size
-    APPLIB_API astl::point2D<i32> getWindowSize(const Window &window);
+    APPLIB_API acul::point2D<i32> getWindowSize(const Window &window);
 
     // Get text string from the clipboard buffer
     APPLIB_API std::string getClipboardString(const Window &window);

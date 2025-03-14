@@ -1,4 +1,4 @@
-#include <astl/string.hpp>
+#include <acul/string.hpp>
 #include <awin/popup.hpp>
 #include <filesystem>
 #include <windows.h>
@@ -69,9 +69,9 @@ namespace awin
             UINT flags = buttonsFlag | iconFlag;
             HWND hwnd = parent ? platform::native_access::getHWND(*parent) : nullptr;
             if (!hwnd) flags |= MB_TOPMOST;
-            auto wMessage = astl::utf8_to_utf16(message);
+            auto wMessage = acul::utf8_to_utf16(message);
             LPCWSTR lpText = reinterpret_cast<LPCWSTR>(wMessage.c_str());
-            auto wTitle = astl::utf8_to_utf16(title);
+            auto wTitle = acul::utf8_to_utf16(title);
             LPCWSTR lpCaption = reinterpret_cast<LPCWSTR>(wTitle.c_str());
             switch (MessageBoxW(hwnd, lpText, lpCaption, flags))
             {
@@ -88,19 +88,19 @@ namespace awin
             };
         }
 
-        std::string openFileDialog(const char *title, const astl::vector<FilePattern> &pattern, const char *defaultPath,
+        std::string openFileDialog(const char *title, const acul::vector<FilePattern> &pattern, const char *defaultPath,
                                    bool multiply)
         {
-            std::u16string wTitle = astl::utf8_to_utf16(title ? std::string(title) : "");
-            std::u16string wDefaultPath = defaultPath ? astl::utf8_to_utf16(std::string(defaultPath)) : u"";
+            std::u16string wTitle = acul::utf8_to_utf16(title ? std::string(title) : "");
+            std::u16string wDefaultPath = defaultPath ? acul::utf8_to_utf16(std::string(defaultPath)) : u"";
 
             std::u16string wFilterPatterns;
             for (const auto &pat : pattern)
             {
-                wFilterPatterns += astl::utf8_to_utf16(pat.description) + u'\0';
+                wFilterPatterns += acul::utf8_to_utf16(pat.description) + u'\0';
                 for (size_t i = 0; i < pat.extensions.size(); ++i)
                 {
-                    wFilterPatterns += astl::utf8_to_utf16(pat.extensions[i]);
+                    wFilterPatterns += acul::utf8_to_utf16(pat.extensions[i]);
                     if (i < pat.extensions.size() - 1) wFilterPatterns += u';';
                 }
                 wFilterPatterns += u'\0';
@@ -119,7 +119,7 @@ namespace awin
             ofn.Flags = OFN_EXPLORER | OFN_NOCHANGEDIR | OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST;
             if (multiply) ofn.Flags |= OFN_ALLOWMULTISELECT;
             if (GetOpenFileNameW(&ofn) == 0) return "";
-            return astl::utf16_to_utf8(reinterpret_cast<const std::u16string::value_type *>(lFileName));
+            return acul::utf16_to_utf8(reinterpret_cast<const std::u16string::value_type *>(lFileName));
         }
 
         std::string openFolderDialog(const char *title, const char *defaultPath)
@@ -140,13 +140,13 @@ namespace awin
 
             if (title)
             {
-                std::u16string wTitle = astl::utf8_to_utf16(title);
+                std::u16string wTitle = acul::utf8_to_utf16(title);
                 pFileOpen->SetTitle(reinterpret_cast<LPCWSTR>(wTitle.c_str()));
             }
 
             if (defaultPath)
             {
-                std::u16string wDefaultPath = astl::utf8_to_utf16(defaultPath);
+                std::u16string wDefaultPath = acul::utf8_to_utf16(defaultPath);
                 IShellItem *pItem = nullptr;
                 hr = SHCreateItemFromParsingName(reinterpret_cast<LPCWSTR>(wDefaultPath.c_str()), NULL,
                                                  IID_PPV_ARGS(&pItem));
@@ -169,7 +169,7 @@ namespace awin
                     if (SUCCEEDED(hr))
                     {
                         std::string folderPath =
-                            astl::utf16_to_utf8(reinterpret_cast<const std::u16string::value_type *>(pszFolderPath));
+                            acul::utf16_to_utf8(reinterpret_cast<const std::u16string::value_type *>(pszFolderPath));
                         CoTaskMemFree(pszFolderPath);
                         pItem->Release();
                         pFileOpen->Release();
@@ -186,13 +186,13 @@ namespace awin
         void createDefaultPathOrFolder(const char *path, IFileDialog *pFile)
         {
             if (!path || strlen(path) <= 0) return;
-            auto wDefaultPath = astl::utf8_to_utf16(path);
+            auto wDefaultPath = acul::utf8_to_utf16(path);
 
             std::filesystem::path fsPath(path);
             auto parentPath = fsPath.parent_path().string();
             if (!parentPath.empty())
             {
-                auto wParentPath = astl::utf8_to_utf16(parentPath);
+                auto wParentPath = acul::utf8_to_utf16(parentPath);
                 IShellItem *pDefaultFolder = nullptr;
                 HRESULT hr = SHCreateItemFromParsingName(reinterpret_cast<const wchar_t *>(wParentPath.c_str()), NULL,
                                                          IID_PPV_ARGS(&pDefaultFolder));
@@ -206,19 +206,19 @@ namespace awin
             auto fileName = fsPath.filename().string();
             if (!fileName.empty())
             {
-                auto wFileName = astl::utf8_to_utf16(fileName);
+                auto wFileName = acul::utf8_to_utf16(fileName);
                 pFile->SetFileName(reinterpret_cast<const wchar_t *>(wFileName.c_str()));
             }
         }
 
         struct ComFilter
         {
-            const astl::vector<FilePattern> *pattern;
-            astl::vector<COMDLG_FILTERSPEC> com;
-            astl::vector<std::u16string> descriptions;
-            astl::vector<std::u16string> specs;
+            const acul::vector<FilePattern> *pattern;
+            acul::vector<COMDLG_FILTERSPEC> com;
+            acul::vector<std::u16string> descriptions;
+            acul::vector<std::u16string> specs;
 
-            ComFilter(const astl::vector<FilePattern> *pattern) : pattern(pattern)
+            ComFilter(const acul::vector<FilePattern> *pattern) : pattern(pattern)
             {
                 com.resize(pattern->size());
                 descriptions.resize(pattern->size());
@@ -232,13 +232,13 @@ namespace awin
             auto &pattern = *filter.pattern;
             for (size_t i = 0; i < filter.pattern->size(); ++i)
             {
-                filter.descriptions[i] = astl::utf8_to_utf16(pattern[i].description);
+                filter.descriptions[i] = acul::utf8_to_utf16(pattern[i].description);
                 filter.com[i].pszName = reinterpret_cast<const wchar_t *>(filter.descriptions[i].c_str());
                 std::u16string extensions;
                 for (size_t j = 0; j < pattern[i].extensions.size(); ++j)
                 {
                     if (j > 0) extensions += u";";
-                    extensions += astl::utf8_to_utf16(pattern[i].extensions[j]);
+                    extensions += acul::utf8_to_utf16(pattern[i].extensions[j]);
                 }
                 filter.specs[i] = extensions;
                 filter.com[i].pszSpec = reinterpret_cast<const wchar_t *>(filter.specs[i].c_str());
@@ -252,12 +252,12 @@ namespace awin
             if (!defExt.empty() && defExt[0] == '.') defExt = defExt.substr(1);
             if (!defExt.empty())
             {
-                auto wDefExt = astl::utf8_to_utf16(defExt);
+                auto wDefExt = acul::utf8_to_utf16(defExt);
                 pFile->SetDefaultExtension(reinterpret_cast<const wchar_t *>(wDefExt.c_str()));
             }
         }
 
-        std::string saveFileDialog(const char *title, const astl::vector<FilePattern> &pattern, const char *defaultPath)
+        std::string saveFileDialog(const char *title, const acul::vector<FilePattern> &pattern, const char *defaultPath)
         {
             IFileSaveDialog *pFileSave = nullptr;
             HRESULT hr = CoCreateInstance(CLSID_FileSaveDialog, nullptr, CLSCTX_ALL, IID_IFileSaveDialog,
@@ -266,7 +266,7 @@ namespace awin
 
             if (title)
             {
-                auto wTitle = astl::utf8_to_utf16(title);
+                auto wTitle = acul::utf8_to_utf16(title);
                 pFileSave->SetTitle(reinterpret_cast<const wchar_t *>(wTitle.c_str()));
             }
 
@@ -287,7 +287,7 @@ namespace awin
                     if (SUCCEEDED(hr))
                     {
                         std::string result =
-                            astl::utf16_to_utf8(reinterpret_cast<const std::u16string::value_type *>(pszFilePath));
+                            acul::utf16_to_utf8(reinterpret_cast<const std::u16string::value_type *>(pszFilePath));
                         CoTaskMemFree(pszFilePath);
                         pItem->Release();
                         pFileSave->Release();
