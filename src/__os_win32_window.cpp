@@ -1,5 +1,5 @@
 #include <acul/log.hpp>
-#include <acul/string.hpp>
+#include <acul/string/string.hpp>
 #include <awin/window.hpp>
 #include <shlobj.h>
 #include <windef.h>
@@ -540,7 +540,7 @@ namespace awin
             return {};
     }
 
-    Window::Window(const std::string &title, i32 width, i32 height, CreationFlags flags) : _platform(nullptr)
+    Window::Window(const acul::string &title, i32 width, i32 height, CreationFlags flags) : _platform(nullptr)
     {
         _platform.owner = this;
         _platform.backend.title = acul::utf8_to_utf16(title);
@@ -559,7 +559,7 @@ namespace awin
             _platform.backend.style & ~WS_VISIBLE, CW_USEDEFAULT, CW_USEDEFAULT, _platform.dimenstions.x,
             _platform.dimenstions.y, nullptr, nullptr, platform::ctx.instance, (LPVOID)&_platform);
 
-        if (!_platform.backend.hwnd) throw std::runtime_error("Failed to create window");
+        if (!_platform.backend.hwnd) throw acul::runtime_error("Failed to create window");
         if (!(flags & CreationFlagsBits::hidden))
         {
             if (flags & CreationFlagsBits::minimized)
@@ -611,7 +611,7 @@ namespace awin
         _platform.flags |= CreationFlagsBits::hidden;
     }
 
-    void Window::title(const std::string &title)
+    void Window::title(const acul::string &title)
     {
         _platform.backend.title = acul::utf8_to_utf16(title);
         SetWindowTextW(_platform.backend.hwnd, (LPCWSTR)_platform.backend.title.c_str());
@@ -767,7 +767,7 @@ namespace awin
         return {area.right, area.bottom};
     }
 
-    std::string getClipboardString(const Window &window)
+    acul::string getClipboardString(const Window &window)
     {
         HANDLE object;
         int tries = 0;
@@ -808,7 +808,7 @@ namespace awin
         return platform::env.clipboardData;
     }
 
-    void setClipboardString(const Window &window, const std::string &text)
+    void setClipboardString(const Window &window, const acul::string &text)
     {
         if (text.empty()) return;
         int tries = 0;

@@ -42,16 +42,16 @@ namespace awin
 
         struct FilePattern
         {
-            std::string description;
-            acul::vector<std::string> extensions;
+            acul::string description;
+            acul::vector<acul::string> extensions;
         };
 
-        APPLIB_API std::string openFileDialog(const char *title, const acul::vector<FilePattern> &pattern,
+        APPLIB_API acul::string openFileDialog(const char *title, const acul::vector<FilePattern> &pattern,
                                               const char *defaultPath, bool multiply);
 
-        APPLIB_API std::string openFolderDialog(const char *title, const char *defaultPath);
+        APPLIB_API acul::string openFolderDialog(const char *title, const char *defaultPath);
 
-        APPLIB_API std::string saveFileDialog(const char *title, const acul::vector<FilePattern> &pattern,
+        APPLIB_API acul::string saveFileDialog(const char *title, const acul::vector<FilePattern> &pattern,
                                               const char *defaultPath);
     } // namespace popup
 } // namespace awin

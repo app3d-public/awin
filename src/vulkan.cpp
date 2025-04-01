@@ -1,13 +1,11 @@
-#include <cassert>
-#include <vulkan/vulkan.hpp>
-#include <window/vulkan.hpp>
+#include <awin/vulkan.hpp>
 
 namespace awin
 {
     namespace vulkan
     {
-        vk::Result CreateCtx::createSurface(vk::Instance &instance, vk::SurfaceKHR &surface,
-                                            vk::DispatchLoaderDynamic &loader)
+        vk::Result CreateCtx::create_surface(vk::Instance &instance, vk::SurfaceKHR &surface,
+                                             vk::DispatchLoaderDynamic &loader)
         {
             try
             {
@@ -24,7 +22,7 @@ namespace awin
             {
                 return static_cast<vk::Result>(e.code().value());
             }
-            catch (const std::runtime_error &e)
+            catch (const std::exception &e)
             {
                 return vk::Result::eErrorInitializationFailed;
             }

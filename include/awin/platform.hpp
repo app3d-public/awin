@@ -17,14 +17,14 @@ namespace awin
         // The window environment configuration for window management and interactions within the windowing system.
         extern APPLIB_API struct WindowEnvironment
         {
-            std::string clipboardData; // Clipboard data storage.
+            acul::string clipboardData; // Clipboard data storage.
             struct Timer
             {
                 u64 offset;                   // Time offset
                 u64 frequency;                // Timer frequency
             } timer;                          // Timer information for time tracking.
             f64 timeout = WINDOW_TIMEOUT_INF; // Global timeout for waking up the main loop.
-            events::Manager *e = nullptr;
+            acul::events::dispatcher *ed = nullptr;
         } env;
 
         struct WindowData

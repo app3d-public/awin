@@ -4,7 +4,7 @@
 #include <acul/api.hpp>
 #include <acul/map.hpp>
 #include <acul/point2d.hpp>
-#include <string>
+#include <acul/string/string.hpp>
 #include <windows.h>
 #include "../types.hpp"
 
@@ -15,7 +15,7 @@ namespace awin
     {
         struct Win32PlatformData
         {
-            std::u16string title;
+            acul::u16string title;
             DWORD style;
             DWORD exStyle;
             HWND hwnd;

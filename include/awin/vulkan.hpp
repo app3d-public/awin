@@ -1,25 +1,23 @@
 #ifndef APP_WINDOW_VULKAN_H
 #define APP_WINDOW_VULKAN_H
 
-#include <core/api.hpp>
-#include <backend/device.hpp>
-#include <vulkan/vulkan.hpp>
+#include <acul/api.hpp>
+#include <acul/gpu/device.hpp>
 #include "window.hpp"
 
 namespace awin
 {
     namespace vulkan
     {
-
-        class APPLIB_API CreateCtx final : public DeviceCreateCtx
+        class APPLIB_API CreateCtx final : public acul::gpu::device_create_ctx
         {
         public:
-            CreateCtx(Window &window) : DeviceCreateCtx(true), _window(window) {}
+            CreateCtx(Window &window) : device_create_ctx(true), _window(window) {}
 
-            [[nodiscard]] virtual vk::Result createSurface(vk::Instance &instance, vk::SurfaceKHR &surface,
-                                                           vk::DispatchLoaderDynamic &loader) override;
+            [[nodiscard]] virtual vk::Result create_surface(vk::Instance &instance, vk::SurfaceKHR &surface,
+                                                            vk::DispatchLoaderDynamic &loader) override;
 
-            virtual acul::vector<const char *> getWindowExtensions() override
+            virtual acul::vector<const char *> get_window_extensions() override
             {
 #ifdef _WIN32
                 return {vk::KHRSurfaceExtensionName, vk::KHRWin32SurfaceExtensionName};

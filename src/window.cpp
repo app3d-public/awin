@@ -34,35 +34,35 @@ namespace awin
 
     void updateEvents()
     {
-        assert(platform::env.e);
+        assert(platform::env.ed);
 #ifdef _WIN32
-        auto NCLMouseDownList = platform::env.e->getListeners<Win32NativeEvent>(event_id::NCMouseDown);
+        auto NCLMouseDownList = platform::env.ed->get_listeners<Win32NativeEvent>(event_id::NCMouseDown);
         if (!NCLMouseDownList.empty()) eventRegistry.NCLMouseDown = NCLMouseDownList[0];
 
-        auto NCHitTestList = platform::env.e->getListeners<Win32NativeEvent>(event_id::NCHitTest);
+        auto NCHitTestList = platform::env.ed->get_listeners<Win32NativeEvent>(event_id::NCHitTest);
         if (!NCHitTestList.empty()) eventRegistry.NCHitTest = NCHitTestList[0];
 #endif
-        eventRegistry.focus = platform::env.e->getListeners<FocusEvent>(event_id::focus);
-        eventRegistry.scroll = platform::env.e->getListeners<ScrollEvent>(event_id::scroll);
-        eventRegistry.minimize = platform::env.e->getListeners<StateEvent>(event_id::minimize);
-        eventRegistry.maximize = platform::env.e->getListeners<StateEvent>(event_id::maximize);
-        eventRegistry.resize = platform::env.e->getListeners<PosEvent>(event_id::resize);
-        eventRegistry.move = platform::env.e->getListeners<PosEvent>(event_id::move);
-        eventRegistry.charInput = platform::env.e->getListeners<CharInputEvent>(event_id::charInput);
-        eventRegistry.keyInput = platform::env.e->getListeners<KeyInputEvent>(event_id::keyInput);
-        eventRegistry.mouseClick = platform::env.e->getListeners<MouseClickEvent>(event_id::mouseClick);
-        eventRegistry.mouseEnter = platform::env.e->getListeners<MouseEnterEvent>(event_id::mouseEnter);
-        eventRegistry.mouseMove = platform::env.e->getListeners<PosEvent>(event_id::mouseMove);
-        eventRegistry.mouseMoveAbs = platform::env.e->getListeners<PosEvent>(event_id::mouseMoveAbs);
-        eventRegistry.dpiChanged = platform::env.e->getListeners<DpiChangedEvent>(event_id::dpiChanged);
+        eventRegistry.focus = platform::env.ed->get_listeners<FocusEvent>(event_id::focus);
+        eventRegistry.scroll = platform::env.ed->get_listeners<ScrollEvent>(event_id::scroll);
+        eventRegistry.minimize = platform::env.ed->get_listeners<StateEvent>(event_id::minimize);
+        eventRegistry.maximize = platform::env.ed->get_listeners<StateEvent>(event_id::maximize);
+        eventRegistry.resize = platform::env.ed->get_listeners<PosEvent>(event_id::resize);
+        eventRegistry.move = platform::env.ed->get_listeners<PosEvent>(event_id::move);
+        eventRegistry.charInput = platform::env.ed->get_listeners<CharInputEvent>(event_id::charInput);
+        eventRegistry.keyInput = platform::env.ed->get_listeners<KeyInputEvent>(event_id::keyInput);
+        eventRegistry.mouseClick = platform::env.ed->get_listeners<MouseClickEvent>(event_id::mouseClick);
+        eventRegistry.mouseEnter = platform::env.ed->get_listeners<MouseEnterEvent>(event_id::mouseEnter);
+        eventRegistry.mouseMove = platform::env.ed->get_listeners<PosEvent>(event_id::mouseMove);
+        eventRegistry.mouseMoveAbs = platform::env.ed->get_listeners<PosEvent>(event_id::mouseMoveAbs);
+        eventRegistry.dpiChanged = platform::env.ed->get_listeners<DpiChangedEvent>(event_id::dpiChanged);
     }
 
-    void initLibrary(events::Manager *e)
+    void initLibrary(acul::events::dispatcher *ed)
     {
-        if (!platform::initPlatform()) throw std::runtime_error("Failed to initialize Window platform");
+        if (!platform::initPlatform()) throw acul::runtime_error("Failed to initialize Window platform");
         platform::initTimer();
         setTime(0.0);
-        platform::env.e = e;
+        platform::env.ed = ed;
     }
 
     void destroyLibrary()

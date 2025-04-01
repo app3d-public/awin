@@ -9,7 +9,6 @@
 #define APP_WINDOW_WINDOW_H
 
 #include <acul/event.hpp>
-#include <string>
 #include "types.hpp"
 #ifdef _WIN32
     #include "platform.hpp"
@@ -49,17 +48,17 @@ namespace awin
     {
     public:
         // Initialize a window with a title, dimensions, and creation flags.
-        explicit Window(const std::string &title, i32 width = WINDOW_DONT_CARE, i32 height = WINDOW_DONT_CARE,
+        explicit Window(const acul::string &title, i32 width = WINDOW_DONT_CARE, i32 height = WINDOW_DONT_CARE,
                         CreationFlags flags = WINDOW_DEFAULT_FLAGS);
 
         // Destroy the window
         void destroy();
 
         // Get the window title
-        std::string title() const;
+        acul::string title() const;
 
         // Set the window title
-        void title(const std::string &title);
+        void title(const acul::string &title);
 
         // Returns the width of the window.
         acul::point2D<i32> dimensions() const { return _platform.dimenstions; }
@@ -184,7 +183,7 @@ namespace awin
 
 #ifdef _WIN32
     // Event specific to Win32 platform, carrying native window message data.
-    struct Win32NativeEvent : public events::IEvent
+    struct Win32NativeEvent : acul::events::event
     {
         awin::Window *window; // Pointer to the associated Window object.
         HWND hwnd;            // Handle to the window.
@@ -195,14 +194,14 @@ namespace awin
 
         explicit Win32NativeEvent(u64 id = 0, awin::Window *window = nullptr, HWND hwnd = 0, UINT uMsg = 0,
                                   WPARAM wParam = 0, LPARAM lParam = 0, LRESULT lResult = -1)
-            : IEvent(id), window(window), hwnd(hwnd), uMsg(uMsg), wParam(wParam), lParam(lParam), lResult(lResult)
+            : event(id), window(window), hwnd(hwnd), uMsg(uMsg), wParam(wParam), lParam(lParam), lResult(lResult)
         {
         }
     };
 #endif
 
     // Represents a focus change event in a window.
-    struct FocusEvent : public events::IEvent
+    struct FocusEvent : public acul::events::event
     {
         // Pointer to the associated Window object.
         awin::Window *window;
@@ -211,25 +210,25 @@ namespace awin
         bool focused;
 
         explicit FocusEvent(awin::Window *window = nullptr, bool focused = false)
-            : IEvent(event_id::focus), window(window), focused(focused)
+            : event(event_id::focus), window(window), focused(focused)
         {
         }
     };
 
     // Represents a character input event in a window.
-    struct CharInputEvent : public events::IEvent
+    struct CharInputEvent : public acul::events::event
     {
         awin::Window *window; // Pointer to the associated Window object.
         u32 charCode;         // Unicode character code.
 
         explicit CharInputEvent(awin::Window *window = nullptr, u32 charCode = 0)
-            : IEvent(event_id::charInput), window(window), charCode(charCode)
+            : event(event_id::charInput), window(window), charCode(charCode)
         {
         }
     };
 
     // Represents a keyboard input event in a window.
-    struct KeyInputEvent : public events::IEvent
+    struct KeyInputEvent : acul::events::event
     {
         awin::Window *window;     // Pointer to the associated Window object.
         io::Key key;              // The key involved in the event.
@@ -238,13 +237,13 @@ namespace awin
 
         explicit KeyInputEvent(awin::Window *window = nullptr, io::Key key = io::Key::kUnknown,
                                io::KeyPressState action = io::KeyPressState::release, io::KeyMode mods = io::KeyMode{})
-            : IEvent(event_id::keyInput), window(window), key(key), action(action), mods(mods)
+            : event(event_id::keyInput), window(window), key(key), action(action), mods(mods)
         {
         }
     };
 
     // Represents a mouse click event in a window.
-    struct MouseClickEvent : public events::IEvent
+    struct MouseClickEvent : public acul::events::event
     {
         awin::Window *window;     // Pointer to the associated Window object.
         io::MouseKey button;      // The mouse button involved in the event.
@@ -254,70 +253,70 @@ namespace awin
         explicit MouseClickEvent(awin::Window *window = nullptr, io::MouseKey button = io::MouseKey::unknown,
                                  io::KeyPressState action = io::KeyPressState::release,
                                  io::KeyMode mods = io::KeyMode{})
-            : IEvent(event_id::mouseClick), window(window), button(button), action(action), mods(mods)
+            : event(event_id::mouseClick), window(window), button(button), action(action), mods(mods)
         {
         }
     };
 
     // Represents a mouse position event in a window. This one is dispatchted when the mouse enters or leaves the
     // window.
-    struct MouseEnterEvent : public events::IEvent
+    struct MouseEnterEvent : public acul::events::event
     {
         awin::Window *window; // Pointer to the associated Window object.
         bool entered;         // Whether the mouse entered or left the window.
 
         explicit MouseEnterEvent(awin::Window *window = nullptr, bool entered = false)
-            : IEvent(event_id::mouseEnter), window(window), entered(entered)
+            : event(event_id::mouseEnter), window(window), entered(entered)
         {
         }
     };
 
     // Represents a window state change event in a window.
-    struct StateEvent : public events::IEvent
+    struct StateEvent : public acul::events::event
     {
         awin::Window *window; // Pointer to the associated Window object.
         bool state;           // The new state.
 
         explicit StateEvent(u64 id, awin::Window *window = nullptr, bool state = false)
-            : IEvent(id), window(window), state(state)
+            : event(id), window(window), state(state)
         {
         }
     };
 
     // Represents a position change event in a window.
-    struct PosEvent : public events::IEvent
+    struct PosEvent : public acul::events::event
     {
         awin::Window *window;        // Pointer to the associated Window object.
         acul::point2D<i32> position; // The new position.
 
         explicit PosEvent(u64 id = 0, awin::Window *window = nullptr, acul::point2D<i32> position = {})
-            : IEvent(id), window(window), position(position)
+            : event(id), window(window), position(position)
         {
         }
     };
 
     // Represents a scroll event in a window.
-    struct ScrollEvent : public events::IEvent
+    struct ScrollEvent : public acul::events::event
     {
         awin::Window *window; // Pointer to the associated Window object.
         f32 h;                // The Horizontal scroll value.
         f32 v;                // The Vertical scroll value.
 
         explicit ScrollEvent(awin::Window *window = nullptr, f32 hscroll = 0.0f, f32 vscroll = 0.0f)
-            : IEvent(event_id::scroll), window(window), h(hscroll), v(vscroll)
+            : event(event_id::scroll), window(window), h(hscroll), v(vscroll)
         {
         }
     };
 
     // Represents a DPI change event in a window.
-    struct DpiChangedEvent : public events::IEvent
+    struct DpiChangedEvent : public acul::events::event
     {
         awin::Window *window; // Pointer to the associated Window object.
         f32 xDpi;             // New DPI value in the x-axis.
         f32 yDpi;             // New DPI value in the y-axis.
 
         explicit DpiChangedEvent(awin::Window *window = nullptr, f32 xDpi = 0.0f, f32 yDpi = 0.0f)
-            : IEvent(event_id::dpiChanged), window(window), xDpi(xDpi), yDpi(yDpi)
+            : event(event_id::dpiChanged), window(window), xDpi(xDpi), yDpi(yDpi)
         {
         }
     };
@@ -327,49 +326,49 @@ namespace awin
     {
 #ifdef _WIN32
         // Handling non-client area mouse clicks on Windows.
-        events::EventListener<Win32NativeEvent> *NCLMouseDown;
+        acul::events::listener<Win32NativeEvent> *NCLMouseDown;
 
         // Performing hit testing in the non-client area on Windows.
-        events::EventListener<Win32NativeEvent> *NCHitTest;
+        acul::events::listener<Win32NativeEvent> *NCHitTest;
 #endif
         // List of event listeners for focus-related events.
-        acul::vector<events::EventListener<FocusEvent> *> focus;
+        acul::vector<acul::events::listener<FocusEvent> *> focus;
 
         // List of event listeners for character input events.
-        acul::vector<events::EventListener<CharInputEvent> *> charInput;
+        acul::vector<acul::events::listener<CharInputEvent> *> charInput;
 
         // List of event listeners for keyboard input events.
-        acul::vector<events::EventListener<KeyInputEvent> *> keyInput;
+        acul::vector<acul::events::listener<KeyInputEvent> *> keyInput;
 
         // List of event listeners for mouse click events.
-        acul::vector<events::EventListener<MouseClickEvent> *> mouseClick;
+        acul::vector<acul::events::listener<MouseClickEvent> *> mouseClick;
 
         // List of event listeners for cursor enter/leave events.
-        acul::vector<events::EventListener<MouseEnterEvent> *> mouseEnter;
+        acul::vector<acul::events::listener<MouseEnterEvent> *> mouseEnter;
 
         //  Listener for handling when the mouse position changes in RAW Input mode.
-        acul::vector<events::EventListener<PosEvent> *> mouseMove;
+        acul::vector<acul::events::listener<PosEvent> *> mouseMove;
 
         //  Listener for handling when the mouse position changes in absolute (per Window dimensions) values
-        acul::vector<events::EventListener<PosEvent> *> mouseMoveAbs;
+        acul::vector<acul::events::listener<PosEvent> *> mouseMoveAbs;
 
         // List of event listeners for scroll events.
-        acul::vector<events::EventListener<ScrollEvent> *> scroll;
+        acul::vector<acul::events::listener<ScrollEvent> *> scroll;
 
         // List of event listeners for window minimize events.
-        acul::vector<events::EventListener<StateEvent> *> minimize;
+        acul::vector<acul::events::listener<StateEvent> *> minimize;
 
         // List of event listeners for window maximize events.
-        acul::vector<events::EventListener<StateEvent> *> maximize;
+        acul::vector<acul::events::listener<StateEvent> *> maximize;
 
         // List of event listeners for window resize events.
-        acul::vector<events::EventListener<PosEvent> *> resize;
+        acul::vector<acul::events::listener<PosEvent> *> resize;
 
         // List of event listeners for window move events.
-        acul::vector<events::EventListener<PosEvent> *> move;
+        acul::vector<acul::events::listener<PosEvent> *> move;
 
         // List of event listeners for DPI (dots per inch) changed events.
-        acul::vector<events::EventListener<DpiChangedEvent> *> dpiChanged;
+        acul::vector<acul::events::listener<DpiChangedEvent> *> dpiChanged;
 
     } eventRegistry;
 
@@ -380,7 +379,7 @@ namespace awin
      * @param args event arguments
      */
     template <typename T, typename... Args>
-    inline void dispatchWindowEvent(const acul::vector<events::EventListener<T> *> &listener, Args &&...args)
+    inline void dispatchWindowEvent(const acul::vector<acul::events::listener<T> *> &listener, Args &&...args)
     {
         T event(std::forward<Args>(args)...);
         for (const auto &l : listener) l->invoke(event);
@@ -445,13 +444,13 @@ namespace awin
     APPLIB_API acul::point2D<i32> getWindowSize(const Window &window);
 
     // Get text string from the clipboard buffer
-    APPLIB_API std::string getClipboardString(const Window &window);
+    APPLIB_API acul::string getClipboardString(const Window &window);
 
     // Set text string in the clipboard buffer
-    APPLIB_API void setClipboardString(const Window &window, const std::string &text);
+    APPLIB_API void setClipboardString(const Window &window, const acul::string &text);
 
     // Initialize the library.
-    APPLIB_API void initLibrary(events::Manager *e);
+    APPLIB_API void initLibrary(acul::events::dispatcher *ed);
 
     // Destroy the library and release associated resources.
     APPLIB_API void destroyLibrary();
