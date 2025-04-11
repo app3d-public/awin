@@ -9,10 +9,10 @@ namespace awin
 {
     namespace vulkan
     {
-        class APPLIB_API CreateCtx final : public acul::gpu::device_create_ctx
+        class APPLIB_API CreateCtx final : public acul::gpu::device::create_ctx
         {
         public:
-            CreateCtx(Window &window) : device_create_ctx(true), _window(window) {}
+            CreateCtx(Window &window) : create_ctx(true), _window(window) {}
 
             [[nodiscard]] virtual vk::Result create_surface(vk::Instance &instance, vk::SurfaceKHR &surface,
                                                             vk::DispatchLoaderDynamic &loader) override;
