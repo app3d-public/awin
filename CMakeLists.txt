@@ -32,3 +32,8 @@ set_target_properties(${AWIN_LIB_NAME}
 )
 
 set(AWIN_LIB_NAME ${AWIN_LIB_NAME} PARENT_SCOPE)
+
+if(BUILD_TESTS)
+    enable_testing()
+    add_subdirectory(tests)
+endif()
