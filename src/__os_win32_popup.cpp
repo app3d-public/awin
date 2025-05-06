@@ -17,7 +17,7 @@ namespace awin
 {
     namespace popup
     {
-        inline int styleToIcon(Style style)
+        inline int style_to_icon(Style style)
         {
             switch (style)
             {
@@ -33,7 +33,7 @@ namespace awin
             return MB_ICONINFORMATION;
         }
 
-        int buttonsToFlags(std::initializer_list<Buttons> buttons)
+        int buttons_to_flags(std::initializer_list<Buttons> buttons)
         {
             int mask = 0x0;
             for (auto btn : buttons)
@@ -62,19 +62,19 @@ namespace awin
             return MB_OK;
         }
 
-        Buttons msgBox(const char *message, const char *title, Style style, std::initializer_list<Buttons> buttons,
-                       awin::Window *parent)
+        Buttons message_box(const char *message, const char *title, Style style, std::initializer_list<Buttons> buttons,
+                            awin::Window *parent)
         {
-            UINT iconFlag = styleToIcon(style);
-            UINT buttonsFlag = buttonsToFlags(buttons);
-            UINT flags = buttonsFlag | iconFlag;
-            HWND hwnd = parent ? platform::native_access::getHWND(*parent) : nullptr;
+            UINT icon_flag = style_to_icon(style);
+            UINT buttons_flag = buttons_to_flags(buttons);
+            UINT flags = buttons_flag | icon_flag;
+            HWND hwnd = parent ? platform::native_access::get_hwnd(*parent) : nullptr;
             if (!hwnd) flags |= MB_TOPMOST;
-            auto wMessage = acul::utf8_to_utf16(message);
-            LPCWSTR lpText = reinterpret_cast<LPCWSTR>(wMessage.c_str());
-            auto wTitle = acul::utf8_to_utf16(title);
-            LPCWSTR lpCaption = reinterpret_cast<LPCWSTR>(wTitle.c_str());
-            switch (MessageBoxW(hwnd, lpText, lpCaption, flags))
+            auto w_message = acul::utf8_to_utf16(message);
+            LPCWSTR lp_text = reinterpret_cast<LPCWSTR>(w_message.c_str());
+            auto w_title = acul::utf8_to_utf16(title);
+            LPCWSTR lp_caption = reinterpret_cast<LPCWSTR>(w_title.c_str());
+            switch (MessageBoxW(hwnd, lp_text, lp_caption, flags))
             {
                 case IDOK:
                     return Buttons::OK;
@@ -89,126 +89,125 @@ namespace awin
             };
         }
 
-        acul::string openFileDialog(const char *title, const acul::vector<FilePattern> &pattern,
-                                    const char *defaultPath, bool multiply)
+        acul::string open_file_dialog(const char *title, const acul::vector<FilePattern> &pattern,
+                                      const char *default_path, bool multiply)
         {
-            acul::u16string wTitle = acul::utf8_to_utf16(title);
-            acul::u16string wDefaultPath = defaultPath ? acul::utf8_to_utf16(defaultPath) : u"";
-
-            acul::u16string wFilterPatterns;
+            acul::u16string w_title = acul::utf8_to_utf16(title);
+            acul::u16string w_default_path = default_path ? acul::utf8_to_utf16(default_path) : u"";
+            acul::u16string filter_patterns;
             for (const auto &pat : pattern)
             {
-                wFilterPatterns += acul::utf8_to_utf16(pat.description) + u'\0';
+                filter_patterns += acul::utf8_to_utf16(pat.description) + u'\0';
                 for (size_t i = 0; i < pat.extensions.size(); ++i)
                 {
-                    wFilterPatterns += acul::utf8_to_utf16(pat.extensions[i]);
-                    if (i < pat.extensions.size() - 1) wFilterPatterns += u';';
+                    filter_patterns += acul::utf8_to_utf16(pat.extensions[i]);
+                    if (i < pat.extensions.size() - 1) filter_patterns += u';';
                 }
-                wFilterPatterns += u'\0';
+                filter_patterns += u'\0';
             }
-            wFilterPatterns += u'\0';
+            filter_patterns += u'\0';
 
-            wchar_t lFileName[MAX_PATH] = L"";
+            wchar_t filename[MAX_PATH] = L"";
             OPENFILENAMEW ofn = {0};
             ofn.lStructSize = sizeof(OPENFILENAMEW);
             ofn.hwndOwner = GetForegroundWindow();
-            ofn.lpstrFilter = reinterpret_cast<LPCWSTR>(wFilterPatterns.c_str());
-            ofn.lpstrFile = lFileName;
+            ofn.lpstrFilter = reinterpret_cast<LPCWSTR>(filter_patterns.c_str());
+            ofn.lpstrFile = filename;
             ofn.nMaxFile = MAX_PATH;
-            ofn.lpstrTitle = reinterpret_cast<LPCWSTR>(wTitle.c_str());
-            ofn.lpstrInitialDir = wDefaultPath.empty() ? NULL : reinterpret_cast<LPCWSTR>(wDefaultPath.c_str());
+            ofn.lpstrTitle = reinterpret_cast<LPCWSTR>(w_title.c_str());
+            ofn.lpstrInitialDir = w_default_path.empty() ? NULL : reinterpret_cast<LPCWSTR>(w_default_path.c_str());
             ofn.Flags = OFN_EXPLORER | OFN_NOCHANGEDIR | OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST;
             if (multiply) ofn.Flags |= OFN_ALLOWMULTISELECT;
             if (GetOpenFileNameW(&ofn) == 0) return "";
-            return acul::utf16_to_utf8(reinterpret_cast<const acul::u16string::value_type *>(lFileName));
+            return acul::utf16_to_utf8(reinterpret_cast<const acul::u16string::value_type *>(filename));
         }
 
-        acul::string openFolderDialog(const char *title, const char *defaultPath)
+        acul::string open_folder_dialog(const char *title, const char *defaultPath)
         {
-            IFileOpenDialog *pFileOpen = nullptr;
+            IFileOpenDialog *file_open_dlg = nullptr;
 
             HRESULT hr = CoCreateInstance(CLSID_FileOpenDialog, NULL, CLSCTX_ALL, IID_IFileOpenDialog,
-                                          reinterpret_cast<void **>(&pFileOpen));
+                                          reinterpret_cast<void **>(&file_open_dlg));
             if (FAILED(hr))
             {
                 CoUninitialize();
                 return "";
             }
 
-            DWORD dwOptions;
-            hr = pFileOpen->GetOptions(&dwOptions);
-            if (SUCCEEDED(hr)) pFileOpen->SetOptions(dwOptions | FOS_PICKFOLDERS);
+            DWORD dw_options;
+            hr = file_open_dlg->GetOptions(&dw_options);
+            if (SUCCEEDED(hr)) file_open_dlg->SetOptions(dw_options | FOS_PICKFOLDERS);
 
             if (title)
             {
-                acul::u16string wTitle = acul::utf8_to_utf16(title);
-                pFileOpen->SetTitle(reinterpret_cast<LPCWSTR>(wTitle.c_str()));
+                acul::u16string w_title = acul::utf8_to_utf16(title);
+                file_open_dlg->SetTitle(reinterpret_cast<LPCWSTR>(w_title.c_str()));
             }
 
             if (defaultPath)
             {
-                acul::u16string wDefaultPath = acul::utf8_to_utf16(defaultPath);
+                acul::u16string w_default_path = acul::utf8_to_utf16(defaultPath);
                 IShellItem *pItem = nullptr;
-                hr = SHCreateItemFromParsingName(reinterpret_cast<LPCWSTR>(wDefaultPath.c_str()), NULL,
+                hr = SHCreateItemFromParsingName(reinterpret_cast<LPCWSTR>(w_default_path.c_str()), NULL,
                                                  IID_PPV_ARGS(&pItem));
                 if (SUCCEEDED(hr))
                 {
-                    pFileOpen->SetFolder(pItem);
+                    file_open_dlg->SetFolder(pItem);
                     pItem->Release();
                 }
             }
 
-            hr = pFileOpen->Show(NULL);
+            hr = file_open_dlg->Show(NULL);
             if (SUCCEEDED(hr))
             {
-                IShellItem *pItem = nullptr;
-                hr = pFileOpen->GetResult(&pItem);
+                IShellItem *item = nullptr;
+                hr = file_open_dlg->GetResult(&item);
                 if (SUCCEEDED(hr))
                 {
-                    PWSTR pszFolderPath = nullptr;
-                    hr = pItem->GetDisplayName(SIGDN_FILESYSPATH, &pszFolderPath);
+                    PWSTR psz_folder_path = nullptr;
+                    hr = item->GetDisplayName(SIGDN_FILESYSPATH, &psz_folder_path);
                     if (SUCCEEDED(hr))
                     {
-                        acul::string folderPath =
-                            acul::utf16_to_utf8(reinterpret_cast<const acul::u16string::value_type *>(pszFolderPath));
-                        CoTaskMemFree(pszFolderPath);
-                        pItem->Release();
-                        pFileOpen->Release();
-                        return folderPath;
+                        acul::string folder_path =
+                            acul::utf16_to_utf8(reinterpret_cast<const acul::u16string::value_type *>(psz_folder_path));
+                        CoTaskMemFree(psz_folder_path);
+                        item->Release();
+                        file_open_dlg->Release();
+                        return folder_path;
                     }
-                    pItem->Release();
+                    item->Release();
                 }
             }
 
-            pFileOpen->Release();
+            file_open_dlg->Release();
             return {};
         }
 
-        void createDefaultPathOrFolder(const char *path, IFileDialog *pFile)
+        void create_default_path_or_folder(const char *path, IFileDialog *file_dlg)
         {
             if (!path || strlen(path) <= 0) return;
-            auto wDefaultPath = acul::utf8_to_utf16(path);
+            auto w_default_path = acul::utf8_to_utf16(path);
 
-            acul::io::path fsPath(path);
-            auto parentPath = fsPath.parent_path().str();
-            if (!parentPath.empty())
+            acul::io::path fs_path(path);
+            auto parent_path = fs_path.parent_path().str();
+            if (!parent_path.empty())
             {
-                auto wParentPath = acul::utf8_to_utf16(parentPath);
-                IShellItem *pDefaultFolder = nullptr;
-                HRESULT hr = SHCreateItemFromParsingName(reinterpret_cast<const wchar_t *>(wParentPath.c_str()), NULL,
-                                                         IID_PPV_ARGS(&pDefaultFolder));
+                auto w_parent_path = acul::utf8_to_utf16(parent_path);
+                IShellItem *default_folder = nullptr;
+                HRESULT hr = SHCreateItemFromParsingName(reinterpret_cast<const wchar_t *>(w_parent_path.c_str()), NULL,
+                                                         IID_PPV_ARGS(&default_folder));
                 if (SUCCEEDED(hr))
                 {
-                    pFile->SetFolder(pDefaultFolder);
-                    pDefaultFolder->Release();
+                    file_dlg->SetFolder(default_folder);
+                    default_folder->Release();
                 }
             }
 
-            auto fileName = fsPath.filename();
-            if (!fileName.empty())
+            auto filename = fs_path.filename();
+            if (!filename.empty())
             {
-                auto wFileName = acul::utf8_to_utf16(fileName);
-                pFile->SetFileName(reinterpret_cast<const wchar_t *>(wFileName.c_str()));
+                auto w_filename = acul::utf8_to_utf16(filename);
+                file_dlg->SetFileName(reinterpret_cast<const wchar_t *>(w_filename.c_str()));
             }
         }
 
@@ -227,7 +226,7 @@ namespace awin
             }
         };
 
-        void prepareComFilterPattern(ComFilter &filter, IFileDialog *pFile)
+        void prepare_com_filter_pattern(ComFilter &filter, IFileDialog *file_dlg)
         {
             assert(filter.pattern);
             auto &pattern = *filter.pattern;
@@ -244,60 +243,61 @@ namespace awin
                 filter.specs[i] = extensions;
                 filter.com[i].pszSpec = reinterpret_cast<const wchar_t *>(filter.specs[i].c_str());
             }
-            pFile->SetFileTypes(static_cast<UINT>(filter.com.size()), filter.com.data());
-            pFile->SetFileTypeIndex(1);
+            file_dlg->SetFileTypes(static_cast<UINT>(filter.com.size()), filter.com.data());
+            file_dlg->SetFileTypeIndex(1);
 
             if (pattern.empty() || pattern[0].extensions.empty()) return;
-            acul::string defExt = acul::io::get_extension(pattern[0].extensions[0]);
-            if (!defExt.empty() && defExt[0] == '.') defExt = defExt.substr(1);
-            if (!defExt.empty())
+            acul::string default_extension = acul::io::get_extension(pattern[0].extensions[0]);
+            if (!default_extension.empty() && default_extension[0] == '.')
+                default_extension = default_extension.substr(1);
+            if (!default_extension.empty())
             {
-                auto wDefExt = acul::utf8_to_utf16(defExt);
-                pFile->SetDefaultExtension(reinterpret_cast<const wchar_t *>(wDefExt.c_str()));
+                auto w_default_extension = acul::utf8_to_utf16(default_extension);
+                file_dlg->SetDefaultExtension(reinterpret_cast<const wchar_t *>(w_default_extension.c_str()));
             }
         }
 
-        acul::string saveFileDialog(const char *title, const acul::vector<FilePattern> &pattern,
-                                    const char *defaultPath)
+        acul::string save_file_dialog(const char *title, const acul::vector<FilePattern> &pattern,
+                                      const char *default_path)
         {
-            IFileSaveDialog *pFileSave = nullptr;
+            IFileSaveDialog *file_save_dlg = nullptr;
             HRESULT hr = CoCreateInstance(CLSID_FileSaveDialog, nullptr, CLSCTX_ALL, IID_IFileSaveDialog,
-                                          reinterpret_cast<void **>(&pFileSave));
+                                          reinterpret_cast<void **>(&file_save_dlg));
             if (FAILED(hr)) return "";
 
             if (title)
             {
-                auto wTitle = acul::utf8_to_utf16(title);
-                pFileSave->SetTitle(reinterpret_cast<const wchar_t *>(wTitle.c_str()));
+                auto w_title = acul::utf8_to_utf16(title);
+                file_save_dlg->SetTitle(reinterpret_cast<const wchar_t *>(w_title.c_str()));
             }
 
-            createDefaultPathOrFolder(defaultPath, pFileSave);
-            ComFilter comFilter{&pattern};
-            prepareComFilterPattern(comFilter, pFileSave);
+            create_default_path_or_folder(default_path, file_save_dlg);
+            ComFilter com_filter{&pattern};
+            prepare_com_filter_pattern(com_filter, file_save_dlg);
 
-            hr = pFileSave->Show(nullptr);
+            hr = file_save_dlg->Show(nullptr);
             if (SUCCEEDED(hr))
             {
-                IShellItem *pItem = nullptr;
-                hr = pFileSave->GetResult(&pItem);
+                IShellItem *item = nullptr;
+                hr = file_save_dlg->GetResult(&item);
                 if (SUCCEEDED(hr))
                 {
-                    PWSTR pszFilePath = nullptr;
-                    hr = pItem->GetDisplayName(SIGDN_FILESYSPATH, &pszFilePath);
+                    PWSTR psz_file_path = nullptr;
+                    hr = item->GetDisplayName(SIGDN_FILESYSPATH, &psz_file_path);
 
                     if (SUCCEEDED(hr))
                     {
                         acul::string result =
-                            acul::utf16_to_utf8(reinterpret_cast<const acul::u16string::value_type *>(pszFilePath));
-                        CoTaskMemFree(pszFilePath);
-                        pItem->Release();
-                        pFileSave->Release();
+                            acul::utf16_to_utf8(reinterpret_cast<const acul::u16string::value_type *>(psz_file_path));
+                        CoTaskMemFree(psz_file_path);
+                        item->Release();
+                        file_save_dlg->Release();
                         return result;
                     }
-                    pItem->Release();
+                    item->Release();
                 }
             }
-            pFileSave->Release();
+            file_save_dlg->Release();
             return "";
         }
 

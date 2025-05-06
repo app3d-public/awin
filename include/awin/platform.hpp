@@ -17,7 +17,7 @@ namespace awin
         // The window environment configuration for window management and interactions within the windowing system.
         extern APPLIB_API struct WindowEnvironment
         {
-            acul::string clipboardData; // Clipboard data storage.
+            acul::string clipboard_data; // Clipboard data storage.
             struct Timer
             {
                 u64 offset;                   // Time offset
@@ -32,15 +32,15 @@ namespace awin
             Window *owner;
             acul::point2D<i32> dimenstions;
             CreationFlags flags;
-            bool isCursorHidden{false};
+            bool is_cursor_hidden{false};
             bool focused{false};
-            bool readyToClose = false;
-            acul::point2D<i32> resizeLimit{0, 0};
-            io::KeyPressState keys[io::Key::kLast + 1];
+            bool ready_to_close = false;
+            acul::point2D<i32> resize_limit{0, 0};
+            io::KeyPressState keys[io::Key::Last + 1];
             Cursor *cursor;
             platform_data_t backend;
         };
     } // namespace platform
 
-    inline void updateTimeout(f64 timeout) { platform::env.timeout = std::max(platform::env.timeout, timeout); }
+    inline void update_timeout(f64 timeout) { platform::env.timeout = std::max(platform::env.timeout, timeout); }
 } // namespace awin

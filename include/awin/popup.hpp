@@ -30,14 +30,14 @@ namespace awin
         };
 
         // Displays a popup window with a message, title, and configurable style and buttons.
-        APPLIB_API Buttons msgBox(const char *message, const char *title, Style style = Style::Info,
+        APPLIB_API Buttons message_box(const char *message, const char *title, Style style = Style::Info,
                                   std::initializer_list<Buttons> buttons = {Buttons::OK},
                                   awin::Window *parent = nullptr);
 
         // Displays a popup with "Yes" and "No" options, returning true if "Yes" is selected.
-        inline bool confirmMsxBox(const char *message, const char *title, awin::Window *parent = nullptr)
+        inline bool confirm_message_box(const char *message, const char *title, awin::Window *parent = nullptr)
         {
-            return msgBox(message, title, Style::Question, {Buttons::Yes, Buttons::No}, parent) == Buttons::Yes;
+            return message_box(message, title, Style::Question, {Buttons::Yes, Buttons::No}, parent) == Buttons::Yes;
         }
 
         struct FilePattern
@@ -46,13 +46,13 @@ namespace awin
             acul::vector<acul::string> extensions;
         };
 
-        APPLIB_API acul::string openFileDialog(const char *title, const acul::vector<FilePattern> &pattern,
-                                              const char *defaultPath, bool multiply);
+        APPLIB_API acul::string open_file_dialog(const char *title, const acul::vector<FilePattern> &pattern,
+                                                 const char *default_path, bool multiply);
 
-        APPLIB_API acul::string openFolderDialog(const char *title, const char *defaultPath);
+        APPLIB_API acul::string open_folder_dialog(const char *title, const char *defaultPath);
 
-        APPLIB_API acul::string saveFileDialog(const char *title, const acul::vector<FilePattern> &pattern,
-                                              const char *defaultPath);
+        APPLIB_API acul::string save_file_dialog(const char *title, const acul::vector<FilePattern> &pattern,
+                                                 const char *default_path);
     } // namespace popup
 } // namespace awin
 

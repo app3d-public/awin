@@ -23,24 +23,24 @@ namespace awin
     namespace platform
     {
         // Initializes the platform-specific components and sets up the windowing system environment.
-        bool initPlatform();
+        bool init_platform();
 
         // Initializes the timer subsystem to enable precise time management for various window-related operations.
-        void initTimer();
+        void init_timer();
 
         // Retrieves the current time value from the timer subsystem, which is crucial for time-dependent calculations.
-        u64 getTimeValue();
+        u64 get_time_value();
 
         // Retrieves the timer frequency, an essential parameter for accurate time-based calculations.
-        u64 getTimeFrequency();
+        u64 get_time_frequency();
 
         // Performs cleanup and releases platform-specific resources associated with the windowing system environment.
-        void destroyPlatform();
+        void destroy_platform();
 
         // A utility function responsible for processing keyboard input events specific to a particular window
         // implementation. It manages key presses, releases, and key modifiers, facilitating their propagation to the
         // appropriate event handlers.
-        void inputKey(WindowData *data, io::Key key, io::KeyPressState action, io::KeyMode mods);
+        void input_key(WindowData *data, io::Key key, io::KeyPressState action, io::KeyMode mods);
     } // namespace platform
 
     // A window entity in the windowing system
@@ -64,82 +64,82 @@ namespace awin
         acul::point2D<i32> dimensions() const { return _platform.dimenstions; }
 
         // Check if the window has decorations
-        inline bool decorated() const { return (_platform.flags & awin::CreationFlagsBits::decorated) != 0; }
+        inline bool decorated() const { return (_platform.flags & awin::CreationFlagsBits::Decorated) != 0; }
 
         // Check if the window is resizable.
-        inline bool resizable() const { return (_platform.flags & awin::CreationFlagsBits::resizable) != 0; }
+        inline bool resizable() const { return (_platform.flags & awin::CreationFlagsBits::Resizable) != 0; }
 
         // Check if the window is in fullscreen mode.
-        bool fullscreen() const { return (_platform.flags & awin::CreationFlagsBits::fullscreen) != 0; }
+        bool fullscreen() const { return (_platform.flags & awin::CreationFlagsBits::Fullscreen) != 0; }
 
         // Enable fullscreen mode.
-        void enableFullscreen();
+        void enable_fullscreen();
 
         // Disable fullscreen mode.
-        void disableFullscreen();
+        void disable_fullscreen();
 
         // Get the current cursor position.
-        acul::point2D<i32> cursorPosition() const;
+        acul::point2D<i32> cursor_position() const;
 
         // Set the cursor position
-        void cursorPosition(acul::point2D<i32> position);
+        void cursor_position(acul::point2D<i32> position);
 
         // Show the cursor.
-        void showCursor();
+        void show_cursor();
 
         // Hide the cursor.
-        void hideCursor();
+        void hide_cursor();
 
         // Check if the cursor is hidden.
-        inline bool isCursorHidden() const { return _platform.isCursorHidden; }
+        inline bool is_cursor_hidden() const { return _platform.is_cursor_hidden; }
 
         // Set cursor
-        inline void setCursor(Cursor *cursor) { _platform.cursor = cursor; }
+        inline void set_cursor(Cursor *cursor) { _platform.cursor = cursor; }
 
         // Check if the window is focused.
         inline bool focused() const { return _platform.focused; }
 
         // Check if the window is minimized.
-        inline bool minimized() const { return _platform.flags & awin::CreationFlagsBits::minimized; }
+        inline bool minimized() const { return _platform.flags & awin::CreationFlagsBits::Minimized; }
 
         // Minimize the window
         void minimize();
 
         // Check if the window is maximized.
-        inline bool maximized() const { return _platform.flags & awin::CreationFlagsBits::maximized; }
+        inline bool maximized() const { return _platform.flags & awin::CreationFlagsBits::Maximized; }
 
         // Maximize the window
         void maximize();
 
         // Check if the window is hidden.
-        inline bool hidden() const { return (_platform.flags & awin::CreationFlagsBits::hidden) != 0; }
+        inline bool hidden() const { return (_platform.flags & awin::CreationFlagsBits::Hidden) != 0; }
 
         // Get the window's resize limits.
-        inline acul::point2D<i32> resizeLimit() const { return _platform.resizeLimit; }
+        inline acul::point2D<i32> resize_limit() const { return _platform.resize_limit; }
 
         // Set the window's resize limits.
-        inline void resizeLimit(i32 width, i32 height) { _platform.resizeLimit = {width, height}; }
+        inline void resize_limit(i32 width, i32 height) { _platform.resize_limit = {width, height}; }
 
         // Check if the window is ready to be closed.
-        inline bool readyToClose() const { return _platform.readyToClose; }
+        inline bool ready_to_close() const { return _platform.ready_to_close; }
 
         // Change the window's ready-to-close state.
-        inline void readyToClose(bool readyToClose) { _platform.readyToClose = readyToClose; }
+        inline void ready_to_close(bool ready_to_close) { _platform.ready_to_close = ready_to_close; }
 
         // Show the window if it is hidden.
-        void showWindow();
+        void show_window();
 
         // Hide the window
-        void hideWindow();
+        void hide_window();
 
         // Get current window position
-        acul::point2D<i32> windowPos() const;
+        acul::point2D<i32> position() const;
 
         // Set window position
-        void windowPos(acul::point2D<i32> position);
+        void position(acul::point2D<i32> position);
 
         // Center the window to the parent
-        void centerWindowPos();
+        void center_window();
 
     private:
         platform::WindowData _platform;
@@ -153,31 +153,31 @@ namespace awin
     // to efficiently dispatch events to the appropriate listeners as they occur.
     // Specific actions are taken for different platforms (e.g., Windows-specific event listeners)
     // to ensure compatibility and proper handling across different operating systems.
-    APPLIB_API void updateEvents();
+    APPLIB_API void update_events();
 
     // Events
     namespace event_id
     {
         enum : u64
         {
-            none = 0x0,
+            None = 0x0,
 #ifdef _WIN32
             NCHitTest = 0x2D5AA1F9EE962269,
             NCMouseDown = 0x12D7ACB8440B7678,
 #endif
-            focus = 0x05AC2ABF9E301AD1,
-            charInput = 0x0B37F6873EA5B017,
-            keyInput = 0x0E8A91707EFCEB90,
-            mouseClick = 0x06254FC551B67986,
-            mouseEnter = 0x1DFE0E9A4D85B1EE,
-            mouseMove = 0x15F068FC45DB86CE,
-            mouseMoveAbs = 0x037E8253212E7276,
-            scroll = 0x0D66A892FC053357,
-            dpiChanged = 0x37516DB961C1BF7A,
-            minimize = 0x16AB16E6670A5AC2,
-            maximize = 0x0A8C9013D84CEC08,
-            resize = 0x1FB82ED0F4C701CB,
-            move = 0x2A5416AB994F5AAE
+            Focus = 0x05AC2ABF9E301AD1,
+            CharInput = 0x0B37F6873EA5B017,
+            KeyInput = 0x0E8A91707EFCEB90,
+            MouseClick = 0x06254FC551B67986,
+            MouseEnter = 0x1DFE0E9A4D85B1EE,
+            MouseMove = 0x15F068FC45DB86CE,
+            MouseMoveAbs = 0x037E8253212E7276,
+            Scroll = 0x0D66A892FC053357,
+            DpiChanged = 0x37516DB961C1BF7A,
+            Minimize = 0x16AB16E6670A5AC2,
+            Maximize = 0x0A8C9013D84CEC08,
+            Resize = 0x1FB82ED0F4C701CB,
+            Move = 0x2A5416AB994F5AAE
         };
     }; // namespace event_id
 
@@ -210,7 +210,7 @@ namespace awin
         bool focused;
 
         explicit FocusEvent(awin::Window *window = nullptr, bool focused = false)
-            : event(event_id::focus), window(window), focused(focused)
+            : event(event_id::Focus), window(window), focused(focused)
         {
         }
     };
@@ -222,7 +222,7 @@ namespace awin
         u32 charCode;         // Unicode character code.
 
         explicit CharInputEvent(awin::Window *window = nullptr, u32 charCode = 0)
-            : event(event_id::charInput), window(window), charCode(charCode)
+            : event(event_id::CharInput), window(window), charCode(charCode)
         {
         }
     };
@@ -235,9 +235,9 @@ namespace awin
         io::KeyPressState action; // The action (press, release, repeat) associated with the key.
         io::KeyMode mods;         // The key modifiers associated with the key.
 
-        explicit KeyInputEvent(awin::Window *window = nullptr, io::Key key = io::Key::kUnknown,
-                               io::KeyPressState action = io::KeyPressState::release, io::KeyMode mods = io::KeyMode{})
-            : event(event_id::keyInput), window(window), key(key), action(action), mods(mods)
+        explicit KeyInputEvent(awin::Window *window = nullptr, io::Key key = io::Key::Unknown,
+                               io::KeyPressState action = io::KeyPressState::Release, io::KeyMode mods = io::KeyMode{})
+            : event(event_id::KeyInput), window(window), key(key), action(action), mods(mods)
         {
         }
     };
@@ -250,10 +250,10 @@ namespace awin
         io::KeyPressState action; // The action (press, release, repeat) associated with the key.
         io::KeyMode mods;         // The key modifiers associated with the key.
 
-        explicit MouseClickEvent(awin::Window *window = nullptr, io::MouseKey button = io::MouseKey::unknown,
-                                 io::KeyPressState action = io::KeyPressState::release,
+        explicit MouseClickEvent(awin::Window *window = nullptr, io::MouseKey button = io::MouseKey::Unknown,
+                                 io::KeyPressState action = io::KeyPressState::Release,
                                  io::KeyMode mods = io::KeyMode{})
-            : event(event_id::mouseClick), window(window), button(button), action(action), mods(mods)
+            : event(event_id::MouseClick), window(window), button(button), action(action), mods(mods)
         {
         }
     };
@@ -266,7 +266,7 @@ namespace awin
         bool entered;         // Whether the mouse entered or left the window.
 
         explicit MouseEnterEvent(awin::Window *window = nullptr, bool entered = false)
-            : event(event_id::mouseEnter), window(window), entered(entered)
+            : event(event_id::MouseEnter), window(window), entered(entered)
         {
         }
     };
@@ -303,7 +303,7 @@ namespace awin
         f32 v;                // The Vertical scroll value.
 
         explicit ScrollEvent(awin::Window *window = nullptr, f32 hscroll = 0.0f, f32 vscroll = 0.0f)
-            : event(event_id::scroll), window(window), h(hscroll), v(vscroll)
+            : event(event_id::Scroll), window(window), h(hscroll), v(vscroll)
         {
         }
     };
@@ -316,7 +316,7 @@ namespace awin
         f32 yDpi;             // New DPI value in the y-axis.
 
         explicit DpiChangedEvent(awin::Window *window = nullptr, f32 xDpi = 0.0f, f32 yDpi = 0.0f)
-            : event(event_id::dpiChanged), window(window), xDpi(xDpi), yDpi(yDpi)
+            : event(event_id::DpiChanged), window(window), xDpi(xDpi), yDpi(yDpi)
         {
         }
     };
@@ -326,31 +326,31 @@ namespace awin
     {
 #ifdef _WIN32
         // Handling non-client area mouse clicks on Windows.
-        acul::events::listener<Win32NativeEvent> *NCLMouseDown;
+        acul::events::listener<Win32NativeEvent> *ncl_mouse_down;
 
         // Performing hit testing in the non-client area on Windows.
-        acul::events::listener<Win32NativeEvent> *NCHitTest;
+        acul::events::listener<Win32NativeEvent> *nc_hit_test;
 #endif
         // List of event listeners for focus-related events.
         acul::vector<acul::events::listener<FocusEvent> *> focus;
 
         // List of event listeners for character input events.
-        acul::vector<acul::events::listener<CharInputEvent> *> charInput;
+        acul::vector<acul::events::listener<CharInputEvent> *> char_input;
 
         // List of event listeners for keyboard input events.
-        acul::vector<acul::events::listener<KeyInputEvent> *> keyInput;
+        acul::vector<acul::events::listener<KeyInputEvent> *> key_input;
 
         // List of event listeners for mouse click events.
-        acul::vector<acul::events::listener<MouseClickEvent> *> mouseClick;
+        acul::vector<acul::events::listener<MouseClickEvent> *> mouse_click;
 
         // List of event listeners for cursor enter/leave events.
-        acul::vector<acul::events::listener<MouseEnterEvent> *> mouseEnter;
+        acul::vector<acul::events::listener<MouseEnterEvent> *> mouse_enter;
 
         //  Listener for handling when the mouse position changes in RAW Input mode.
-        acul::vector<acul::events::listener<PosEvent> *> mouseMove;
+        acul::vector<acul::events::listener<PosEvent> *> mouse_move;
 
         //  Listener for handling when the mouse position changes in absolute (per Window dimensions) values
-        acul::vector<acul::events::listener<PosEvent> *> mouseMoveAbs;
+        acul::vector<acul::events::listener<PosEvent> *> mouse_move_abs;
 
         // List of event listeners for scroll events.
         acul::vector<acul::events::listener<ScrollEvent> *> scroll;
@@ -368,9 +368,9 @@ namespace awin
         acul::vector<acul::events::listener<PosEvent> *> move;
 
         // List of event listeners for DPI (dots per inch) changed events.
-        acul::vector<acul::events::listener<DpiChangedEvent> *> dpiChanged;
+        acul::vector<acul::events::listener<DpiChangedEvent> *> dpi_changed;
 
-    } eventRegistry;
+    } event_registry;
 
     /**
      * dispatchs a window event to the specified listeners.
@@ -379,17 +379,17 @@ namespace awin
      * @param args event arguments
      */
     template <typename T, typename... Args>
-    inline void dispatchWindowEvent(const acul::vector<acul::events::listener<T> *> &listener, Args &&...args)
+    inline void dispatch_window_event(const acul::vector<acul::events::listener<T> *> &listener, Args &&...args)
     {
         T event(std::forward<Args>(args)...);
         for (const auto &l : listener) l->invoke(event);
     }
 
     // Get the time elapsed since library initialization in seconds as a floating-point value.
-    APPLIB_API f64 getTime();
+    APPLIB_API f64 get_time();
 
     // Set the window library initialization time to the specified value in seconds.
-    APPLIB_API void setTime(f64 time);
+    APPLIB_API void set_time(f64 time);
 
     /**
      * Retrieves information about the primary monitor of the system. The primary monitor
@@ -412,48 +412,48 @@ namespace awin
      *
      * @return MonitorInfo - A structure containing the position and size of the primary monitor.
      */
-    APPLIB_API MonitorInfo getPrimaryMonitorInfo();
+    APPLIB_API MonitorInfo get_primary_monitor_info();
 
     // Processes all pending events in the event queue. This function checks the state
     // of all windows and other event sources, processes those events, and returns
     // control after all events have been processed. Typically used in an application's
     // update loop to handle events as they occur.
-    APPLIB_API void pollEvents();
+    APPLIB_API void poll_events();
 
     // Waits for new events to occur and processes them as soon as they appear.
     // Unlike pollEvents, this function blocks the execution of the program until
     // new events are available. Useful in situations where you want to conserve CPU
     // usage when the application is idle or when you need to wait for user input
     // without continuously polling.
-    APPLIB_API void waitEvents();
+    APPLIB_API void wait_events();
 
     // Waits for events with a global timeout and processes them. If no events occur
     // within the given timeout period, the function returns. This is useful for
     // scenarios where you want to wait for events but also perform some other action
     // if no events occur within a certain time frame, such as updating the UI or
     // handling non-event-related logic.
-    APPLIB_API void waitEventsTimeout();
+    APPLIB_API void wait_events_timeout();
 
     // Pushes an empty event to the event queue.
-    APPLIB_API void pushEmptyEvent();
+    APPLIB_API void push_empty_event();
 
     // Retrieves the current dots per inch (DPI) value of the display.
-    APPLIB_API f32 getDpi();
+    APPLIB_API f32 get_dpi();
 
     // Get the client area size
-    APPLIB_API acul::point2D<i32> getWindowSize(const Window &window);
+    APPLIB_API acul::point2D<i32> get_window_size(const Window &window);
 
     // Get text string from the clipboard buffer
-    APPLIB_API acul::string getClipboardString(const Window &window);
+    APPLIB_API acul::string get_clipboard_string(const Window &window);
 
     // Set text string in the clipboard buffer
-    APPLIB_API void setClipboardString(const Window &window, const acul::string &text);
+    APPLIB_API void set_clipboard_string(const Window &window, const acul::string &text);
 
     // Initialize the library.
-    APPLIB_API void initLibrary(acul::events::dispatcher *ed);
+    APPLIB_API void init_library(acul::events::dispatcher *ed);
 
     // Destroy the library and release associated resources.
-    APPLIB_API void destroyLibrary();
+    APPLIB_API void destroy_library();
 } // namespace awin
 
 #endif

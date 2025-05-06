@@ -3,22 +3,22 @@
 
 namespace awin
 {
-    DefaultRegistry eventRegistry(nullptr);
+    DefaultRegistry event_registry(nullptr);
     namespace platform
     {
         WindowEnvironment env;
 
-        void inputKey(WindowData *data, io::Key key, io::KeyPressState action, io::KeyMode mods)
+        void input_key(WindowData *data, io::Key key, io::KeyPressState action, io::KeyMode mods)
         {
-            if (+key >= 0 && key <= io::Key::kLast)
+            if (+key >= 0 && key <= io::Key::Last)
             {
                 bool repeated{false};
-                if (action == io::KeyPressState::release && data->keys[+key] == io::KeyPressState::release) return;
-                if (action == io::KeyPressState::press && data->keys[+key] == io::KeyPressState::press) repeated = true;
+                if (action == io::KeyPressState::Release && data->keys[+key] == io::KeyPressState::Release) return;
+                if (action == io::KeyPressState::Press && data->keys[+key] == io::KeyPressState::Press) repeated = true;
                 data->keys[+key] = action;
-                if (repeated) action = io::KeyPressState::repeat;
+                if (repeated) action = io::KeyPressState::Repeat;
             }
-            dispatchWindowEvent(eventRegistry.keyInput, data->owner, key, action, mods);
+            dispatch_window_event(event_registry.key_input, data->owner, key, action, mods);
         }
     } // namespace platform
 
@@ -32,57 +32,59 @@ namespace awin
         return *this;
     }
 
-    void updateEvents()
+    void update_events()
     {
         assert(platform::env.ed);
 #ifdef _WIN32
         auto NCLMouseDownList = platform::env.ed->get_listeners<Win32NativeEvent>(event_id::NCMouseDown);
-        if (!NCLMouseDownList.empty()) eventRegistry.NCLMouseDown = NCLMouseDownList[0];
+        if (!NCLMouseDownList.empty()) event_registry.ncl_mouse_down = NCLMouseDownList[0];
 
         auto NCHitTestList = platform::env.ed->get_listeners<Win32NativeEvent>(event_id::NCHitTest);
-        if (!NCHitTestList.empty()) eventRegistry.NCHitTest = NCHitTestList[0];
+        if (!NCHitTestList.empty()) event_registry.nc_hit_test = NCHitTestList[0];
 #endif
-        eventRegistry.focus = platform::env.ed->get_listeners<FocusEvent>(event_id::focus);
-        eventRegistry.scroll = platform::env.ed->get_listeners<ScrollEvent>(event_id::scroll);
-        eventRegistry.minimize = platform::env.ed->get_listeners<StateEvent>(event_id::minimize);
-        eventRegistry.maximize = platform::env.ed->get_listeners<StateEvent>(event_id::maximize);
-        eventRegistry.resize = platform::env.ed->get_listeners<PosEvent>(event_id::resize);
-        eventRegistry.move = platform::env.ed->get_listeners<PosEvent>(event_id::move);
-        eventRegistry.charInput = platform::env.ed->get_listeners<CharInputEvent>(event_id::charInput);
-        eventRegistry.keyInput = platform::env.ed->get_listeners<KeyInputEvent>(event_id::keyInput);
-        eventRegistry.mouseClick = platform::env.ed->get_listeners<MouseClickEvent>(event_id::mouseClick);
-        eventRegistry.mouseEnter = platform::env.ed->get_listeners<MouseEnterEvent>(event_id::mouseEnter);
-        eventRegistry.mouseMove = platform::env.ed->get_listeners<PosEvent>(event_id::mouseMove);
-        eventRegistry.mouseMoveAbs = platform::env.ed->get_listeners<PosEvent>(event_id::mouseMoveAbs);
-        eventRegistry.dpiChanged = platform::env.ed->get_listeners<DpiChangedEvent>(event_id::dpiChanged);
+        event_registry.focus = platform::env.ed->get_listeners<FocusEvent>(event_id::Focus);
+        event_registry.scroll = platform::env.ed->get_listeners<ScrollEvent>(event_id::Scroll);
+        event_registry.minimize = platform::env.ed->get_listeners<StateEvent>(event_id::Minimize);
+        event_registry.maximize = platform::env.ed->get_listeners<StateEvent>(event_id::Maximize);
+        event_registry.resize = platform::env.ed->get_listeners<PosEvent>(event_id::Resize);
+        event_registry.move = platform::env.ed->get_listeners<PosEvent>(event_id::Move);
+        event_registry.char_input = platform::env.ed->get_listeners<CharInputEvent>(event_id::CharInput);
+        event_registry.key_input = platform::env.ed->get_listeners<KeyInputEvent>(event_id::KeyInput);
+        event_registry.mouse_click = platform::env.ed->get_listeners<MouseClickEvent>(event_id::MouseClick);
+        event_registry.mouse_enter = platform::env.ed->get_listeners<MouseEnterEvent>(event_id::MouseEnter);
+        event_registry.mouse_move = platform::env.ed->get_listeners<PosEvent>(event_id::MouseMove);
+        event_registry.mouse_move_abs = platform::env.ed->get_listeners<PosEvent>(event_id::MouseMoveAbs);
+        event_registry.dpi_changed = platform::env.ed->get_listeners<DpiChangedEvent>(event_id::DpiChanged);
     }
 
-    void initLibrary(acul::events::dispatcher *ed)
+    void init_library(acul::events::dispatcher *ed)
     {
-        if (!platform::initPlatform()) throw acul::runtime_error("Failed to initialize Window platform");
-        platform::initTimer();
-        setTime(0.0);
+        if (!platform::init_platform()) throw acul::runtime_error("Failed to initialize Window platform");
+        platform::init_timer();
+        set_time(0.0);
         platform::env.ed = ed;
     }
 
-    void destroyLibrary()
+    void destroy_library()
     {
-        logInfo("Destroying Window platform");
-        platform::destroyPlatform();
+        LOG_INFO("Destroying Window platform");
+        platform::destroy_platform();
     }
 
-    f64 getTime()
+    f64 get_time()
     {
-        return static_cast<f64>(platform::getTimeValue() - platform::env.timer.offset) / platform::getTimeFrequency();
+        return static_cast<f64>(platform::get_time_value() - platform::env.timer.offset) /
+               platform::get_time_frequency();
     }
 
-    void setTime(f64 time)
+    void set_time(f64 time)
     {
         if (std::isnan(time) || time < 0.0 || time > 18446744073.0)
         {
-            logError("Invalid time value: %f", time);
+            LOG_ERROR("Invalid time value: %f", time);
             return;
         }
-        platform::env.timer.offset = platform::getTimeValue() - static_cast<u64>(time * platform::getTimeFrequency());
+        platform::env.timer.offset =
+            platform::get_time_value() - static_cast<u64>(time * platform::get_time_frequency());
     }
 } // namespace awin
