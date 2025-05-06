@@ -396,26 +396,29 @@ namespace awin
                 case WM_SIZE:
                 {
                     acul::point2D<i32> dimenstions(LOWORD(lParam), HIWORD(lParam));
-                    bool want_min = (wParam == SIZE_MINIMIZED);
-                    bool want_max = (wParam == SIZE_MAXIMIZED);
-                    if ((window->flags & CreationFlagsBits::Minimized) != want_min)
+                    if (!(window->flags & CreationFlagsBits::Hidden))
                     {
-                        if (want_min)
+                        bool want_min = (wParam == SIZE_MINIMIZED);
+                        bool want_max = (wParam == SIZE_MAXIMIZED);
+                        if ((window->flags & CreationFlagsBits::Minimized) != want_min)
                         {
-                            window->flags |= CreationFlagsBits::Minimized;
-                            dimenstions = {0, 0};
+                            if (want_min)
+                            {
+                                window->flags |= CreationFlagsBits::Minimized;
+                                dimenstions = {0, 0};
+                            }
+                            else
+                                window->flags &= ~CreationFlagsBits::Minimized;
+                            dispatch_window_event(event_registry.minimize, event_id::Minimize, window->owner, want_min);
                         }
-                        else
-                            window->flags &= ~CreationFlagsBits::Minimized;
-                        dispatch_window_event(event_registry.minimize, event_id::Minimize, window->owner, want_min);
-                    }
-                    if ((window->flags & CreationFlagsBits::Maximized) != want_max)
-                    {
-                        if (want_max)
-                            window->flags |= CreationFlagsBits::Maximized;
-                        else
-                            window->flags &= ~CreationFlagsBits::Maximized;
-                        dispatch_window_event(event_registry.maximize, event_id::Maximize, window->owner, want_max);
+                        if ((window->flags & CreationFlagsBits::Maximized) != want_max)
+                        {
+                            if (want_max)
+                                window->flags |= CreationFlagsBits::Maximized;
+                            else
+                                window->flags &= ~CreationFlagsBits::Maximized;
+                            dispatch_window_event(event_registry.maximize, event_id::Maximize, window->owner, want_max);
+                        }
                     }
                     if (dimenstions != window->dimenstions)
                     {
