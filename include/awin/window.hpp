@@ -9,10 +9,8 @@
 #define APP_WINDOW_WINDOW_H
 
 #include <acul/event.hpp>
+#include "platform.hpp"
 #include "types.hpp"
-#ifdef _WIN32
-    #include "platform.hpp"
-#endif
 
 #define WINDOW_DONT_CARE -1
 
@@ -160,7 +158,7 @@ namespace awin
     {
         enum : u64
         {
-            None = 0x0,
+            Unknown = 0x0,
 #ifdef _WIN32
             NCHitTest = 0x2D5AA1F9EE962269,
             NCMouseDown = 0x12D7ACB8440B7678,

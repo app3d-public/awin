@@ -4,10 +4,16 @@ project(awin
     LANGUAGES CXX C
     DESCRIPTION "App3d Window Library")
 
-add_files(${PROJECT_NAME} "${CMAKE_CURRENT_SOURCE_DIR}/src")
-if(ACUL_BUILD_MIN)
-    list(REMOVE_ITEM SOURCE_FILES "${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan.cpp")
+if(PROJECT_IS_TOP_LEVEL)
+    include(cmake/utils.cmake)
+    add_subdirectory(modules/acul)
 endif()
+
+add_files(${PROJECT_NAME} RECURSE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+
+# if(ACUL_BUILD_MIN)
+    list(REMOVE_ITEM SOURCE_FILES "${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan.cpp")
+# endif()
 
 set(AWIN_LIB_NAME ${PROJECT_NAME}-${APP_SIMD_ARCH})
 add_library(${AWIN_LIB_NAME} SHARED ${SOURCE_FILES})
@@ -31,9 +37,11 @@ set_target_properties(${AWIN_LIB_NAME}
     CXX_EXTENSIONS YES
 )
 
-set(AWIN_LIB_NAME ${AWIN_LIB_NAME} PARENT_SCOPE)
+if(NOT PROJECT_IS_TOP_LEVEL)
+    set(AWIN_LIB_NAME ${AWIN_LIB_NAME} PARENT_SCOPE)
+endif()
 
 if(BUILD_TESTS)
-    enable_testing()
-    add_subdirectory(tests)
+enable_testing()
+add_subdirectory(tests)
 endif()

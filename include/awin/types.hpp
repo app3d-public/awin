@@ -7,6 +7,8 @@
 
 #ifdef _WIN32
     #include "win32/cursor.hpp"
+#else
+    #include "linux/cursor.hpp"
 #endif
 
 #define KEY_MOD_START_INDEX 106
@@ -234,15 +236,15 @@ namespace awin
     {
         enum enum_type : u16
         {
-            Resizable = 0x0001,      // Allows window resizing.
-            Snapped = 0x0002,        // Enables window snapping to screen edges.
-            Decorated = 0x0004,      // Adds decorations like title bar and borders.
-            Fullscreen = 0x0008,     // Enables fullscreen mode.
-            MinimizeBox = 0x00010,   // Includes a minimize button.
-            MaximizeBox = 0x00020,   // Includes a maximize button.
-            Hidden = 0x00040,        // Does not show the window on creation.
-            Minimized = 0x00080,     // Starts minimized.
-            Maximized = 0x00100,     // Starts maximized.
+            Resizable = 0x0001,    // Allows window resizing.
+            Snapped = 0x0002,      // Enables window snapping to screen edges.
+            Decorated = 0x0004,    // Adds decorations like title bar and borders.
+            Fullscreen = 0x0008,   // Enables fullscreen mode.
+            MinimizeBox = 0x00010, // Includes a minimize button.
+            MaximizeBox = 0x00020, // Includes a maximize button.
+            Hidden = 0x00040,      // Does not show the window on creation.
+            Minimized = 0x00080,   // Starts minimized.
+            Maximized = 0x00100,   // Starts maximized.
         };
         using flag_bitmask = std::true_type;
     };

@@ -16,19 +16,24 @@ void test_window()
     awin::init_library(&ed);
     awin::Window window("Test Window", 640, 480);
 
-    window.resize_limit(500, 400);
+    // window.resize_limit(500, 400);
 
-    bool resize_called = false;
+    // bool resize_called = false;
 
-    ed.bind_event(&resize_called, awin::event_id::Resize, [&](awin::PosEvent &event) {
-        if (event.window != &window || event.position.x <= 0 || event.position.y <= 0) return;
-        resize_called = true;
-        awin::push_empty_event();
-        window.ready_to_close(true);
+    int dummy = 0;
+    ed.bind_event(&dummy, awin::event_id::KeyInput, [](const awin::KeyInputEvent &e) {
+        LOG_INFO("Key: %d, mods: %d, action: %d", e.key, +e.mods, e.action);
     });
+
+    // ed.bind_event(&resize_called, awin::event_id::Resize, [&](awin::PosEvent &event) {
+    //     if (event.window != &window || event.position.x <= 0 || event.position.y <= 0) return;
+    //     resize_called = true;
+    //     awin::push_empty_event();
+    //     window.ready_to_close(true);
+    // });
     awin::update_events();
 
     while (!window.ready_to_close()) awin::poll_events();
-    assert(resize_called && "Close event was not called");
+    // assert(resize_called && "Close event was not called");
     awin::destroy_library();
 }

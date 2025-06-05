@@ -3,7 +3,7 @@
 
 namespace awin
 {
-    DefaultRegistry event_registry(nullptr);
+    DefaultRegistry event_registry;
     namespace platform
     {
         WindowEnvironment env;
@@ -27,7 +27,9 @@ namespace awin
         if (this != &other)
         {
             _platform = other._platform;
+#ifdef _WIN32 // todo: check for linux cursor
             other._platform.cursor = NULL;
+#endif
         }
         return *this;
     }

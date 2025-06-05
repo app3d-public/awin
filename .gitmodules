@@ -1,0 +1,3 @@
+[submodule "modules/acul"]
+	path = modules/acul
+	url = git@git.dev.lan:app3d/acul.git

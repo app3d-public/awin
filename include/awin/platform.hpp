@@ -1,10 +1,12 @@
 #pragma once
 
 #include <acul/event.hpp>
-#include <acul/point2d.hpp>
+#include <acul/pair.hpp>
 #include "types.hpp"
 #ifdef _WIN32
     #include "win32/platform.hpp"
+#else
+    #include "linux/platform.hpp"
 #endif
 
 #define WINDOW_TIMEOUT_INF -1
