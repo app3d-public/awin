@@ -22,45 +22,46 @@ namespace awin
             typedef XClassHint *(*PFN_XAllocClassHint)(void);
             typedef XSizeHints *(*PFN_XAllocSizeHints)(void);
             typedef XWMHints *(*PFN_XAllocWMHints)(void);
-            typedef int (*PFN_XChangeProperty)(Display *, Window, Atom, Atom, int, int, const unsigned char *, int);
-            typedef int (*PFN_XChangeWindowAttributes)(Display *, Window, unsigned long, XSetWindowAttributes *);
+            typedef int (*PFN_XChangeProperty)(Display *, XID, Atom, Atom, int, int, const unsigned char *, int);
+            typedef int (*PFN_XChangeWindowAttributes)(Display *, XID, unsigned long, XSetWindowAttributes *);
             typedef Bool (*PFN_XCheckIfEvent)(Display *, XEvent *, Bool (*)(Display *, XEvent *, XPointer), XPointer);
-            typedef Bool (*PFN_XCheckTypedWindowEvent)(Display *, Window, int, XEvent *);
+            typedef Bool (*PFN_XCheckTypedWindowEvent)(Display *, XID, int, XEvent *);
             typedef int (*PFN_XCloseDisplay)(Display *);
             typedef Status (*PFN_XCloseIM)(XIM);
-            typedef int (*PFN_XConvertSelection)(Display *, Atom, Atom, Atom, Window, Time);
-            typedef Colormap (*PFN_XCreateColormap)(Display *, Window, Visual *, int);
-            typedef Cursor (*PFN_XCreateFontCursor)(Display *, unsigned int);
+            typedef int (*PFN_XConvertSelection)(Display *, Atom, Atom, Atom, XID, Time);
+            typedef Colormap (*PFN_XCreateColormap)(Display *, XID, Visual *, int);
+            typedef ::Cursor (*PFN_XCreateFontCursor)(Display *, unsigned int);
             typedef XIC (*PFN_XCreateIC)(XIM, ...);
             typedef Region (*PFN_XCreateRegion)(void);
-            typedef Window (*PFN_XCreateWindow)(Display *, Window, int, int, unsigned int, unsigned int, unsigned int,
-                                                int, unsigned int, Visual *, unsigned long, XSetWindowAttributes *);
-            typedef int (*PFN_XDefineCursor)(Display *, Window, Cursor);
+            typedef XID (*PFN_XCreateWindow)(Display *, XID, int, int, unsigned int, unsigned int, unsigned int, int,
+                                             unsigned int, Visual *, unsigned long, XSetWindowAttributes *);
+            typedef int (*PFN_XDefineCursor)(Display *, XID, ::Cursor);
             typedef int (*PFN_XDeleteContext)(Display *, XID, XContext);
-            typedef int (*PFN_XDeleteProperty)(Display *, Window, Atom);
+            typedef int (*PFN_XDeleteProperty)(Display *, XID, Atom);
             typedef void (*PFN_XDestroyIC)(XIC);
             typedef int (*PFN_XDestroyRegion)(Region);
-            typedef int (*PFN_XDestroyWindow)(Display *, Window);
+            typedef int (*PFN_XDestroyWindow)(Display *, XID);
             typedef int (*PFN_XDisplayKeycodes)(Display *, int *, int *);
             typedef int (*PFN_XEventsQueued)(Display *, int);
-            typedef Bool (*PFN_XFilterEvent)(XEvent *, Window);
+            typedef Bool (*PFN_XFilterEvent)(XEvent *, XID);
             typedef int (*PFN_XFindContext)(Display *, XID, XContext, XPointer *);
             typedef int (*PFN_XFlush)(Display *);
             typedef int (*PFN_XFree)(void *);
+            typedef char *(*PFN_XGetAtomName)(Display *, Atom);
             typedef int (*PFN_XFreeColormap)(Display *, Colormap);
-            typedef int (*PFN_XFreeCursor)(Display *, Cursor);
+            typedef int (*PFN_XFreeCursor)(Display *, ::Cursor);
             typedef void (*PFN_XFreeEventData)(Display *, XGenericEventCookie *);
             typedef int (*PFN_XGetErrorText)(Display *, int, char *, int);
             typedef Bool (*PFN_XGetEventData)(Display *, XGenericEventCookie *);
             typedef char *(*PFN_XGetICValues)(XIC, ...);
             typedef char *(*PFN_XGetIMValues)(XIM, ...);
-            typedef int (*PFN_XGetInputFocus)(Display *, Window *, int *);
+            typedef int (*PFN_XGetInputFocus)(Display *, XID *, int *);
             typedef KeySym *(*PFN_XGetKeyboardMapping)(Display *, KeyCode, int, int *);
             typedef int (*PFN_XGetScreenSaver)(Display *, int *, int *, int *, int *);
-            typedef Window (*PFN_XGetSelectionOwner)(Display *, Atom);
+            typedef XID (*PFN_XGetSelectionOwner)(Display *, Atom);
             typedef XVisualInfo *(*PFN_XGetVisualInfo)(Display *, long, XVisualInfo *, int *);
-            typedef Status (*PFN_XGetWMNormalHints)(Display *, Window, XSizeHints *, long *);
-            typedef Status (*PFN_XGetWindowAttributes)(Display *, Window, XWindowAttributes *);
+            typedef Status (*PFN_XGetWMNormalHints)(Display *, XID, XSizeHints *, long *);
+            typedef Status (*PFN_XGetWindowAttributes)(Display *, XID, XWindowAttributes *);
             typedef int (*PFN_XGetWindowProperty)(Display *, XID, Atom, long, long, Bool, Atom, Atom *, int *,
                                                   unsigned long *, unsigned long *, unsigned char **);
             typedef int (*PFN_XGrabPointer)(Display *, XID, Bool, unsigned int, int, int, XID, ::Cursor, Time);
@@ -86,37 +87,36 @@ namespace awin
             typedef void (*PFN_XrmInitialize)(void);
             typedef XrmQuark (*PFN_XrmUniqueQuark)(void);
             typedef Bool (*PFN_XQueryExtension)(Display *, const char *, int *, int *, int *);
-            typedef Bool (*PFN_XQueryPointer)(Display *, Window, Window *, Window *, int *, int *, int *, int *,
-                                              unsigned int *);
-            typedef Status (*PFN_XQueryTree)(Display *, Window, Window *, Window *, Window **, unsigned int *);
-            typedef int (*PFN_XRaiseWindow)(Display *, Window);
+            typedef Bool (*PFN_XQueryPointer)(Display *, XID, XID *, XID *, int *, int *, int *, int *, unsigned int *);
+            typedef Status (*PFN_XQueryTree)(Display *, XID, XID *, XID *, XID **, unsigned int *);
+            typedef int (*PFN_XRaiseWindow)(Display *, XID);
             typedef Bool (*PFN_XRegisterIMInstantiateCallback)(Display *, void *, char *, char *, XIDProc, XPointer);
             typedef Bool (*PFN_XUnregisterIMInstantiateCallback)(Display *, void *, char *, char *, XIDProc, XPointer);
-            typedef int (*PFN_XResizeWindow)(Display *, Window, unsigned int, unsigned int);
+            typedef int (*PFN_XResizeWindow)(Display *, XID, unsigned int, unsigned int);
             typedef char *(*PFN_XResourceManagerString)(Display *);
             typedef int (*PFN_XSaveContext)(Display *, XID, XContext, const char *);
-            typedef int (*PFN_XSelectInput)(Display *, Window, long);
-            typedef Status (*PFN_XSendEvent)(Display *, Window, Bool, long, XEvent *);
-            typedef int (*PFN_XSetClassHint)(Display *, Window, XClassHint *);
+            typedef int (*PFN_XSelectInput)(Display *, XID, long);
+            typedef Status (*PFN_XSendEvent)(Display *, XID, Bool, long, XEvent *);
+            typedef int (*PFN_XSetClassHint)(Display *, XID, XClassHint *);
             typedef XErrorHandler (*PFN_XSetErrorHandler)(XErrorHandler);
             typedef void (*PFN_XSetICFocus)(XIC);
             typedef char *(*PFN_XSetIMValues)(XIM, ...);
-            typedef int (*PFN_XSetInputFocus)(Display *, Window, int, Time);
+            typedef int (*PFN_XSetInputFocus)(Display *, XID, int, Time);
             typedef char *(*PFN_XSetLocaleModifiers)(const char *);
             typedef int (*PFN_XSetScreenSaver)(Display *, int, int, int, int);
-            typedef int (*PFN_XSetSelectionOwner)(Display *, Atom, Window, Time);
-            typedef int (*PFN_XSetWMHints)(Display *, Window, XWMHints *);
-            typedef void (*PFN_XSetWMNormalHints)(Display *, Window, XSizeHints *);
-            typedef Status (*PFN_XSetWMProtocols)(Display *, Window, Atom *, int);
+            typedef int (*PFN_XSetSelectionOwner)(Display *, Atom, XID, Time);
+            typedef int (*PFN_XSetWMHints)(Display *, XID, XWMHints *);
+            typedef void (*PFN_XSetWMNormalHints)(Display *, XID, XSizeHints *);
+            typedef Status (*PFN_XSetWMProtocols)(Display *, XID, Atom *, int);
             typedef Bool (*PFN_XSupportsLocale)(void);
             typedef int (*PFN_XSync)(Display *, Bool);
-            typedef Bool (*PFN_XTranslateCoordinates)(Display *, Window, Window, int, int, int *, int *, Window *);
-            typedef int (*PFN_XUndefineCursor)(Display *, Window);
+            typedef Bool (*PFN_XTranslateCoordinates)(Display *, XID, XID, int, int, int *, int *, XID *);
+            typedef int (*PFN_XUndefineCursor)(Display *, ::Window);
             typedef int (*PFN_XUngrabPointer)(Display *, Time);
-            typedef int (*PFN_XUnmapWindow)(Display *, Window);
+            typedef int (*PFN_XUnmapWindow)(Display *, XID);
             typedef void (*PFN_XUnsetICFocus)(XIC);
             typedef VisualID (*PFN_XVisualIDFromVisual)(Visual *);
-            typedef int (*PFN_XWarpPointer)(Display *, Window, Window, int, int, unsigned int, unsigned int, int, int);
+            typedef int (*PFN_XWarpPointer)(Display *, XID, XID, int, int, unsigned int, unsigned int, int, int);
             typedef void (*PFN_XkbFreeKeyboard)(XkbDescPtr, unsigned int, Bool);
             typedef void (*PFN_XkbFreeNames)(XkbDescPtr, unsigned int, Bool);
             typedef XkbDescPtr (*PFN_XkbGetMap)(Display *, unsigned int, unsigned int);
@@ -129,7 +129,7 @@ namespace awin
 
             // X Input Extension
             typedef Status (*PFN_XIQueryVersion)(Display *, int *, int *);
-            typedef int (*PFN_XISelectEvents)(Display *, Window, XIEventMask *, int);
+            typedef int (*PFN_XISelectEvents)(Display *, XID, XIEventMask *, int);
 
             // XRandr
             typedef XRRCrtcGamma *(*PFN_XRRAllocGamma)(int);
@@ -154,10 +154,11 @@ namespace awin
             // X Cursor
             typedef XcursorImage *(*PFN_XcursorImageCreate)(int, int);
             typedef void (*PFN_XcursorImageDestroy)(XcursorImage *);
-            typedef Cursor (*PFN_XcursorImageLoadCursor)(Display *, const XcursorImage *);
+            typedef ::Cursor (*PFN_XcursorImageLoadCursor)(Display *, const XcursorImage *);
             typedef char *(*PFN_XcursorGetTheme)(Display *);
             typedef int (*PFN_XcursorGetDefaultSize)(Display *);
             typedef XcursorImage *(*PFN_XcursorLibraryLoadImage)(const char *, const char *, int);
+            typedef ::Cursor (*PFN_XcursorLibraryLoadCursor)(Display *, const char *);
 
             // XCB
             typedef XID xcb_window_t;
@@ -202,6 +203,7 @@ namespace awin
                 PFN_XFindContext XFindContext = nullptr;
                 PFN_XFlush XFlush = nullptr;
                 PFN_XFree XFree = nullptr;
+                PFN_XGetAtomName XGetAtomName = nullptr;
                 PFN_XFreeColormap XFreeColormap = nullptr;
                 PFN_XFreeCursor XFreeCursor = nullptr;
                 PFN_XFreeEventData XFreeEventData = nullptr;
@@ -339,6 +341,7 @@ namespace awin
                 PFN_XcursorGetTheme XcursorGetTheme = nullptr;
                 PFN_XcursorGetDefaultSize XcursorGetDefaultSize = nullptr;
                 PFN_XcursorLibraryLoadImage XcursorLibraryLoadImage = nullptr;
+                PFN_XcursorLibraryLoadCursor XcursorLibraryLoadCursor = nullptr;
 
                 bool load();
             };

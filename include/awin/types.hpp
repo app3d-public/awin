@@ -3,6 +3,7 @@
 
 #include <acul/api.hpp>
 #include <acul/enum.hpp>
+#include <acul/pair.hpp>
 #include <acul/scalars.hpp>
 
 #ifdef _WIN32
@@ -16,6 +17,7 @@
 // Keys
 namespace awin
 {
+    class Window;
     namespace io
     {
         enum class Key : i16
@@ -225,35 +227,41 @@ namespace awin
         static Cursor *default_cursor();
 
         // Assign cursor to the platform context
-        void assign();
+        void assign(Window* window);
 
     private:
         platform::native_cursor_t _platform;
     };
 
     // Flags for window creation, stored as u16 for memory efficiency.
-    struct CreationFlagsBits
+    struct WindowFlagBits
     {
         enum enum_type : u16
         {
             Resizable = 0x0001,    // Allows window resizing.
-            Snapped = 0x0002,      // Enables window snapping to screen edges.
+            Snapped = 0x0002,      // [WIN32 Only] Enables window snapping to screen edges.
             Decorated = 0x0004,    // Adds decorations like title bar and borders.
             Fullscreen = 0x0008,   // Enables fullscreen mode.
             MinimizeBox = 0x00010, // Includes a minimize button.
             MaximizeBox = 0x00020, // Includes a maximize button.
             Hidden = 0x00040,      // Does not show the window on creation.
-            Minimized = 0x00080,   // Starts minimized.
-            Maximized = 0x00100,   // Starts maximized.
+            Minimized = 0x00080,   // Minimized.
+            Maximized = 0x00100,   // Maximized.
         };
         using flag_bitmask = std::true_type;
     };
 
     // Flags for window creation, stored as u8 for memory efficiency.
-    using CreationFlags = acul::flags<CreationFlagsBits>;
+    using WindowFlags = acul::flags<WindowFlagBits>;
 
-#define WINDOW_DEFAULT_FLAGS                                                                         \
-    CreationFlagsBits::Resizable | CreationFlagsBits::MinimizeBox | CreationFlagsBits::MaximizeBox | \
-        CreationFlagsBits::Decorated | CreationFlagsBits::Snapped
+#define WINDOW_DEFAULT_FLAGS                                                                \
+    WindowFlagBits::Resizable | WindowFlagBits::MinimizeBox | WindowFlagBits::MaximizeBox | \
+        WindowFlagBits::Decorated | WindowFlagBits::Snapped
+
+    struct Image
+    {
+        acul::point2D<int> dimenstions;
+        const void *pixels;
+    };
 } // namespace awin
 #endif

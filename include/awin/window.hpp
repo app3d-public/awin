@@ -47,7 +47,7 @@ namespace awin
     public:
         // Initialize a window with a title, dimensions, and creation flags.
         explicit Window(const acul::string &title, i32 width = WINDOW_DONT_CARE, i32 height = WINDOW_DONT_CARE,
-                        CreationFlags flags = WINDOW_DEFAULT_FLAGS);
+                        WindowFlags flags = WINDOW_DEFAULT_FLAGS);
 
         // Destroy the window
         void destroy();
@@ -62,13 +62,13 @@ namespace awin
         acul::point2D<i32> dimensions() const { return _platform.dimenstions; }
 
         // Check if the window has decorations
-        inline bool decorated() const { return (_platform.flags & awin::CreationFlagsBits::Decorated) != 0; }
+        inline bool decorated() const { return (_platform.flags & awin::WindowFlagBits::Decorated) != 0; }
 
         // Check if the window is resizable.
-        inline bool resizable() const { return (_platform.flags & awin::CreationFlagsBits::Resizable) != 0; }
+        inline bool resizable() const { return (_platform.flags & awin::WindowFlagBits::Resizable) != 0; }
 
         // Check if the window is in fullscreen mode.
-        bool fullscreen() const { return (_platform.flags & awin::CreationFlagsBits::Fullscreen) != 0; }
+        bool fullscreen() const { return (_platform.flags & awin::WindowFlagBits::Fullscreen) != 0; }
 
         // Enable fullscreen mode.
         void enable_fullscreen();
@@ -98,19 +98,19 @@ namespace awin
         inline bool focused() const { return _platform.focused; }
 
         // Check if the window is minimized.
-        inline bool minimized() const { return _platform.flags & awin::CreationFlagsBits::Minimized; }
+        inline bool minimized() const { return _platform.flags & awin::WindowFlagBits::Minimized; }
 
         // Minimize the window
         void minimize();
 
         // Check if the window is maximized.
-        inline bool maximized() const { return _platform.flags & awin::CreationFlagsBits::Maximized; }
+        inline bool maximized() const { return _platform.flags & awin::WindowFlagBits::Maximized; }
 
         // Maximize the window
         void maximize();
 
         // Check if the window is hidden.
-        inline bool hidden() const { return (_platform.flags & awin::CreationFlagsBits::Hidden) != 0; }
+        inline bool hidden() const { return (_platform.flags & awin::WindowFlagBits::Hidden) != 0; }
 
         // Get the window's resize limits.
         inline acul::point2D<i32> resize_limit() const { return _platform.resize_limit; }
@@ -143,6 +143,9 @@ namespace awin
         platform::WindowData _platform;
 
         friend platform::native_access;
+#ifdef __unix__
+        friend void set_window_icon(Window &, const acul::vector<Image> &);
+#endif
     };
 
     // Updates the event registry by associating different types of window events with their listeners.

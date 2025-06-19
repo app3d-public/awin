@@ -1,12 +1,15 @@
 #pragma once
 
+#include <cstddef>
+
 namespace awin
 {
     namespace platform
     {
+
         struct LinuxCursor
         {
-            bool valid() const { return false; }
+            bool valid() const;
         };
 
         using native_cursor_t = LinuxCursor;

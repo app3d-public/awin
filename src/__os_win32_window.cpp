@@ -19,15 +19,15 @@ namespace awin
             return false;
         }
 
-        DWORD get_window_style(CreationFlags flags)
+        DWORD get_window_style(WindowFlags flags)
         {
             DWORD style = WS_CLIPSIBLINGS | WS_CLIPCHILDREN;
-            if (flags & CreationFlagsBits::Fullscreen) style |= WS_POPUP;
-            if (flags & CreationFlagsBits::Snapped) style |= WS_SYSMENU;
-            if (flags & CreationFlagsBits::MinimizeBox) style |= WS_MINIMIZEBOX;
-            if (flags & CreationFlagsBits::MaximizeBox) style |= WS_MAXIMIZEBOX;
-            if (flags & CreationFlagsBits::Resizable) style |= WS_THICKFRAME;
-            if (flags & CreationFlagsBits::Decorated) style |= WS_CAPTION;
+            if (flags & WindowFlagBits::Fullscreen) style |= WS_POPUP;
+            if (flags & WindowFlagBits::Snapped) style |= WS_SYSMENU;
+            if (flags & WindowFlagBits::MinimizeBox) style |= WS_MINIMIZEBOX;
+            if (flags & WindowFlagBits::MaximizeBox) style |= WS_MAXIMIZEBOX;
+            if (flags & WindowFlagBits::Resizable) style |= WS_THICKFRAME;
+            if (flags & WindowFlagBits::Decorated) style |= WS_CAPTION;
             return style;
         }
 
@@ -76,8 +76,8 @@ namespace awin
                     ctx.frame.y = GetSystemMetricsForDpi(SM_CYFRAME, ctx.dpi);
                     ctx.padding = GetSystemMetricsForDpi(SM_CXPADDEDBORDER, ctx.dpi);
 
-                    if (!wParam || !window || (window->flags & CreationFlagsBits::Decorated) ||
-                        (window->flags & CreationFlagsBits::Fullscreen))
+                    if (!wParam || !window || (window->flags & WindowFlagBits::Decorated) ||
+                        (window->flags & WindowFlagBits::Fullscreen))
                         break;
 
                     NCCALCSIZE_PARAMS *params = (NCCALCSIZE_PARAMS *)lParam;
@@ -93,13 +93,13 @@ namespace awin
                     MonitorInfo monitor_info = get_primary_monitor_info();
                     ctx.screen.x = monitor_info.width;
                     ctx.screen.y = monitor_info.height;
-                    if (window->flags & CreationFlagsBits::Fullscreen)
+                    if (window->flags & WindowFlagBits::Fullscreen)
                     {
                         SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, ctx.screen.x, ctx.screen.y, SWP_SHOWWINDOW);
                         return 0;
                     }
 
-                    if (window->flags & CreationFlagsBits::Decorated) break;
+                    if (window->flags & WindowFlagBits::Decorated) break;
                     RECT size_rect;
                     GetWindowRect(hwnd, &size_rect);
 
@@ -125,7 +125,7 @@ namespace awin
 
                 case WM_NCHITTEST:
                 {
-                    if (window->flags & CreationFlagsBits::Decorated) break;
+                    if (window->flags & WindowFlagBits::Decorated) break;
                     LRESULT hit = DefWindowProcW(hwnd, uMsg, wParam, lParam);
                     switch (hit)
                     {
@@ -274,7 +274,7 @@ namespace awin
                         case SC_SCREENSAVE:
                         case SC_MONITORPOWER:
                         {
-                            if (window->flags & CreationFlagsBits::Fullscreen)
+                            if (window->flags & WindowFlagBits::Fullscreen)
                                 return 0;
                             else
                                 break;
@@ -396,27 +396,27 @@ namespace awin
                 case WM_SIZE:
                 {
                     acul::point2D<i32> dimenstions(LOWORD(lParam), HIWORD(lParam));
-                    if (!(window->flags & CreationFlagsBits::Hidden))
+                    if (!(window->flags & WindowFlagBits::Hidden))
                     {
                         bool want_min = (wParam == SIZE_MINIMIZED);
                         bool want_max = (wParam == SIZE_MAXIMIZED);
-                        if ((window->flags & CreationFlagsBits::Minimized) != want_min)
+                        if ((window->flags & WindowFlagBits::Minimized) != want_min)
                         {
                             if (want_min)
                             {
-                                window->flags |= CreationFlagsBits::Minimized;
+                                window->flags |= WindowFlagBits::Minimized;
                                 dimenstions = {0, 0};
                             }
                             else
-                                window->flags &= ~CreationFlagsBits::Minimized;
+                                window->flags &= ~WindowFlagBits::Minimized;
                             dispatch_window_event(event_registry.minimize, event_id::Minimize, window->owner, want_min);
                         }
-                        if ((window->flags & CreationFlagsBits::Maximized) != want_max)
+                        if ((window->flags & WindowFlagBits::Maximized) != want_max)
                         {
                             if (want_max)
-                                window->flags |= CreationFlagsBits::Maximized;
+                                window->flags |= WindowFlagBits::Maximized;
                             else
-                                window->flags &= ~CreationFlagsBits::Maximized;
+                                window->flags &= ~WindowFlagBits::Maximized;
                             dispatch_window_event(event_registry.maximize, event_id::Maximize, window->owner, want_max);
                         }
                     }
@@ -556,7 +556,7 @@ namespace awin
             return {};
     }
 
-    Window::Window(const acul::string &title, i32 width, i32 height, CreationFlags flags) : _platform(nullptr)
+    Window::Window(const acul::string &title, i32 width, i32 height, WindowFlags flags) : _platform(nullptr)
     {
         _platform.owner = this;
         _platform.backend.title = acul::utf8_to_utf16(title);
@@ -574,11 +574,11 @@ namespace awin
                             nullptr, platform::ctx.instance, (LPVOID)&_platform);
 
         if (!_platform.backend.hwnd) throw acul::runtime_error("Failed to create window");
-        if (!(flags & CreationFlagsBits::Hidden))
+        if (!(flags & WindowFlagBits::Hidden))
         {
-            if (flags & CreationFlagsBits::Minimized)
+            if (flags & WindowFlagBits::Minimized)
                 ShowWindow(_platform.backend.hwnd, SW_MINIMIZE);
-            else if (flags & CreationFlagsBits::Maximized)
+            else if (flags & WindowFlagBits::Maximized)
                 ShowWindow(_platform.backend.hwnd, SW_MAXIMIZE);
             else
                 ShowWindow(_platform.backend.hwnd, SW_SHOWNORMAL);
@@ -612,17 +612,19 @@ namespace awin
         if (!hidden()) return;
         WINDOWPLACEMENT placement = {sizeof(WINDOWPLACEMENT)};
         GetWindowPlacement(_platform.backend.hwnd, &placement);
-        placement.showCmd = _platform.flags & CreationFlagsBits::Maximized ? SW_SHOWMAXIMIZED : SW_NORMAL;
+        placement.showCmd = _platform.flags & WindowFlagBits::Maximized ? SW_SHOWMAXIMIZED : SW_NORMAL;
         SetWindowPlacement(_platform.backend.hwnd, &placement);
-        _platform.flags &= ~CreationFlagsBits::Hidden;
+        _platform.flags &= ~WindowFlagBits::Hidden;
     }
 
     void Window::hide_window()
     {
         if (hidden()) return;
         ShowWindow(_platform.backend.hwnd, SW_HIDE);
-        _platform.flags |= CreationFlagsBits::Hidden;
+        _platform.flags |= WindowFlagBits::Hidden;
     }
+
+    acul::string Window::title() const { return acul::utf16_to_utf8(_platform.backend.title); }
 
     void Window::title(const acul::string &title)
     {
@@ -632,7 +634,7 @@ namespace awin
 
     void Window::enable_fullscreen()
     {
-        _platform.flags |= CreationFlagsBits::Fullscreen;
+        _platform.flags |= WindowFlagBits::Fullscreen;
         SetWindowLongPtr(_platform.backend.hwnd, GWL_STYLE, WS_VISIBLE | WS_POPUP);
         SetWindowPos(_platform.backend.hwnd, HWND_TOPMOST, 0, 0, platform::ctx.screen.x, platform::ctx.screen.y,
                      SWP_SHOWWINDOW);
@@ -640,7 +642,7 @@ namespace awin
 
     void Window::disable_fullscreen()
     {
-        _platform.flags &= ~CreationFlagsBits::Fullscreen;
+        _platform.flags &= ~WindowFlagBits::Fullscreen;
         SetWindowLongPtr(_platform.backend.hwnd, GWL_STYLE, _platform.backend.style);
         SetWindowPos(_platform.backend.hwnd, HWND_NOTOPMOST, 0, 0, _platform.dimenstions.x, _platform.dimenstions.y,
                      SWP_SHOWWINDOW);
@@ -698,7 +700,7 @@ namespace awin
         WINDOWPLACEMENT wp = {sizeof(WINDOWPLACEMENT)};
         GetWindowPlacement(_platform.backend.hwnd, &wp);
 
-        acul::point2D<i32> dimensions = _platform.flags & CreationFlagsBits::Decorated
+        acul::point2D<i32> dimensions = _platform.flags & WindowFlagBits::Decorated
                                             ? get_window_size(*this)
                                             : platform::native_access::get_full_client_size(*this);
         wp.rcNormalPosition.left = position.x;
@@ -907,7 +909,7 @@ namespace awin
     {
         RECT clent_rect;
         GetClientRect(window._platform.backend.hwnd, &clent_rect);
-        platform::add_frame_to_client_area(&clent_rect, window._platform.flags & CreationFlagsBits::Maximized, 1);
+        platform::add_frame_to_client_area(&clent_rect, window._platform.flags & WindowFlagBits::Maximized, 1);
         return {clent_rect.right - clent_rect.left, clent_rect.bottom - clent_rect.top};
     }
 

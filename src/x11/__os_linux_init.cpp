@@ -1,7 +1,9 @@
 #include <acul/log.hpp>
-#include <awin/linux/x11/platform.hpp>
-#include <awin/linux/x11/window.hpp>
+#include <awin/window.hpp>
 #include <fcntl.h>
+#include "../linux_cursor_pd.hpp"
+#include "platform.hpp"
+#include "window.hpp"
 
 namespace awin
 {
@@ -138,7 +140,7 @@ namespace awin
                 auto &x11 = ctx.loader;
 
                 // First we read the _NET_SUPPORTING_WM_CHECK property on the root window
-                Window *window_from_root = NULL;
+                XID *window_from_root = NULL;
                 if (!get_window_property(ctx.root, ctx.wm.NET_SUPPORTING_WM_CHECK, XA_WINDOW,
                                          (unsigned char **)&window_from_root))
                     return;
@@ -147,7 +149,7 @@ namespace awin
                 // If it exists, it should be the XID of a top-level window
                 // Then we look for the same property on that window
 
-                Window *window_from_child = NULL;
+                XID *window_from_child = NULL;
                 if (!get_window_property(*window_from_root, ctx.wm.NET_SUPPORTING_WM_CHECK, XA_WINDOW,
                                          (unsigned char **)&window_from_child))
                 {
@@ -295,8 +297,8 @@ namespace awin
                         callback.client_data = NULL;
                         x11.XSetIMValues(ctx.im, XNDestroyCallback, &callback, NULL);
 
-                        Window root, parent;
-                        Window *children;
+                        XID root, parent;
+                        XID *children;
                         unsigned int nchildren;
 
                         if (x11.XQueryTree(display, ctx.root, &root, &parent, &children, &nchildren))
@@ -321,6 +323,24 @@ namespace awin
 
                 return ctx.loader.XCreateWindow(ctx.display, ctx.root, 0, 0, 1, 1, 0, 0, InputOnly,
                                                 DefaultVisual(ctx.display, ctx.screen), CWEventMask, &wa);
+            }
+
+            X11Cursor create_hidden_cursor()
+            {
+                X11Cursor result;
+                auto &xc = ctx.xcursor;
+
+                XcursorImage *image = xc.XcursorImageCreate(1, 1);
+                if (!image) return {};
+
+                image->xhot = 0;
+                image->yhot = 0;
+                image->pixels[0] = 0; // ARGB = transparent
+
+                result.handle = xc.XcursorImageLoadCursor(ctx.display, image);
+                xc.XcursorImageDestroy(image);
+
+                return result;
             }
 
             bool init_platform()
@@ -362,6 +382,7 @@ namespace awin
 
                 init_atoms();
                 ctx.helper_window = create_helper_window();
+                ctx.hidden_cursor = create_hidden_cursor();
 
                 if (x11.XSupportsLocale() && ctx.utf8)
                 {
@@ -406,6 +427,45 @@ namespace awin
                     close(ctx.empty_pipe[0]);
                     close(ctx.empty_pipe[1]);
                 }
+            }
+
+            LinuxWindowImpl *alloc_window_impl() { return acul::alloc<X11WindowData>(); }
+
+            void init_pcall_data(LinuxPlatformCaller &caller)
+            {
+                caller.init_platform = init_platform;
+                caller.destroy_platform = destroy_platform;
+                caller.alloc_window_impl = alloc_window_impl;
+                caller.poll_events = poll_events;
+                caller.wait_events = wait_events;
+                caller.wait_events_timeout = wait_events_timeout;
+            }
+
+            void init_wcall_data(LinuxWindowCaller &caller)
+            {
+                caller.destroy = destroy;
+                caller.create_window = create_window;
+                caller.set_window_icon = set_window_icon;
+                caller.show_window = show_window;
+                caller.hide_window = hide_window;
+                caller.get_window_title = get_window_title;
+                caller.set_window_title = set_window_title;
+                caller.enable_fullscreen = enable_fullscreen;
+                caller.disable_fullscreen = disable_fullscreen;
+                caller.get_cursor_position = get_cursor_position;
+                caller.set_cursor_position = set_cursor_position;
+                caller.hide_cursor = hide_cursor;
+                caller.show_cursor = show_cursor;
+                caller.get_window_position = get_window_position;
+                caller.set_window_position = set_window_position;
+            }
+
+            void init_ccall_data(LinuxCursorCaller &caller)
+            {
+                caller.create = create_cursor;
+                caller.assign = assign_cursor;
+                caller.destroy = destroy_cursor;
+                caller.valid = is_cursor_valid;
             }
         } // namespace x11
     } // namespace platform

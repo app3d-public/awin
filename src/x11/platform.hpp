@@ -3,8 +3,9 @@
 #include <acul/map.hpp>
 #include <acul/pair.hpp>
 #include <acul/string/string.hpp>
+#include <awin/linux/platform.hpp>
 #include <cassert>
-#include "../../types.hpp"
+#include "../linux_cursor_pd.hpp"
 #include "keys.hpp"
 #include "loaders.hpp"
 
@@ -114,6 +115,11 @@ namespace awin
                 Atom WINDOW_SELECTION;
             };
 
+            struct X11Cursor final : LinuxCursor
+            {
+                ::Cursor handle = 0;
+            };
+
             extern APPLIB_API struct Context
             {
                 X11Loader loader;
@@ -121,6 +127,7 @@ namespace awin
                 int screen;
                 XID root;
                 XID helper_window; // Helper window for IPC
+                X11Cursor hidden_cursor;
                 XContext context;
                 bool utf8 = false;
                 XIM im;
@@ -307,6 +314,15 @@ namespace awin
 
                 return item_count;
             }
+
+            void init_pcall_data(LinuxPlatformCaller &caller);
+            void init_wcall_data(LinuxWindowCaller &caller);
+
+            void init_ccall_data(LinuxCursorCaller &caller);
+            platform::native_cursor_t *create_cursor(Cursor::Type);
+            void assign_cursor(LinuxWindowImpl *, platform::native_cursor_t *);
+            void destroy_cursor(platform::native_cursor_t *);
+            bool is_cursor_valid(const platform::native_cursor_t *);
         } // namespace x11
     } // namespace platform
 } // namespace awin

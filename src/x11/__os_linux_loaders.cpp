@@ -1,6 +1,6 @@
 #include <X11/Xlib.h>
 #include <acul/log.hpp>
-#include <awin/linux/x11/loaders.hpp>
+#include "loaders.hpp"
 
 #define LOAD_FUNCTION(name, handle) name = (PFN_##name)dlsym(handle, #name)
 
@@ -52,6 +52,7 @@ namespace awin
                 LOAD_FUNCTION(XFindContext, xlib);
                 LOAD_FUNCTION(XFlush, xlib);
                 LOAD_FUNCTION(XFree, xlib);
+                LOAD_FUNCTION(XGetAtomName, xlib);
                 LOAD_FUNCTION(XFreeColormap, xlib);
                 LOAD_FUNCTION(XFreeCursor, xlib);
                 LOAD_FUNCTION(XFreeEventData, xlib);
@@ -210,6 +211,7 @@ namespace awin
                 LOAD_FUNCTION(XcursorGetTheme, xcursor);
                 LOAD_FUNCTION(XcursorGetDefaultSize, xcursor);
                 LOAD_FUNCTION(XcursorLibraryLoadImage, xcursor);
+                LOAD_FUNCTION(XcursorLibraryLoadCursor, xcursor);
                 return true;
             }
 

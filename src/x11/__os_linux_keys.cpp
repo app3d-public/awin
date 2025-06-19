@@ -1,9 +1,9 @@
 #include <acul/log.hpp>
 #include <acul/string/string.hpp>
 #include <acul/string/string_view.hpp>
-#include <awin/linux/x11/window.hpp>
-#include <awin/platform.hpp>
 #include <awin/window.hpp>
+#include "platform.hpp"
+#include "window.hpp"
 
 // Additional mouse button names for XButtonEvent
 #define Button6 6
@@ -1055,10 +1055,10 @@ namespace awin
                 const auto mods = translate_state(event->xkey.state);
                 const int plain = !(mods & (io::KeyModeBits::Control | io::KeyModeBits::Alt));
 
-                auto &window = window_data->backend.x11;
-                if (window.ic)
+                auto *window = (X11WindowData *)window_data->backend.impl;
+                if (window->ic)
                 {
-                    Time diff = event->xkey.time - window.key_press_times[keycode];
+                    Time diff = event->xkey.time - window->key_press_times[keycode];
                     if (diff == event->xkey.time || (diff > 0 && diff < ((Time)1 << 31)))
                     {
                         if (keycode)
@@ -1067,7 +1067,7 @@ namespace awin
                             input_key(window_data, it != ctx.keymap.end() ? it->second : io::Key::Unknown,
                                       io::KeyPressState::Press, mods);
                         }
-                        window.key_press_times[keycode] = event->xkey.time;
+                        window->key_press_times[keycode] = event->xkey.time;
                     }
 
                     if (!filtered)
@@ -1076,7 +1076,7 @@ namespace awin
                         char buffer[100];
                         char *chars = buffer;
 
-                        int count = x11.Xutf8LookupString(window.ic, &event->xkey, buffer, sizeof(buffer) - 1, nullptr,
+                        int count = x11.Xutf8LookupString(window->ic, &event->xkey, buffer, sizeof(buffer) - 1, nullptr,
                                                           &status);
 
                         acul::string utf8;
@@ -1084,8 +1084,8 @@ namespace awin
                         if (status == XBufferOverflow)
                         {
                             acul::vector<char> dyn_buf(count + 1, '\0');
-                            count =
-                                x11.Xutf8LookupString(window.ic, &event->xkey, dyn_buf.data(), count, nullptr, &status);
+                            count = x11.Xutf8LookupString(window->ic, &event->xkey, dyn_buf.data(), count, nullptr,
+                                                          &status);
                             utf8.assign(dyn_buf.data(), count);
                         }
                         else if (status == XLookupChars || status == XLookupBoth)

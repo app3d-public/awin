@@ -33,7 +33,7 @@ namespace awin
         {
             Window *owner;
             acul::point2D<i32> dimenstions;
-            CreationFlags flags;
+            WindowFlags flags;
             bool is_cursor_hidden{false};
             bool focused{false};
             bool ready_to_close = false;

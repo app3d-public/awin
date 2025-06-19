@@ -1,15 +1,23 @@
 #include <acul/log.hpp>
+#include <acul/pair.hpp>
 #include <awin/platform.hpp>
 #include <awin/window.hpp>
-
-#define WINDOW_BACKEND_UNKNOWN -1
-#define WINDOW_BACKEND_X11     0
-#define WINDOW_BACKEND_WAYLAND 1
+#include "awin/linux/cursor.hpp"
+#include "linux_cursor_pd.hpp"
+#include "x11/platform.hpp"
 
 namespace awin
 {
     namespace platform
     {
+        struct PlatformDataDispatcher
+        {
+            int backend_type;
+            LinuxPlatformCaller pcall;
+            LinuxWindowCaller wcall;
+            LinuxCursorCaller ccall;
+        } pd;
+
         void init_timer()
         {
             env.timer.offset = CLOCK_REALTIME;
@@ -20,31 +28,39 @@ namespace awin
 #endif
         };
 
-        void destroy_platform() { x11::destroy_platform(); };
-
-        int get_backend_type()
+        void destroy_platform()
         {
+            if (pd.backend_type != WINDOW_BACKEND_UNKNOWN) pd.pcall.destroy_platform();
+        };
+
+        bool init_platform_caller()
+        {
+            pd.backend_type = WINDOW_BACKEND_UNKNOWN;
             const char *xdg_session = getenv("XDG_SESSION_TYPE");
-            if (xdg_session == nullptr)
-                return WINDOW_BACKEND_UNKNOWN;
-            else if (strcmp(xdg_session, "x11") == 0) { return WINDOW_BACKEND_X11; }
-            else if (strcmp(xdg_session, "wayland") == 0)
-                return WINDOW_BACKEND_WAYLAND;
-            return WINDOW_BACKEND_UNKNOWN;
+            if (!xdg_session) printf("Failed to get xdg_session\n");
+            if (xdg_session == nullptr || strcmp(xdg_session, "wayland") == 0)
+                return false;
+            else if (strcmp(xdg_session, "x11") == 0)
+            {
+                platform::x11::init_pcall_data(pd.pcall);
+                platform::x11::init_wcall_data(pd.wcall);
+                platform::x11::init_ccall_data(pd.ccall);
+                pd.backend_type = WINDOW_BACKEND_X11;
+                return true;
+            }
+            return false;
         }
 
         u64 get_time_frequency() { return env.timer.frequency; }
 
         bool init_platform()
         {
-            switch (get_backend_type())
+            if (!init_platform_caller())
             {
-                case WINDOW_BACKEND_X11:
-                    return x11::init_platform();
-                default:
-                    LOG_ERROR("Unknown window backend");
-                    return false;
+                LOG_ERROR("Unknown window backend");
+                return false;
             }
+            return pd.pcall.init_platform();
         }
 
         u64 get_time_value()
@@ -97,12 +113,89 @@ namespace awin
                 }
             }
         }
+
+        bool LinuxCursor::valid() const { return pd.ccall.valid(this); }
     } // namespace platform
 
-    Window::Window(const acul::string &title, i32 width, i32 height, CreationFlags flags)
+    Window::Window(const acul::string &title, i32 width, i32 height, WindowFlags flags)
     {
-        platform::x11::create_window(&_platform, title, width, height, flags);
+        _platform.backend.impl = platform::pd.pcall.alloc_window_impl();
+        _platform.owner = this;
+        if (!platform::pd.wcall.create_window(&_platform, title, width, height, flags))
+            throw acul::runtime_error("Failed to create Window");
     }
 
-    void poll_events() { platform::x11::poll_events(); }
+    void Window::destroy() { platform::pd.wcall.destroy(_platform.backend.impl); }
+
+    void Window::show_window()
+    {
+        if (!hidden()) return;
+        platform::pd.wcall.show_window(_platform.backend.impl);
+        _platform.flags &= ~WindowFlagBits::Hidden;
+    }
+
+    void Window::hide_window()
+    {
+        if (hidden()) return;
+        platform::pd.wcall.hide_window(_platform.backend.impl);
+        _platform.flags |= WindowFlagBits::Hidden;
+    }
+
+    acul::string Window::title() const { return platform::pd.wcall.get_window_title(_platform.backend.impl); }
+
+    void Window::title(const acul::string &title)
+    {
+        platform::pd.wcall.set_window_title(_platform.backend.impl, title);
+    }
+
+    void Window::enable_fullscreen()
+    {
+        _platform.flags |= WindowFlagBits::Fullscreen;
+        platform::pd.wcall.enable_fullscreen(_platform.backend.impl);
+    }
+
+    void Window::disable_fullscreen()
+    {
+        _platform.flags &= ~WindowFlagBits::Fullscreen;
+        platform::pd.wcall.disable_fullscreen(_platform.backend.impl);
+    }
+
+    acul::point2D<i32> Window::cursor_position() const
+    {
+        return platform::pd.wcall.get_cursor_position(_platform.backend.impl);
+    }
+
+    void Window::cursor_position(acul::point2D<i32> position)
+    {
+        platform::pd.wcall.set_cursor_position(_platform.backend.impl, position);
+    }
+
+    void Window::hide_cursor() { platform::pd.wcall.hide_cursor(&_platform); }
+
+    void Window::show_cursor() { platform::pd.wcall.show_cursor(&_platform); }
+
+    acul::point2D<i32> Window::position() const
+    {
+        return platform::pd.wcall.get_window_position(_platform.backend.impl);
+    }
+
+    void Window::position(acul::point2D<i32> position) { platform::pd.wcall.set_window_position(&_platform, position); }
+
+    void poll_events() { platform::pd.pcall.poll_events(); }
+
+    void wait_events() { platform::pd.pcall.wait_events(); }
+
+    void wait_events_timeout() { platform::pd.pcall.wait_events_timeout(); }
+
+    void set_window_icon(Window &window, const acul::vector<Image> &images)
+    {
+        platform::pd.wcall.set_window_icon(window._platform.backend.impl, images);
+    }
+
+    platform::LinuxWindowImpl *platform::native_access::get_impl(const Window &window)
+    {
+        return window._platform.backend.impl;
+    }
+
+    int platform::native_access::get_backend_type() { return pd.backend_type; }
 } // namespace awin
