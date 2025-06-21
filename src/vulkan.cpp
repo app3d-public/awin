@@ -1,5 +1,7 @@
 #include <awin/vulkan.hpp>
-#ifndef _WIN32
+#ifdef _WIN32
+    #include "win32_pd.hpp"
+#else
     #include "x11/platform.hpp"
     #include "x11/window.hpp"
 #endif
@@ -30,6 +32,7 @@ namespace awin
 #endif
         }
 
+#ifndef _WIN32
         static vk::Result create_xcb_surface(vk::Instance &instance, vk::SurfaceKHR &surface,
                                              vk::DispatchLoaderDynamic &loader, Window &window)
         {
@@ -55,6 +58,8 @@ namespace awin
             surface = instance.createXlibSurfaceKHR(info, nullptr, loader);
             return vk::Result::eSuccess;
         }
+
+#endif
 
         vk::Result CreateCtx::create_surface(vk::Instance &instance, vk::SurfaceKHR &surface,
                                              vk::DispatchLoaderDynamic &loader)
