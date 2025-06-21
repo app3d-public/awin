@@ -1,19 +1,26 @@
 #pragma once
-#include <windef.h>
+
+#ifdef _WIN32
+    #include <windef.h>
+#endif
 
 namespace awin
 {
     namespace platform
     {
-        struct Win32Cursor
+        struct CursorPlatform
         {
+#ifdef _WIN32
             HCURSOR cursor;
 
             explicit Win32Cursor(HCURSOR cursor = NULL) : cursor(cursor) {}
 
             bool valid() const { return cursor != NULL; }
-        };
+#else
+            bool valid() const;
 
-        using native_cursor_t = Win32Cursor;
+            ~CursorPlatform();
+#endif
+        };
     } // namespace platform
 } // namespace awin

@@ -26,10 +26,9 @@ namespace awin
     {
         if (this != &other)
         {
-            _platform = other._platform;
-#ifdef _WIN32 // todo: check for linux cursor
-            other._platform.cursor = NULL;
-#endif
+            _pd = other._pd;
+            acul::release(other._pd);
+            other._pd = NULL;
         }
         return *this;
     }

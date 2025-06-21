@@ -17,15 +17,7 @@ namespace awin
             [[nodiscard]] virtual vk::Result create_surface(vk::Instance &instance, vk::SurfaceKHR &surface,
                                                             vk::DispatchLoaderDynamic &loader) override;
 
-            virtual acul::vector<const char *> get_window_extensions() override
-            {
-#ifdef _WIN32
-                return {vk::KHRSurfaceExtensionName, vk::KHRWin32SurfaceExtensionName};
-#else
-    #error "Unsupported platform"
-#endif
-            }
-
+            virtual void init_extensions(const acul::set<acul::string> &ext, acul::vector<const char *> &dst) override;
         private:
             Window &_window;
         };

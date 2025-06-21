@@ -1,7 +1,8 @@
 #include <acul/log.hpp>
 #include <awin/window.hpp>
 #include <fcntl.h>
-#include "../linux_cursor_pd.hpp"
+#include "../linux_pd.hpp"
+#include "awin/platform.hpp"
 #include "platform.hpp"
 #include "window.hpp"
 
@@ -15,24 +16,23 @@ namespace awin
 
             void set_system_dpi()
             {
-                auto &x11 = ctx.loader;
                 acul::point2D<f32> dpi{96.0f, 96.0f};
 
-                char *rms = x11.XResourceManagerString(ctx.display);
+                char *rms = ctx.xlib.XResourceManagerString(ctx.display);
                 if (rms)
                 {
-                    XrmDatabase db = x11.XrmGetStringDatabase(rms);
+                    XrmDatabase db = ctx.xlib.XrmGetStringDatabase(rms);
                     if (db)
                     {
                         XrmValue value;
                         char *type = NULL;
 
-                        if (x11.XrmGetResource(db, "Xft.dpi", "Xft.Dpi", &type, &value))
+                        if (ctx.xlib.XrmGetResource(db, "Xft.dpi", "Xft.Dpi", &type, &value))
                         {
                             if (type && strcmp(type, "String") == 0) dpi.x = dpi.y = atof(value.addr);
                         }
 
-                        x11.XrmDestroyDatabase(db);
+                        ctx.xlib.XrmDestroyDatabase(db);
                     }
                 }
                 ctx.dpi = dpi / 96.0f;
@@ -63,73 +63,49 @@ namespace awin
 
             void init_xi()
             {
-                auto &xi = ctx.xi.loader;
+                auto &xi = ctx.xlib.xi;
                 if (!xi.load()) return;
                 LOG_INFO("Loaded XInput library");
-                if (ctx.loader.XQueryExtension(ctx.display, "XInputExtension", &ctx.xi.major_op_code,
-                                               &ctx.xi.event_base, &ctx.xi.error_base) != Success)
+                if (ctx.xlib.XQueryExtension(ctx.display, "XInputExtension", &xi.major_op_code, &xi.event_base,
+                                             &xi.error_base) != Success)
                 {
-                    ctx.xi.major = 2;
-                    ctx.xi.minor = 0;
-                    ctx.xi.init = xi.XIQueryVersion(ctx.display, &ctx.xi.major, &ctx.xi.minor) == Success;
-                }
-            }
-
-            void init_xrandr()
-            {
-                auto &xrandr = ctx.xrandr.loader;
-                if (!xrandr.load()) return;
-                LOG_INFO("Loaded XRandr library");
-                if (xrandr.XRRQueryExtension(ctx.display, &ctx.xrandr.event_base, &ctx.xrandr.error_base))
-                {
-                    if (xrandr.XRRQueryVersion(ctx.display, &ctx.xrandr.major, &ctx.xrandr.minor))
-                        ctx.xrandr.init = ctx.xrandr.major > 1 || ctx.xrandr.minor >= 3;
-                    else
-                        LOG_ERROR("Failed to query XRandr version");
-                }
-
-                if (ctx.xrandr.init)
-                {
-                    XRRScreenResources *sr = xrandr.XRRGetScreenResourcesCurrent(ctx.display, ctx.root);
-                    ctx.xrandr.gamma_broken = !sr->ncrtc || !xrandr.XRRGetCrtcGammaSize(ctx.display, sr->crtcs[0]);
-                    ctx.xrandr.monitor_broken = !sr->ncrtc;
-                    xrandr.XRRFreeScreenResources(sr);
-
-                    if (!ctx.xrandr.monitor_broken)
-                        xrandr.XRRSelectInput(ctx.display, ctx.root, RROutputChangeNotifyMask);
+                    xi.major = 2;
+                    xi.minor = 0;
+                    xi.init = xi.XIQueryVersion(ctx.display, &xi.major, &xi.minor) == Success;
                 }
             }
 
             void init_xkb()
             {
-                auto &x11 = ctx.loader;
-                ctx.xkb.major = 1;
-                ctx.xkb.minor = 0;
-                ctx.xkb.init = x11.XkbQueryExtension(ctx.display, &ctx.xkb.major_op_code, &ctx.xkb.event_base,
-                                                     &ctx.xkb.error_base, &ctx.xkb.major, &ctx.xkb.minor);
-                if (ctx.xkb.init)
+                auto &xkb = ctx.xlib.xkb;
+                xkb.load(ctx.xlib.handle);
+                xkb.major = 1;
+                xkb.minor = 0;
+                xkb.init = xkb.XkbQueryExtension(ctx.display, &xkb.major_op_code, &xkb.event_base, &xkb.error_base,
+                                                 &xkb.major, &xkb.minor);
+                if (xkb.init)
                 {
                     Bool supported;
 
-                    if (x11.XkbSetDetectableAutoRepeat(ctx.display, True, &supported))
-                        if (supported) ctx.xkb.detectable = true;
+                    if (xkb.XkbSetDetectableAutoRepeat(ctx.display, True, &supported))
+                        if (supported) xkb.detectable = true;
 
                     XkbStateRec state;
-                    if (x11.XkbGetState(ctx.display, XkbUseCoreKbd, &state) == Success)
-                        ctx.xkb.group = (unsigned int)state.group;
+                    if (xkb.XkbGetState(ctx.display, XkbUseCoreKbd, &state) == Success)
+                        xkb.group = (unsigned int)state.group;
 
-                    x11.XkbSelectEventDetails(ctx.display, XkbUseCoreKbd, XkbStateNotify, XkbGroupStateMask,
+                    xkb.XkbSelectEventDetails(ctx.display, XkbUseCoreKbd, XkbStateNotify, XkbGroupStateMask,
                                               XkbGroupStateMask);
                 }
 
-                if (ctx.xkb.xcb.load()) LOG_INFO("Loaded XCB library");
+                LOG_INFO("Loaded XKB");
             }
 
             // Return the atom ID only if it is listed in the specified array
             //
             Atom get_atom(Atom *supported_atoms, unsigned long atom_count, const char *atom_name)
             {
-                const Atom atom = ctx.loader.XInternAtom(ctx.display, atom_name, False);
+                const Atom atom = ctx.xlib.XInternAtom(ctx.display, atom_name, False);
                 for (unsigned long i = 0; i < atom_count; i++)
                     if (supported_atoms[i] == atom) return atom;
                 return None;
@@ -137,7 +113,7 @@ namespace awin
 
             static void detect_ewmh()
             {
-                auto &x11 = ctx.loader;
+                auto &xlib = ctx.xlib;
 
                 // First we read the _NET_SUPPORTING_WM_CHECK property on the root window
                 XID *window_from_root = NULL;
@@ -154,7 +130,7 @@ namespace awin
                                          (unsigned char **)&window_from_child))
                 {
                     release_error_handler();
-                    x11.XFree(window_from_root);
+                    xlib.XFree(window_from_root);
                     return;
                 }
 
@@ -163,13 +139,13 @@ namespace awin
 
                 if (*window_from_root != *window_from_child)
                 {
-                    x11.XFree(window_from_root);
-                    x11.XFree(window_from_child);
+                    xlib.XFree(window_from_root);
+                    xlib.XFree(window_from_child);
                     return;
                 }
 
-                x11.XFree(window_from_root);
-                x11.XFree(window_from_child);
+                xlib.XFree(window_from_root);
+                xlib.XFree(window_from_child);
 
                 // We are now fairly sure that an EWMH-compliant WM is currently running
                 // We can now start querying the WM about what features it supports by
@@ -201,54 +177,54 @@ namespace awin
                 ctx.wm.NET_FRAME_EXTENTS = get_atom(supported_atoms, atom_count, "_NET_FRAME_EXTENTS");
                 ctx.wm.NET_REQUEST_FRAME_EXTENTS = get_atom(supported_atoms, atom_count, "_NET_REQUEST_FRAME_EXTENTS");
 
-                if (supported_atoms) x11.XFree(supported_atoms);
+                if (supported_atoms) xlib.XFree(supported_atoms);
             }
 
             void init_atoms()
             {
-                auto &x11 = ctx.loader;
+                auto &xlib = ctx.xlib;
 
                 // String format atoms
-                ctx.select_atoms.NULL_ = x11.XInternAtom(ctx.display, "NULL", False);
-                ctx.select_atoms.UTF8_STRING = x11.XInternAtom(ctx.display, "UTF8_STRING", False);
-                ctx.select_atoms.ATOM_PAIR = x11.XInternAtom(ctx.display, "ATOM_PAIR", False);
+                ctx.select_atoms.NULL_ = xlib.XInternAtom(ctx.display, "NULL", False);
+                ctx.select_atoms.UTF8_STRING = xlib.XInternAtom(ctx.display, "UTF8_STRING", False);
+                ctx.select_atoms.ATOM_PAIR = xlib.XInternAtom(ctx.display, "ATOM_PAIR", False);
 
                 // Custom selection property atom
-                ctx.select_atoms.WINDOW_SELECTION = x11.XInternAtom(ctx.display, "WINDOW_SELECTION", False);
+                ctx.select_atoms.WINDOW_SELECTION = xlib.XInternAtom(ctx.display, "WINDOW_SELECTION", False);
 
                 // ICCCM standard clipboard atoms
-                ctx.select_atoms.TARGETS = x11.XInternAtom(ctx.display, "TARGETS", False);
-                ctx.select_atoms.MULTIPLE = x11.XInternAtom(ctx.display, "MULTIPLE", False);
-                ctx.select_atoms.PRIMARY = x11.XInternAtom(ctx.display, "PRIMARY", False);
-                ctx.select_atoms.INCR = x11.XInternAtom(ctx.display, "INCR", False);
-                ctx.select_atoms.CLIPBOARD = x11.XInternAtom(ctx.display, "CLIPBOARD", False);
+                ctx.select_atoms.TARGETS = xlib.XInternAtom(ctx.display, "TARGETS", False);
+                ctx.select_atoms.MULTIPLE = xlib.XInternAtom(ctx.display, "MULTIPLE", False);
+                ctx.select_atoms.PRIMARY = xlib.XInternAtom(ctx.display, "PRIMARY", False);
+                ctx.select_atoms.INCR = xlib.XInternAtom(ctx.display, "INCR", False);
+                ctx.select_atoms.CLIPBOARD = xlib.XInternAtom(ctx.display, "CLIPBOARD", False);
 
                 // Clipboard manager atoms
-                ctx.select_atoms.CLIPBOARD_MANAGER = x11.XInternAtom(ctx.display, "CLIPBOARD_MANAGER", False);
-                ctx.select_atoms.SAVE_TARGETS = x11.XInternAtom(ctx.display, "SAVE_TARGETS", False);
+                ctx.select_atoms.CLIPBOARD_MANAGER = xlib.XInternAtom(ctx.display, "CLIPBOARD_MANAGER", False);
+                ctx.select_atoms.SAVE_TARGETS = xlib.XInternAtom(ctx.display, "SAVE_TARGETS", False);
 
                 // ICCCM, EWMH and Motif window property atoms
                 // These can be set safely even without WM support
                 // The EWMH atoms that require WM support are handled in detectEWMH
-                ctx.wm.WM_PROTOCOLS = x11.XInternAtom(ctx.display, "WM_PROTOCOLS", False);
-                ctx.wm.WM_STATE = x11.XInternAtom(ctx.display, "WM_STATE", False);
-                ctx.wm.WM_DELETE_WINDOW = x11.XInternAtom(ctx.display, "WM_DELETE_WINDOW", False);
-                ctx.wm.NET_SUPPORTED = x11.XInternAtom(ctx.display, "_NET_SUPPORTED", False);
-                ctx.wm.NET_SUPPORTING_WM_CHECK = x11.XInternAtom(ctx.display, "_NET_SUPPORTING_WM_CHECK", False);
-                ctx.wm.NET_WM_ICON = x11.XInternAtom(ctx.display, "_NET_WM_ICON", False);
-                ctx.wm.NET_WM_PING = x11.XInternAtom(ctx.display, "_NET_WM_PING", False);
-                ctx.wm.NET_WM_PID = x11.XInternAtom(ctx.display, "_NET_WM_PID", False);
-                ctx.wm.NET_WM_NAME = x11.XInternAtom(ctx.display, "_NET_WM_NAME", False);
-                ctx.wm.NET_WM_ICON_NAME = x11.XInternAtom(ctx.display, "_NET_WM_ICON_NAME", False);
-                ctx.wm.NET_WM_BYPASS_COMPOSITOR = x11.XInternAtom(ctx.display, "_NET_WM_BYPASS_COMPOSITOR", False);
-                ctx.wm.NET_WM_WINDOW_OPACITY = x11.XInternAtom(ctx.display, "_NET_WM_WINDOW_OPACITY", False);
-                ctx.wm.MOTIF_WM_HINTS = x11.XInternAtom(ctx.display, "_MOTIF_WM_HINTS", False);
+                ctx.wm.WM_PROTOCOLS = xlib.XInternAtom(ctx.display, "WM_PROTOCOLS", False);
+                ctx.wm.WM_STATE = xlib.XInternAtom(ctx.display, "WM_STATE", False);
+                ctx.wm.WM_DELETE_WINDOW = xlib.XInternAtom(ctx.display, "WM_DELETE_WINDOW", False);
+                ctx.wm.NET_SUPPORTED = xlib.XInternAtom(ctx.display, "_NET_SUPPORTED", False);
+                ctx.wm.NET_SUPPORTING_WM_CHECK = xlib.XInternAtom(ctx.display, "_NET_SUPPORTING_WM_CHECK", False);
+                ctx.wm.NET_WM_ICON = xlib.XInternAtom(ctx.display, "_NET_WM_ICON", False);
+                ctx.wm.NET_WM_PING = xlib.XInternAtom(ctx.display, "_NET_WM_PING", False);
+                ctx.wm.NET_WM_PID = xlib.XInternAtom(ctx.display, "_NET_WM_PID", False);
+                ctx.wm.NET_WM_NAME = xlib.XInternAtom(ctx.display, "_NET_WM_NAME", False);
+                ctx.wm.NET_WM_ICON_NAME = xlib.XInternAtom(ctx.display, "_NET_WM_ICON_NAME", False);
+                ctx.wm.NET_WM_BYPASS_COMPOSITOR = xlib.XInternAtom(ctx.display, "_NET_WM_BYPASS_COMPOSITOR", False);
+                ctx.wm.NET_WM_WINDOW_OPACITY = xlib.XInternAtom(ctx.display, "_NET_WM_WINDOW_OPACITY", False);
+                ctx.wm.MOTIF_WM_HINTS = xlib.XInternAtom(ctx.display, "_MOTIF_WM_HINTS", False);
 
                 // The compositing manager selection name contains the screen number
                 {
                     char name[32];
                     snprintf(name, sizeof(name), "_NET_WM_CM_S%u", ctx.screen);
-                    ctx.wm.NET_WM_CM_Sx = x11.XInternAtom(ctx.display, name, False);
+                    ctx.wm.NET_WM_CM_Sx = xlib.XInternAtom(ctx.display, name, False);
                 }
 
                 // Detect whether an EWMH-conformant window manager is running
@@ -259,8 +235,8 @@ namespace awin
             {
                 bool found = false;
                 XIMStyles *styles = NULL;
-                auto &x11 = ctx.loader;
-                if (x11.XGetIMValues(ctx.im, XNQueryInputStyle, &styles, NULL) != NULL) return false;
+                auto &xlib = ctx.xlib;
+                if (xlib.XGetIMValues(ctx.im, XNQueryInputStyle, &styles, NULL) != NULL) return false;
 
                 for (unsigned int i = 0; i < styles->count_styles; i++)
                 {
@@ -271,7 +247,7 @@ namespace awin
                     }
                 }
 
-                x11.XFree(styles);
+                xlib.XFree(styles);
                 return found;
             }
 
@@ -280,14 +256,14 @@ namespace awin
             void input_method_instantiate_callback(Display *display, XPointer client_data, XPointer call_data)
             {
                 if (ctx.im) return;
-                auto &x11 = ctx.loader;
+                auto &xlib = ctx.xlib;
 
-                ctx.im = x11.XOpenIM(ctx.display, 0, NULL, NULL);
+                ctx.im = xlib.XOpenIM(ctx.display, 0, NULL, NULL);
                 if (ctx.im)
                 {
                     if (!has_usable_input_method_style())
                     {
-                        x11.XCloseIM(ctx.im);
+                        xlib.XCloseIM(ctx.im);
                         ctx.im = NULL;
                     }
                     else
@@ -295,21 +271,22 @@ namespace awin
                         XIMCallback callback;
                         callback.callback = (XIMProc)input_method_destroy_callback;
                         callback.client_data = NULL;
-                        x11.XSetIMValues(ctx.im, XNDestroyCallback, &callback, NULL);
+                        xlib.XSetIMValues(ctx.im, XNDestroyCallback, &callback, NULL);
 
                         XID root, parent;
                         XID *children;
                         unsigned int nchildren;
 
-                        if (x11.XQueryTree(display, ctx.root, &root, &parent, &children, &nchildren))
+                        if (xlib.XQueryTree(display, ctx.root, &root, &parent, &children, &nchildren))
                         {
                             for (unsigned int i = 0; i < nchildren; i++)
                             {
                                 X11WindowData *data = nullptr;
-                                if (x11.XFindContext(display, children[i], ctx.context, (XPointer *)&data) == 0 && data)
+                                if (xlib.XFindContext(display, children[i], ctx.context, (XPointer *)&data) == 0 &&
+                                    data)
                                     if (!data->ic) create_input_context(data);
                             }
-                            if (children) x11.XFree(children);
+                            if (children) xlib.XFree(children);
                         }
                     }
                 }
@@ -321,17 +298,17 @@ namespace awin
                 XSetWindowAttributes wa;
                 wa.event_mask = PropertyChangeMask;
 
-                return ctx.loader.XCreateWindow(ctx.display, ctx.root, 0, 0, 1, 1, 0, 0, InputOnly,
-                                                DefaultVisual(ctx.display, ctx.screen), CWEventMask, &wa);
+                return ctx.xlib.XCreateWindow(ctx.display, ctx.root, 0, 0, 1, 1, 0, 0, InputOnly,
+                                              DefaultVisual(ctx.display, ctx.screen), CWEventMask, &wa);
             }
 
-            X11Cursor create_hidden_cursor()
+            void create_hidden_cursor(X11Cursor &cursor)
             {
                 X11Cursor result;
-                auto &xc = ctx.xcursor;
+                auto &xc = ctx.xlib.xcursor;
 
                 XcursorImage *image = xc.XcursorImageCreate(1, 1);
-                if (!image) return {};
+                if (!image) return;
 
                 image->xhot = 0;
                 image->yhot = 0;
@@ -339,57 +316,53 @@ namespace awin
 
                 result.handle = xc.XcursorImageLoadCursor(ctx.display, image);
                 xc.XcursorImageDestroy(image);
-
-                return result;
             }
 
             bool init_platform()
             {
-                auto &x11 = ctx.loader;
-                if (!x11.load()) return false;
-                if (!x11.XInitThreads || !x11.XrmInitialize || !x11.XOpenDisplay)
+                auto &xlib = ctx.xlib;
+                if (!xlib.load()) return false;
+                if (!xlib.XInitThreads || !xlib.XrmInitialize || !xlib.XOpenDisplay)
                 {
                     LOG_ERROR("Failed to load X11 entry points");
-                    ctx.loader.unload();
+                    ctx.xlib.unload();
                     return false;
                 }
                 LOG_INFO("Loaded X11 library");
-                x11.XInitThreads();
-                x11.XrmInitialize();
-                ctx.display = x11.XOpenDisplay(NULL);
+                xlib.XInitThreads();
+                xlib.XrmInitialize();
+                ctx.display = xlib.XOpenDisplay(NULL);
                 if (!ctx.display)
                 {
                     LOG_ERROR("Failed to open X11 display");
-                    ctx.loader.unload();
+                    ctx.xlib.unload();
                     return false;
                 }
                 LOG_INFO("Connected to X11 display");
-                ctx.utf8 = x11.Xutf8LookupString && x11.Xutf8SetWMProperties;
+
+                ctx.xlib.xkb.load(xlib.handle);
+                ctx.utf8 = xlib.Xutf8LookupString && xlib.Xutf8SetWMProperties;
                 ctx.screen = DefaultScreen(ctx.display);
                 ctx.root = RootWindow(ctx.display, ctx.screen);
-                ctx.context = (XContext)x11.XrmUniqueQuark();
+                ctx.context = (XContext)xlib.XrmUniqueQuark();
                 set_system_dpi();
 
                 if (!create_empty_pipe()) return false;
                 init_xi();
-                init_xrandr();
-                if (ctx.xcursor.load()) LOG_INFO("Loaded Xcursor library");
-                init_xkb();
-                auto &xrender = ctx.xrender.loader;
-                if (xrender.load() &&
-                    xrender.XRenderQueryExtension(ctx.display, &ctx.xrender.event_base, &ctx.xrender.error_base))
-                    ctx.xrender.init = xrender.XRenderQueryVersion(ctx.display, &ctx.xrender.major, &ctx.xrender.minor);
-
+                if (ctx.xlib.xcursor.load()) LOG_INFO("Loaded Xcursor library");
+#ifndef ACUL_BUILD_MIN
+                if (ctx.xlib.xcb.load()) LOG_INFO("Loaded XCB");
+#endif
                 init_atoms();
                 ctx.helper_window = create_helper_window();
-                ctx.hidden_cursor = create_hidden_cursor();
+                create_hidden_cursor(ctx.hidden_cursor);
 
-                if (x11.XSupportsLocale() && ctx.utf8)
+                if (xlib.XSupportsLocale() && ctx.utf8)
                 {
-                    x11.XSetLocaleModifiers("");
+                    xlib.XSetLocaleModifiers("");
                     // If an IM is already present our callback will be called right away
-                    x11.XRegisterIMInstantiateCallback(ctx.display, NULL, NULL, NULL, input_method_instantiate_callback,
-                                                       NULL);
+                    xlib.XRegisterIMInstantiateCallback(ctx.display, NULL, NULL, NULL,
+                                                        input_method_instantiate_callback, NULL);
                 }
 
                 LOG_INFO("Created X11 Window Context");
@@ -398,27 +371,27 @@ namespace awin
 
             APPLIB_API void destroy_platform()
             {
-                auto &x11 = ctx.loader;
+                auto &xlib = ctx.xlib;
                 if (ctx.helper_window)
                 {
-                    if (x11.XGetSelectionOwner(ctx.display, ctx.select_atoms.CLIPBOARD) == ctx.helper_window)
+                    if (xlib.XGetSelectionOwner(ctx.display, ctx.select_atoms.CLIPBOARD) == ctx.helper_window)
                         push_selection_to_manager_x11();
 
-                    x11.XDestroyWindow(ctx.display, ctx.helper_window);
+                    xlib.XDestroyWindow(ctx.display, ctx.helper_window);
                     ctx.helper_window = None;
                 }
 
-                x11.XUnregisterIMInstantiateCallback(ctx.display, NULL, NULL, NULL, input_method_instantiate_callback,
-                                                     NULL);
+                xlib.XUnregisterIMInstantiateCallback(ctx.display, NULL, NULL, NULL, input_method_instantiate_callback,
+                                                      NULL);
                 if (ctx.im)
                 {
-                    x11.XCloseIM(ctx.im);
+                    xlib.XCloseIM(ctx.im);
                     ctx.im = NULL;
                 }
 
                 if (ctx.display)
                 {
-                    x11.XCloseDisplay(ctx.display);
+                    xlib.XCloseDisplay(ctx.display);
                     ctx.display = NULL;
                 }
 
@@ -429,16 +402,21 @@ namespace awin
                 }
             }
 
-            LinuxWindowImpl *alloc_window_impl() { return acul::alloc<X11WindowData>(); }
+            LinuxWindowData *alloc_window_data() { return acul::alloc<X11WindowData>(); }
 
             void init_pcall_data(LinuxPlatformCaller &caller)
             {
                 caller.init_platform = init_platform;
                 caller.destroy_platform = destroy_platform;
-                caller.alloc_window_impl = alloc_window_impl;
+                caller.alloc_window_data = alloc_window_data;
                 caller.poll_events = poll_events;
                 caller.wait_events = wait_events;
                 caller.wait_events_timeout = wait_events_timeout;
+                caller.push_empty_event = push_empty_event;
+                caller.get_dpi = get_dpi;
+                caller.get_window_size = get_window_size;
+                caller.get_clipboard_string = get_clipboard_string;
+                caller.set_clipboard_string = set_clipboard_string;
             }
 
             void init_wcall_data(LinuxWindowCaller &caller)
@@ -458,6 +436,10 @@ namespace awin
                 caller.show_cursor = show_cursor;
                 caller.get_window_position = get_window_position;
                 caller.set_window_position = set_window_position;
+                caller.center_window = center_window;
+                caller.update_resize_limit = update_resize_limit;
+                caller.minimize_window = minimize_window;
+                caller.maximize_window = maximize_window;
             }
 
             void init_ccall_data(LinuxCursorCaller &caller)

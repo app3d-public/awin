@@ -3,9 +3,9 @@
 #include <acul/map.hpp>
 #include <acul/pair.hpp>
 #include <acul/string/string.hpp>
-#include <awin/linux/platform.hpp>
 #include <cassert>
-#include "../linux_cursor_pd.hpp"
+#include "../linux_pd.hpp"
+#include "awin/platform.hpp"
 #include "keys.hpp"
 #include "loaders.hpp"
 
@@ -22,10 +22,8 @@ namespace awin
                 handle = nullptr;
             }
 
-            struct XIData
+            struct ExtensionData
             {
-                XILoader loader;
-                int major_op_code;
                 int event_base;
                 int error_base;
                 int major;
@@ -33,38 +31,29 @@ namespace awin
                 bool init = false;
             };
 
-            struct XRandrData
+            struct XKBData : ExtensionData, XKBLoader
             {
-                XRandrLoader loader;
-                int event_base;
-                int error_base;
-                int major;
-                int minor;
-                bool init = false;
-                bool gamma_broken;
-                bool monitor_broken;
-            };
-
-            struct XKBData
-            {
-                XCBLoader xcb;
                 int major_op_code;
-                int event_base;
-                int error_base;
-                int major;
-                int minor;
-                bool init = false, detectable = false;
+                bool detectable = false;
                 unsigned int group;
             };
 
-            struct XRenderData
+            struct XCBData : XCBLoader
             {
-                XRenderLoader loader;
-                int major;
-                int minor;
-                int event_base;
-                int error_base;
-                bool init = false;
+                bool is_extension_present = false;
+            };
+
+            struct XIData : ExtensionData, XILoader
+            {
+                int major_op_code;
+            };
+
+            struct XlibData : XlibLoader
+            {
+                XKBData xkb;
+                XIData xi;
+                XCBData xcb;
+                XCursorLoader xcursor;
             };
 
             struct WMAtoms
@@ -115,29 +104,24 @@ namespace awin
                 Atom WINDOW_SELECTION;
             };
 
-            struct X11Cursor final : LinuxCursor
+            struct X11Cursor final : CursorPlatform
             {
                 ::Cursor handle = 0;
             };
 
             extern APPLIB_API struct Context
             {
-                X11Loader loader;
+                XlibData xlib;
                 Display *display;
                 int screen;
-                XID root;
-                XID helper_window; // Helper window for IPC
+                ::Window root;
+                ::Window helper_window; // Helper window for IPC
                 X11Cursor hidden_cursor;
                 XContext context;
                 bool utf8 = false;
                 XIM im;
                 acul::point2D<f32> dpi;
                 int empty_pipe[2];
-                XIData xi;
-                XRandrData xrandr;
-                XCursorLoader xcursor;
-                XKBData xkb;
-                XRenderData xrender;
                 int error_code;
                 XErrorHandler error_handler = NULL;
                 acul::string primary_selection_string, clipboard_string;
@@ -266,10 +250,10 @@ namespace awin
 
                 ~Context()
                 {
-                    unload(xkb.xcb.xcb);
-                    unload(xrandr.loader.xrandr);
-                    unload(xi.loader.xilib);
-                    unload(loader.xlib);
+                    unload(xlib.xcb.handle);
+                    unload(xlib.xi.handle);
+                    unload(xlib.xcursor.handle);
+                    unload(xlib.handle);
                 }
             } ctx;
 
@@ -292,14 +276,14 @@ namespace awin
             {
                 assert(ctx.error_handler == NULL);
                 ctx.error_code = Success;
-                ctx.error_handler = ctx.loader.XSetErrorHandler(error_handler);
+                ctx.error_handler = ctx.xlib.XSetErrorHandler(error_handler);
             }
 
             inline void release_error_handler()
             {
                 // Synchronize to make sure all commands are processed
-                ctx.loader.XSync(ctx.display, False);
-                ctx.loader.XSetErrorHandler(ctx.error_handler);
+                ctx.xlib.XSync(ctx.display, False);
+                ctx.xlib.XSetErrorHandler(ctx.error_handler);
                 ctx.error_handler = NULL;
             }
 
@@ -309,8 +293,8 @@ namespace awin
                 int actual_format;
                 unsigned long item_count, bytes_after;
 
-                ctx.loader.XGetWindowProperty(ctx.display, window, property, 0, LONG_MAX, False, type, &actual_type,
-                                              &actual_format, &item_count, &bytes_after, value);
+                ctx.xlib.XGetWindowProperty(ctx.display, window, property, 0, LONG_MAX, False, type, &actual_type,
+                                            &actual_format, &item_count, &bytes_after, value);
 
                 return item_count;
             }
@@ -319,10 +303,10 @@ namespace awin
             void init_wcall_data(LinuxWindowCaller &caller);
 
             void init_ccall_data(LinuxCursorCaller &caller);
-            platform::native_cursor_t *create_cursor(Cursor::Type);
-            void assign_cursor(LinuxWindowImpl *, platform::native_cursor_t *);
-            void destroy_cursor(platform::native_cursor_t *);
-            bool is_cursor_valid(const platform::native_cursor_t *);
+            platform::CursorPlatform *create_cursor(Cursor::Type);
+            void assign_cursor(LinuxWindowData *, platform::CursorPlatform *);
+            void destroy_cursor(platform::CursorPlatform *);
+            bool is_cursor_valid(const platform::CursorPlatform *);
         } // namespace x11
     } // namespace platform
 } // namespace awin

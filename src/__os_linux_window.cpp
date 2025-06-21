@@ -2,8 +2,6 @@
 #include <acul/pair.hpp>
 #include <awin/platform.hpp>
 #include <awin/window.hpp>
-#include "awin/linux/cursor.hpp"
-#include "linux_cursor_pd.hpp"
 #include "x11/platform.hpp"
 
 namespace awin
@@ -114,72 +112,79 @@ namespace awin
             }
         }
 
-        bool LinuxCursor::valid() const { return pd.ccall.valid(this); }
+        CursorPlatform::~CursorPlatform()
+        {
+            if (pd.ccall.destroy) pd.ccall.destroy(this);
+        }
+
+        bool CursorPlatform::valid() const { return pd.ccall.valid(this); }
     } // namespace platform
 
     Window::Window(const acul::string &title, i32 width, i32 height, WindowFlags flags)
     {
-        _platform.backend.impl = platform::pd.pcall.alloc_window_impl();
+        _platform.backend = platform::pd.pcall.alloc_window_data();
         _platform.owner = this;
         if (!platform::pd.wcall.create_window(&_platform, title, width, height, flags))
             throw acul::runtime_error("Failed to create Window");
     }
 
-    void Window::destroy() { platform::pd.wcall.destroy(_platform.backend.impl); }
+    void Window::destroy() { platform::pd.wcall.destroy(_platform.backend); }
 
     void Window::show_window()
     {
         if (!hidden()) return;
-        platform::pd.wcall.show_window(_platform.backend.impl);
+        platform::pd.wcall.show_window(_platform.backend);
         _platform.flags &= ~WindowFlagBits::Hidden;
     }
 
     void Window::hide_window()
     {
         if (hidden()) return;
-        platform::pd.wcall.hide_window(_platform.backend.impl);
+        platform::pd.wcall.hide_window(_platform.backend);
         _platform.flags |= WindowFlagBits::Hidden;
     }
 
-    acul::string Window::title() const { return platform::pd.wcall.get_window_title(_platform.backend.impl); }
+    acul::string Window::title() const { return platform::pd.wcall.get_window_title(_platform.backend); }
 
-    void Window::title(const acul::string &title)
-    {
-        platform::pd.wcall.set_window_title(_platform.backend.impl, title);
-    }
+    void Window::title(const acul::string &title) { platform::pd.wcall.set_window_title(_platform.backend, title); }
 
     void Window::enable_fullscreen()
     {
         _platform.flags |= WindowFlagBits::Fullscreen;
-        platform::pd.wcall.enable_fullscreen(_platform.backend.impl);
+        platform::pd.wcall.enable_fullscreen(_platform.backend);
     }
 
     void Window::disable_fullscreen()
     {
         _platform.flags &= ~WindowFlagBits::Fullscreen;
-        platform::pd.wcall.disable_fullscreen(_platform.backend.impl);
+        platform::pd.wcall.disable_fullscreen(_platform.backend);
     }
 
     acul::point2D<i32> Window::cursor_position() const
     {
-        return platform::pd.wcall.get_cursor_position(_platform.backend.impl);
+        return platform::pd.wcall.get_cursor_position(_platform.backend);
     }
 
     void Window::cursor_position(acul::point2D<i32> position)
     {
-        platform::pd.wcall.set_cursor_position(_platform.backend.impl, position);
+        platform::pd.wcall.set_cursor_position(_platform.backend, position);
     }
 
     void Window::hide_cursor() { platform::pd.wcall.hide_cursor(&_platform); }
 
     void Window::show_cursor() { platform::pd.wcall.show_cursor(&_platform); }
 
-    acul::point2D<i32> Window::position() const
-    {
-        return platform::pd.wcall.get_window_position(_platform.backend.impl);
-    }
+    acul::point2D<i32> Window::position() const { return platform::pd.wcall.get_window_position(_platform.backend); }
 
     void Window::position(acul::point2D<i32> position) { platform::pd.wcall.set_window_position(&_platform, position); }
+
+    void Window::center_window() { platform::pd.wcall.center_window(&_platform); }
+
+    void Window::update_resize_limit() { platform::pd.wcall.update_resize_limit(&_platform); }
+
+    void Window::minimize() { platform::pd.wcall.minimize_window(_platform.backend); }
+
+    void Window::maximize() { platform::pd.wcall.maximize_window(&_platform); }
 
     void poll_events() { platform::pd.pcall.poll_events(); }
 
@@ -187,15 +192,38 @@ namespace awin
 
     void wait_events_timeout() { platform::pd.pcall.wait_events_timeout(); }
 
-    void set_window_icon(Window &window, const acul::vector<Image> &images)
+    void push_empty_event() { platform::pd.pcall.push_empty_event(); }
+
+    f32 get_dpi() { return platform::pd.pcall.get_dpi(); }
+
+    acul::point2D<i32> get_window_size(const Window &window)
     {
-        platform::pd.wcall.set_window_icon(window._platform.backend.impl, images);
+        return platform::pd.pcall.get_window_size(platform::native_access::get_window_data(window));
     }
 
-    platform::LinuxWindowImpl *platform::native_access::get_impl(const Window &window)
+    acul::string get_clipboard_string(const Window &window) { return platform::pd.pcall.get_clipboard_string(); }
+
+    void set_clipboard_string(const Window &window, const acul::string &text)
     {
-        return window._platform.backend.impl;
+        platform::pd.pcall.set_clipboard_string(text);
+    }
+
+    void set_window_icon(Window &window, const acul::vector<Image> &images)
+    {
+        platform::pd.wcall.set_window_icon(window._platform.backend, images);
+    }
+
+    platform::LinuxWindowData *platform::native_access::get_window_data(const Window &window)
+    {
+        return window._platform.backend;
     }
 
     int platform::native_access::get_backend_type() { return pd.backend_type; }
+
+    Cursor Cursor::create(Type type) { return {platform::pd.ccall.create(type)}; }
+
+    void Cursor::assign(Window *window)
+    {
+        platform::pd.ccall.assign(platform::native_access::get_window_data(*window), _pd);
+    }
 } // namespace awin

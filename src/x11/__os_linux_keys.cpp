@@ -2,6 +2,8 @@
 #include <acul/string/string.hpp>
 #include <acul/string/string_view.hpp>
 #include <awin/window.hpp>
+#include "acul/fwd/string.hpp"
+#include "awin/platform.hpp"
 #include "platform.hpp"
 #include "window.hpp"
 
@@ -956,11 +958,11 @@ namespace awin
 
             static acul::string get_selection_string(Atom selection)
             {
-                auto &x11 = ctx.loader;
+                auto &xlib = ctx.xlib;
                 acul::string &out =
                     (selection == ctx.select_atoms.PRIMARY ? ctx.primary_selection_string : ctx.clipboard_string);
 
-                if (x11.XGetSelectionOwner(ctx.display, selection) == ctx.helper_window) return out;
+                if (xlib.XGetSelectionOwner(ctx.display, selection) == ctx.helper_window) return out;
 
                 out.clear();
 
@@ -969,10 +971,10 @@ namespace awin
                 for (Atom target : formats)
                 {
                     XEvent event;
-                    x11.XConvertSelection(ctx.display, selection, target, ctx.select_atoms.WINDOW_SELECTION,
+                    xlib.XConvertSelection(ctx.display, selection, target, ctx.select_atoms.WINDOW_SELECTION,
                                           ctx.helper_window, CurrentTime);
 
-                    while (!x11.XCheckTypedWindowEvent(ctx.display, ctx.helper_window, SelectionNotify, &event))
+                    while (!xlib.XCheckTypedWindowEvent(ctx.display, ctx.helper_window, SelectionNotify, &event))
                         wait_for_x11_event(nullptr);
 
                     auto *sel = &event.xselection;
@@ -983,7 +985,7 @@ namespace awin
                     unsigned long item_count, bytes_after;
                     unsigned char *data = nullptr;
 
-                    x11.XGetWindowProperty(ctx.display, ctx.helper_window, sel->property, 0, LONG_MAX, True,
+                    xlib.XGetWindowProperty(ctx.display, ctx.helper_window, sel->property, 0, LONG_MAX, True,
                                            AnyPropertyType, &actual_type, &actual_format, &item_count, &bytes_after,
                                            &data);
 
@@ -994,12 +996,12 @@ namespace awin
                         {
                             XEvent dummy;
                             while (
-                                !x11.XCheckIfEvent(ctx.display, &dummy, is_sel_prop_new_value_notify, (XPointer)&event))
+                                !xlib.XCheckIfEvent(ctx.display, &dummy, is_sel_prop_new_value_notify, (XPointer)&event))
                                 wait_for_x11_event(nullptr);
 
-                            x11.XFree(data);
+                            xlib.XFree(data);
 
-                            x11.XGetWindowProperty(ctx.display, ctx.helper_window, sel->property, 0, LONG_MAX, True,
+                            xlib.XGetWindowProperty(ctx.display, ctx.helper_window, sel->property, 0, LONG_MAX, True,
                                                    AnyPropertyType, &actual_type, &actual_format, &item_count,
                                                    &bytes_after, &data);
 
@@ -1026,7 +1028,7 @@ namespace awin
                             out = reinterpret_cast<char *>(data);
                     }
 
-                    x11.XFree(data);
+                    xlib.XFree(data);
 
                     if (!out.empty()) break;
                 }
@@ -1034,6 +1036,17 @@ namespace awin
                 if (out.empty()) LOG_ERROR("Failed to convert X11 selection to UTF-8 string");
 
                 return out;
+            }
+
+            acul::string get_clipboard_string() { return get_selection_string(ctx.select_atoms.CLIPBOARD); }
+
+            void set_clipboard_string(const acul::string &text)
+            {
+                ctx.clipboard_string = text;
+                auto &xlib = ctx.xlib;
+                xlib.XSetSelectionOwner(ctx.display, ctx.select_atoms.CLIPBOARD, ctx.helper_window, CurrentTime);
+                if (xlib.XGetSelectionOwner(ctx.display, ctx.select_atoms.CLIPBOARD) != ctx.helper_window)
+                    LOG_ERROR("X11: Failed to become owner of clipboard selection");
             }
 
             // Translates an X event modifier state mask
@@ -1051,11 +1064,11 @@ namespace awin
 
             void on_key_press(XEvent *event, int keycode, Bool filtered, platform::WindowData *window_data)
             {
-                auto &x11 = ctx.loader;
+                auto &xlib = ctx.xlib;
                 const auto mods = translate_state(event->xkey.state);
                 const int plain = !(mods & (io::KeyModeBits::Control | io::KeyModeBits::Alt));
 
-                auto *window = (X11WindowData *)window_data->backend.impl;
+                auto *window = (X11WindowData *)window_data->backend;
                 if (window->ic)
                 {
                     Time diff = event->xkey.time - window->key_press_times[keycode];
@@ -1076,7 +1089,7 @@ namespace awin
                         char buffer[100];
                         char *chars = buffer;
 
-                        int count = x11.Xutf8LookupString(window->ic, &event->xkey, buffer, sizeof(buffer) - 1, nullptr,
+                        int count = xlib.Xutf8LookupString(window->ic, &event->xkey, buffer, sizeof(buffer) - 1, nullptr,
                                                           &status);
 
                         acul::string utf8;
@@ -1084,7 +1097,7 @@ namespace awin
                         if (status == XBufferOverflow)
                         {
                             acul::vector<char> dyn_buf(count + 1, '\0');
-                            count = x11.Xutf8LookupString(window->ic, &event->xkey, dyn_buf.data(), count, nullptr,
+                            count = xlib.Xutf8LookupString(window->ic, &event->xkey, dyn_buf.data(), count, nullptr,
                                                           &status);
                             utf8.assign(dyn_buf.data(), count);
                         }
@@ -1105,7 +1118,7 @@ namespace awin
                 else
                 {
                     KeySym keysym;
-                    x11.XLookupString(&event->xkey, NULL, 0, &keysym, NULL);
+                    xlib.XLookupString(&event->xkey, NULL, 0, &keysym, NULL);
                     auto it = ctx.keymap.find(keycode);
                     input_key(window_data, it != ctx.keymap.end() ? it->second : io::Key::Unknown,
                               io::KeyPressState::Press, mods);
@@ -1120,17 +1133,17 @@ namespace awin
             {
                 auto it_key = ctx.keymap.find(keycode);
                 const io::KeyMode mods = translate_state(event->xkey.state);
-                auto &x11 = ctx.loader;
-                if (!ctx.xkb.detectable)
+                auto &xlib = ctx.xlib;
+                if (!ctx.xlib.xkb.detectable)
                 {
                     // HACK: Key repeat events will arrive as KeyRelease/KeyPress
                     //       pairs with similar or identical time stamps
                     //       The key repeat logic in _glfwInputKey expects only key
                     //       presses to repeat, so detect and discard release events
-                    if (x11.XEventsQueued(ctx.display, QueuedAfterReading))
+                    if (xlib.XEventsQueued(ctx.display, QueuedAfterReading))
                     {
                         XEvent next;
-                        x11.XPeekEvent(ctx.display, &next);
+                        xlib.XPeekEvent(ctx.display, &next);
 
                         if (next.type == KeyPress && next.xkey.window == event->xkey.window &&
                             next.xkey.keycode == keycode)

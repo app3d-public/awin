@@ -11,9 +11,9 @@ endif()
 
 add_files(${PROJECT_NAME} RECURSE "${CMAKE_CURRENT_SOURCE_DIR}/src")
 
-# if(ACUL_BUILD_MIN)
+if(ACUL_BUILD_MIN)
     list(REMOVE_ITEM SOURCE_FILES "${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan.cpp")
-# endif()
+endif()
 
 set(AWIN_LIB_NAME ${PROJECT_NAME}-${APP_SIMD_ARCH})
 add_library(${AWIN_LIB_NAME} SHARED ${SOURCE_FILES})

@@ -116,7 +116,11 @@ namespace awin
         inline acul::point2D<i32> resize_limit() const { return _platform.resize_limit; }
 
         // Set the window's resize limits.
-        inline void resize_limit(i32 width, i32 height) { _platform.resize_limit = {width, height}; }
+        void resize_limit(acul::point2D<i32> size)
+        {
+            _platform.resize_limit = size;
+            update_resize_limit();
+        }
 
         // Check if the window is ready to be closed.
         inline bool ready_to_close() const { return _platform.ready_to_close; }
@@ -141,6 +145,8 @@ namespace awin
 
     private:
         platform::WindowData _platform;
+
+        void update_resize_limit();
 
         friend platform::native_access;
 #ifdef __unix__
@@ -455,6 +461,10 @@ namespace awin
 
     // Destroy the library and release associated resources.
     APPLIB_API void destroy_library();
+
+#ifndef _WIN32
+    APPLIB_API void set_window_icon(Window &window, const acul::vector<Image> &images);
+#endif
 } // namespace awin
 
 #endif

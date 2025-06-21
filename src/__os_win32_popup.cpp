@@ -89,40 +89,82 @@ namespace awin
             };
         }
 
-        acul::string open_file_dialog(const char *title, const acul::vector<FilePattern> &pattern,
-                                      const char *default_path, bool multiply)
+        void fill_ofn_pattern(const acul::vector<FilePattern> &src, acul::u16string &dst)
+        {
+            for (const auto &pat : src)
+            {
+                dst += acul::utf8_to_utf16(pat.description) + u'\0';
+                for (size_t i = 0; i < pat.extensions.size(); ++i)
+                {
+                    dst += acul::utf8_to_utf16(pat.extensions[i]);
+                    if (i < pat.extensions.size() - 1) dst += u';';
+                }
+                dst += u'\0';
+            }
+            dst += u'\0';
+        }
+
+        OPENFILENAMEW get_ofn(const char *title, const char *default_path, const acul::u16string &pattern,
+                              wchar_t *buffer)
         {
             acul::u16string w_title = acul::utf8_to_utf16(title);
             acul::u16string w_default_path = default_path ? acul::utf8_to_utf16(default_path) : u"";
-            acul::u16string filter_patterns;
-            for (const auto &pat : pattern)
-            {
-                filter_patterns += acul::utf8_to_utf16(pat.description) + u'\0';
-                for (size_t i = 0; i < pat.extensions.size(); ++i)
-                {
-                    filter_patterns += acul::utf8_to_utf16(pat.extensions[i]);
-                    if (i < pat.extensions.size() - 1) filter_patterns += u';';
-                }
-                filter_patterns += u'\0';
-            }
-            filter_patterns += u'\0';
 
-            wchar_t filename[MAX_PATH] = L"";
-            OPENFILENAMEW ofn = {0};
-            ofn.lStructSize = sizeof(OPENFILENAMEW);
+            OPENFILENAMEW ofn = {};
+            ofn.lStructSize = sizeof(ofn);
             ofn.hwndOwner = GetForegroundWindow();
-            ofn.lpstrFilter = reinterpret_cast<LPCWSTR>(filter_patterns.c_str());
-            ofn.lpstrFile = filename;
+            ofn.lpstrFilter = reinterpret_cast<LPCWSTR>(pattern.c_str());
+            ofn.lpstrFile = buffer;
             ofn.nMaxFile = MAX_PATH;
             ofn.lpstrTitle = reinterpret_cast<LPCWSTR>(w_title.c_str());
             ofn.lpstrInitialDir = w_default_path.empty() ? NULL : reinterpret_cast<LPCWSTR>(w_default_path.c_str());
             ofn.Flags = OFN_EXPLORER | OFN_NOCHANGEDIR | OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST;
-            if (multiply) ofn.Flags |= OFN_ALLOWMULTISELECT;
+            return ofn;
+        }
+
+        acul::string open_file_dialog(const char *title, const acul::vector<FilePattern> &pattern,
+                                      const char *default_path)
+        {
+            acul::u16string filter_patterns;
+            fill_ofn_pattern(pattern, filter_patterns);
+            wchar_t filename[MAX_PATH] = {0};
+            OPENFILENAMEW ofn = get_ofn(title, default_path, filter_patterns, filename);
             if (GetOpenFileNameW(&ofn) == 0) return "";
             return acul::utf16_to_utf8(reinterpret_cast<const acul::u16string::value_type *>(filename));
         }
 
-        acul::string open_folder_dialog(const char *title, const char *defaultPath)
+        acul::vector<acul::string>
+        open_file_dialog_multiple(const char *title, const acul::vector<FilePattern> &pattern, const char *default_path)
+        {
+            acul::u16string filter_patterns;
+            fill_ofn_pattern(pattern, filter_patterns);
+            wchar_t buffer[8192] = {0};
+            OPENFILENAMEW ofn = get_ofn(title, default_path, filter_patterns, buffer);
+            ofn.Flags |= OFN_ALLOWMULTISELECT;
+            if (GetOpenFileNameW(&ofn) == 0) return {};
+
+            static_assert(sizeof(wchar_t) == sizeof(char16_t), "Incompatible wchar_t and char16_t");
+            const c16 *ptr = (c16 *)buffer;
+            acul::u16string dir = ptr;
+            ptr += dir.size() + 1;
+
+            acul::vector<acul::string> result;
+
+            if (*ptr == L'\0')
+                result.emplace_back(acul::utf16_to_utf8(dir));
+            else
+            {
+                while (*ptr)
+                {
+                    acul::u16string full = dir + u'\\' + ptr;
+                    result.emplace_back(acul::utf16_to_utf8(full));
+                    ptr += null_terminated_length(ptr) + 1;
+                }
+            }
+            return result;
+        }
+
+        acul::string open_folder_dialog(const char *title, const char *default_path)
         {
             IFileOpenDialog *file_open_dlg = nullptr;
 
@@ -144,9 +186,9 @@ namespace awin
                 file_open_dlg->SetTitle(reinterpret_cast<LPCWSTR>(w_title.c_str()));
             }
 
-            if (defaultPath)
+            if (default_path)
             {
-                acul::u16string w_default_path = acul::utf8_to_utf16(defaultPath);
+                acul::u16string w_default_path = acul::utf8_to_utf16(default_path);
                 IShellItem *pItem = nullptr;
                 hr = SHCreateItemFromParsingName(reinterpret_cast<LPCWSTR>(w_default_path.c_str()), NULL,
                                                  IID_PPV_ARGS(&pItem));

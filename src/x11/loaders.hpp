@@ -117,15 +117,13 @@ namespace awin
             typedef void (*PFN_XUnsetICFocus)(XIC);
             typedef VisualID (*PFN_XVisualIDFromVisual)(Visual *);
             typedef int (*PFN_XWarpPointer)(Display *, XID, XID, int, int, unsigned int, unsigned int, int, int);
-            typedef void (*PFN_XkbFreeKeyboard)(XkbDescPtr, unsigned int, Bool);
-            typedef void (*PFN_XkbFreeNames)(XkbDescPtr, unsigned int, Bool);
-            typedef XkbDescPtr (*PFN_XkbGetMap)(Display *, unsigned int, unsigned int);
-            typedef Status (*PFN_XkbGetNames)(Display *, unsigned int, XkbDescPtr);
+
+            // XKB
             typedef Status (*PFN_XkbGetState)(Display *, unsigned int, XkbStatePtr);
-            typedef KeySym (*PFN_XkbKeycodeToKeysym)(Display *, KeyCode, int, int);
             typedef Bool (*PFN_XkbQueryExtension)(Display *, int *, int *, int *, int *, int *);
             typedef Bool (*PFN_XkbSelectEventDetails)(Display *, unsigned int, unsigned int, unsigned long,
                                                       unsigned long);
+            typedef Bool (*PFN_XkbSetDetectableAutoRepeat)(Display *, Bool, Bool *);
 
             // X Input Extension
             typedef Status (*PFN_XIQueryVersion)(Display *, int *, int *);
@@ -155,9 +153,6 @@ namespace awin
             typedef XcursorImage *(*PFN_XcursorImageCreate)(int, int);
             typedef void (*PFN_XcursorImageDestroy)(XcursorImage *);
             typedef ::Cursor (*PFN_XcursorImageLoadCursor)(Display *, const XcursorImage *);
-            typedef char *(*PFN_XcursorGetTheme)(Display *);
-            typedef int (*PFN_XcursorGetDefaultSize)(Display *);
-            typedef XcursorImage *(*PFN_XcursorLibraryLoadImage)(const char *, const char *, int);
             typedef ::Cursor (*PFN_XcursorLibraryLoadCursor)(Display *, const char *);
 
             // XCB
@@ -167,15 +162,13 @@ namespace awin
             typedef xcb_connection_t *(*PFN_XGetXCBConnection)(Display *);
 
             // XRender
-            typedef Bool (*PFN_XkbSetDetectableAutoRepeat)(Display *, Bool, Bool *);
             typedef Bool (*PFN_XRenderQueryExtension)(Display *, int *, int *);
             typedef Status (*PFN_XRenderQueryVersion)(Display *dpy, int *, int *);
             typedef XRenderPictFormat *(*PFN_XRenderFindVisualFormat)(Display *, Visual const *);
 
-            class X11Loader
+            struct XlibLoader
             {
-            public:
-                void *xlib = nullptr;
+                void *handle = nullptr;
                 PFN_XAllocClassHint XAllocClassHint = nullptr;
                 PFN_XAllocSizeHints XAllocSizeHints = nullptr;
                 PFN_XAllocWMHints XAllocWMHints = nullptr;
@@ -271,32 +264,33 @@ namespace awin
                 PFN_XUnsetICFocus XUnsetICFocus = nullptr;
                 PFN_XVisualIDFromVisual XVisualIDFromVisual = nullptr;
                 PFN_XWarpPointer XWarpPointer = nullptr;
-                PFN_XkbFreeKeyboard XkbFreeKeyboard = nullptr;
-                PFN_XkbFreeNames XkbFreeNames = nullptr;
-                PFN_XkbGetMap XkbGetMap = nullptr;
-                PFN_XkbGetNames XkbGetNames = nullptr;
-                PFN_XkbGetState XkbGetState = nullptr;
-                PFN_XkbKeycodeToKeysym XkbKeycodeToKeysym = nullptr;
-                PFN_XkbQueryExtension XkbQueryExtension = nullptr;
-                PFN_XkbSelectEventDetails XkbSelectEventDetails = nullptr;
-                PFN_XkbSetDetectableAutoRepeat XkbSetDetectableAutoRepeat = nullptr;
 
                 bool load();
 
                 void unload()
                 {
-                    if (xlib)
+                    if (handle)
                     {
-                        dlclose(xlib);
-                        xlib = nullptr;
+                        dlclose(handle);
+                        handle = nullptr;
                     }
                 }
             };
 
-            class XILoader
+            struct XKBLoader
+            {
+                PFN_XkbGetState XkbGetState = nullptr;
+                PFN_XkbQueryExtension XkbQueryExtension = nullptr;
+                PFN_XkbSelectEventDetails XkbSelectEventDetails = nullptr;
+                PFN_XkbSetDetectableAutoRepeat XkbSetDetectableAutoRepeat = nullptr;
+
+                void load(void *handle);
+            };
+
+            struct XILoader
             {
             public:
-                void *xilib = nullptr;
+                void *handle = nullptr;
 
                 PFN_XIQueryVersion XIQueryVersion = nullptr;
                 PFN_XISelectEvents XISelectEvents = nullptr;
@@ -304,43 +298,14 @@ namespace awin
                 bool load();
             };
 
-            class XRandrLoader
-            {
-            public:
-                void *xrandr = nullptr;
-
-                PFN_XRRAllocGamma XRRAllocGamma = nullptr;
-                PFN_XRRFreeCrtcInfo XRRFreeCrtcInfo = nullptr;
-                PFN_XRRFreeGamma XRRFreeGamma = nullptr;
-                PFN_XRRFreeOutputInfo XRRFreeOutputInfo = nullptr;
-                PFN_XRRFreeScreenResources XRRFreeScreenResources = nullptr;
-                PFN_XRRGetCrtcGamma XRRGetCrtcGamma = nullptr;
-                PFN_XRRGetCrtcGammaSize XRRGetCrtcGammaSize = nullptr;
-                PFN_XRRGetCrtcInfo XRRGetCrtcInfo = nullptr;
-                PFN_XRRGetOutputInfo XRRGetOutputInfo = nullptr;
-                PFN_XRRGetOutputPrimary XRRGetOutputPrimary = nullptr;
-                PFN_XRRGetScreenResourcesCurrent XRRGetScreenResourcesCurrent = nullptr;
-                PFN_XRRQueryExtension XRRQueryExtension = nullptr;
-                PFN_XRRQueryVersion XRRQueryVersion = nullptr;
-                PFN_XRRSelectInput XRRSelectInput = nullptr;
-                PFN_XRRSetCrtcConfig XRRSetCrtcConfig = nullptr;
-                PFN_XRRSetCrtcGamma XRRSetCrtcGamma = nullptr;
-                PFN_XRRUpdateConfiguration XRRUpdateConfiguration = nullptr;
-
-                bool load();
-            };
-
             class XCursorLoader
             {
             public:
-                void *xcursor = nullptr;
+                void *handle = nullptr;
 
                 PFN_XcursorImageCreate XcursorImageCreate = nullptr;
                 PFN_XcursorImageDestroy XcursorImageDestroy = nullptr;
                 PFN_XcursorImageLoadCursor XcursorImageLoadCursor = nullptr;
-                PFN_XcursorGetTheme XcursorGetTheme = nullptr;
-                PFN_XcursorGetDefaultSize XcursorGetDefaultSize = nullptr;
-                PFN_XcursorLibraryLoadImage XcursorLibraryLoadImage = nullptr;
                 PFN_XcursorLibraryLoadCursor XcursorLibraryLoadCursor = nullptr;
 
                 bool load();
@@ -349,21 +314,9 @@ namespace awin
             class XCBLoader
             {
             public:
-                void *xcb = nullptr;
+                void *handle = nullptr;
 
                 PFN_XGetXCBConnection XGetXCBConnection = nullptr;
-
-                bool load();
-            };
-
-            class XRenderLoader
-            {
-            public:
-                void *xrender = nullptr;
-
-                PFN_XRenderQueryExtension XRenderQueryExtension = nullptr;
-                PFN_XRenderQueryVersion XRenderQueryVersion = nullptr;
-                PFN_XRenderFindVisualFormat XRenderFindVisualFormat = nullptr;
 
                 bool load();
             };

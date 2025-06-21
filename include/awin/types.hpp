@@ -3,14 +3,10 @@
 
 #include <acul/api.hpp>
 #include <acul/enum.hpp>
+#include <acul/memory.hpp>
 #include <acul/pair.hpp>
 #include <acul/scalars.hpp>
-
-#ifdef _WIN32
-    #include "win32/cursor.hpp"
-#else
-    #include "linux/cursor.hpp"
-#endif
+#include "cursor.hpp"
 
 #define KEY_MOD_START_INDEX 106
 
@@ -210,7 +206,9 @@ namespace awin
             NotAllowed  // The operation-not-allowed shape.  This is usually a circle with a diagonal line through it.
         };
 
-        Cursor(const platform::native_cursor_t &cursor = platform::native_cursor_t()) : _platform(cursor) {}
+        Cursor(platform::CursorPlatform *pd = NULL) : _pd(pd) {}
+
+        ~Cursor() { acul::release(_pd); };
 
         Cursor(const Cursor &) = delete;
         Cursor &operator=(const Cursor &) = delete;
@@ -218,19 +216,23 @@ namespace awin
         Cursor &operator=(Cursor &&other) noexcept;
 
         // Check if cursor is valid and was initialized.
-        bool valid() const { return _platform.valid(); }
+        bool valid() const { return _pd && _pd->valid(); }
 
         // Create a new cursor with the given type.
         static Cursor create(Type type);
 
         // Get the default cursor.
-        static Cursor *default_cursor();
+        static Cursor *default_cursor()
+        {
+            static Cursor cursor = Cursor::create(Cursor::Type::Arrow);
+            return &cursor;
+        }
 
         // Assign cursor to the platform context
-        void assign(Window* window);
+        void assign(Window *window);
 
     private:
-        platform::native_cursor_t _platform;
+        platform::CursorPlatform *_pd;
     };
 
     // Flags for window creation, stored as u16 for memory efficiency.
