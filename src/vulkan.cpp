@@ -19,20 +19,27 @@ namespace awin
             int backend = platform::native_access::get_backend_type();
             if (backend == WINDOW_BACKEND_X11)
             {
+    #ifdef VK_USE_PLATFORM_XCB_KHR
                 auto it = ext.find(vk::KHRXcbSurfaceExtensionName);
                 if (it != ext.end())
                 {
                     platform::x11::ctx.xlib.xcb.is_extension_present = true;
                     dst.push_back(vk::KHRXcbSurfaceExtensionName);
                 }
+    #endif
+    #ifdef VK_USE_PLATFORM_XLIB_KHR
                 dst.push_back(vk::KHRXlibSurfaceExtensionName);
+    #endif
             }
+    #ifdef VK_USE_PLATFORM_WAYLAND_KHR
             else if (backend == WINDOW_BACKEND_WAYLAND)
                 dst.push_back(vk::KHRWaylandSurfaceExtensionName);
+    #endif
 #endif
         }
 
 #ifndef _WIN32
+    #ifdef VK_USE_PLATFORM_XCB_KHR
         static vk::Result create_xcb_surface(vk::Instance &instance, vk::SurfaceKHR &surface,
                                              vk::DispatchLoaderDynamic &loader, Window &window)
         {
@@ -48,7 +55,8 @@ namespace awin
             surface = instance.createXcbSurfaceKHR(info, nullptr, loader);
             return vk::Result::eSuccess;
         }
-
+    #endif
+    #ifdef VK_USE_PLATFORM_XLIB_KHR
         static vk::Result create_xlib_surface(vk::Instance &instance, vk::SurfaceKHR &surface,
                                               vk::DispatchLoaderDynamic &loader, Window &window)
         {
@@ -58,7 +66,7 @@ namespace awin
             surface = instance.createXlibSurfaceKHR(info, nullptr, loader);
             return vk::Result::eSuccess;
         }
-
+    #endif
 #endif
 
         vk::Result CreateCtx::create_surface(vk::Instance &instance, vk::SurfaceKHR &surface,
@@ -75,11 +83,17 @@ namespace awin
                 int backend = platform::native_access::get_backend_type();
                 if (backend == WINDOW_BACKEND_X11)
                 {
+    #ifdef VK_USE_PLATFORM_XCB_KHR
                     if (platform::x11::ctx.xlib.xcb.is_extension_present && platform::x11::ctx.xlib.xcb.handle)
                         return create_xcb_surface(instance, surface, loader, _window);
+    #endif
+    #ifdef VK_USE_PLATFORM_XLIB_KHR
                     return create_xlib_surface(instance, surface, loader, _window);
+    #else
+                    return vk::Result::eErrorExtensionNotPresent;
+    #endif
                 }
-                // else if (backend == WINDOW_BACKEND_WAYLAND) // todo
+                // else if (backend == WINDOW_BACKEND_WAYLAND) // todo: Add Wayland Support
                 return vk::Result::eErrorExtensionNotPresent;
 #endif
             }
