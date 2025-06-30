@@ -4,6 +4,7 @@
 #include <shlobj.h>
 #include <windef.h>
 #include <windowsx.h>
+#include "awin/platform.hpp"
 #include "win32_pd.hpp"
 
 namespace awin
@@ -92,8 +93,8 @@ namespace awin
                     if (!window) break;
                     SetPropW(hwnd, L"AWIN", reinterpret_cast<HANDLE>(window));
                     MonitorInfo monitor_info = get_primary_monitor_info();
-                    ctx.screen.x = monitor_info.width;
-                    ctx.screen.y = monitor_info.height;
+                    ctx.screen.x = monitor_info.dimensions.x;
+                    ctx.screen.y = monitor_info.dimensions.y;
                     if (window->flags & WindowFlagBits::Fullscreen)
                     {
                         SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, ctx.screen.x, ctx.screen.y, SWP_SHOWWINDOW);
@@ -548,10 +549,9 @@ namespace awin
         MONITORINFO monitor_info = {sizeof(monitor_info)};
         if (GetMonitorInfoW(hMonitor, &monitor_info))
         {
-            return {.xpos = monitor_info.rcWork.right,
-                    .ypos = monitor_info.rcWork.bottom,
-                    .width = monitor_info.rcMonitor.right - monitor_info.rcMonitor.left,
-                    .height = monitor_info.rcMonitor.bottom - monitor_info.rcMonitor.top};
+            return {.work = {monitor_info.rcWork.right, monitor_info.rcWork.bottom},
+                    .dimensions = {monitor_info.rcMonitor.right - monitor_info.rcMonitor.left,
+                                   monitor_info.rcMonitor.bottom - monitor_info.rcMonitor.top}};
         }
         else
             return {};
@@ -566,7 +566,7 @@ namespace awin
         _platform.backend.style = platform::get_window_style(flags);
         _platform.backend.ex_style = WS_EX_APPWINDOW;
         _platform.backend.hwnd = nullptr;
-        _platform.cursor = Cursor::default_cursor();
+        _platform.cursor = &platform::env.default_cursor;
 
         _platform.backend.hwnd =
             CreateWindowExW(_platform.backend.ex_style, platform::ctx.win32_class.lpszClassName,

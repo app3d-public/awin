@@ -180,10 +180,8 @@ namespace awin
     // Basic information about a monitor/display.
     struct MonitorInfo
     {
-        int xpos;
-        int ypos;
-        int width;
-        int height;
+        acul::point2D<long> work;
+        acul::point2D<long> dimensions;
     };
 
     class APPLIB_API Cursor
@@ -208,8 +206,6 @@ namespace awin
 
         Cursor(platform::CursorPlatform *pd = NULL) : _pd(pd) {}
 
-        ~Cursor() { acul::release(_pd); };
-
         Cursor(const Cursor &) = delete;
         Cursor &operator=(const Cursor &) = delete;
 
@@ -221,15 +217,14 @@ namespace awin
         // Create a new cursor with the given type.
         static Cursor create(Type type);
 
-        // Get the default cursor.
-        static Cursor *default_cursor()
-        {
-            static Cursor cursor = Cursor::create(Cursor::Type::Arrow);
-            return &cursor;
-        }
-
         // Assign cursor to the platform context
         void assign(Window *window);
+
+        void reset()
+        {
+            acul::release(_pd);
+            _pd = nullptr;
+        }
 
     private:
         platform::CursorPlatform *_pd;

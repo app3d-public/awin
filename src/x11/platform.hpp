@@ -1,11 +1,11 @@
 #pragma once
 
+#include <acul/log.hpp>
 #include <acul/map.hpp>
 #include <acul/pair.hpp>
 #include <acul/string/string.hpp>
-#include <cassert>
+#include <awin/platform.hpp>
 #include "../linux_pd.hpp"
-#include "awin/platform.hpp"
 #include "keys.hpp"
 #include "loaders.hpp"
 
@@ -124,7 +124,7 @@ namespace awin
                 int empty_pipe[2];
                 int error_code;
                 XErrorHandler error_handler = NULL;
-                acul::string primary_selection_string, clipboard_string;
+                acul::string primary_selection_string;
 
                 acul::map<i16, io::Key> keymap{{KEY_SPACE, io::Key::Space},
                                                {KEY_APOSTROPHE, io::Key::Apostroph},
@@ -263,10 +263,14 @@ namespace awin
 
             // X error handler
             //
-            inline int error_handler(Display *display, XErrorEvent *event)
+            inline int error_handler(Display *display, XErrorEvent *ev)
             {
                 if (ctx.display != display) return 0;
-                ctx.error_code = event->error_code;
+                ctx.error_code = ev->error_code;
+                char buf[128];
+                ctx.xlib.XGetErrorText(ctx.display, ev->error_code, buf, sizeof(buf));
+                LOG_ERROR("X11 Error: code=%d (%s), req=%d.%d, res=0x%lx", ev->error_code, buf, ev->request_code,
+                          ev->minor_code, ev->resourceid);
                 return 0;
             }
 

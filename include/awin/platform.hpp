@@ -25,11 +25,15 @@ namespace awin
             acul::string clipboard_data; // Clipboard data storage.
             struct Timer
             {
+#ifndef _WIN32
+                clockid_t clock_id;
+#endif
                 u64 offset;                   // Time offset
                 u64 frequency;                // Timer frequency
             } timer;                          // Timer information for time tracking.
             f64 timeout = WINDOW_TIMEOUT_INF; // Global timeout for waking up the main loop.
             acul::events::dispatcher *ed = nullptr;
+            Cursor default_cursor;
         } env;
 
 #ifdef _WIN32
@@ -63,7 +67,7 @@ namespace awin
             acul::point2D<int> window_pos;
         };
 
-        using platform_data_t = LinuxWindowData *;
+        using platform_data_t = LinuxWindowData;
 
         struct LinuxAccessConnect
         {
@@ -84,8 +88,13 @@ namespace awin
             bool ready_to_close = false;
             acul::point2D<i32> resize_limit{0, 0};
             io::KeyPressState keys[io::Key::Last + 1];
-            Cursor *cursor;
-            platform_data_t backend;
+            Cursor *cursor{NULL};
+#ifdef _WIN32
+            platform_data_t backend{};
+#else
+            platform_data_t *backend{NULL};
+            ~WindowData() { acul::release(backend); }
+#endif
         };
     } // namespace platform
 

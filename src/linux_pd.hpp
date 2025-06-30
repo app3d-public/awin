@@ -1,7 +1,7 @@
 #pragma once
 
-#include <awin/types.hpp>
 #include <awin/platform.hpp>
+#include <awin/types.hpp>
 #include <sys/poll.h>
 
 namespace awin
@@ -23,7 +23,7 @@ namespace awin
             acul::point2D<i32> (*get_cursor_position)(LinuxWindowData *);
             void (*set_cursor_position)(LinuxWindowData *, acul::point2D<i32>);
             void (*hide_cursor)(WindowData *);
-            void (*show_cursor)(WindowData *);
+            void (*show_cursor)(Window *, WindowData *);
             acul::point2D<i32> (*get_window_position)(LinuxWindowData *);
             void (*set_window_position)(WindowData *, acul::point2D<i32>);
             void (*center_window)(WindowData *);
@@ -46,6 +46,7 @@ namespace awin
             acul::point2D<i32> (*get_window_size)(LinuxWindowData *);
             acul::string (*get_clipboard_string)();
             void (*set_clipboard_string)(const acul::string &);
+            MonitorInfo (*get_primary_monitor_info)();
         };
 
         struct LinuxCursorCaller

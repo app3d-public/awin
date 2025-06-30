@@ -18,12 +18,18 @@ namespace awin
 
         void init_timer()
         {
-            env.timer.offset = CLOCK_REALTIME;
+            env.timer.clock_id = CLOCK_REALTIME;
             env.timer.frequency = 1000000000;
 #if defined(_POSIX_MONOTONIC_CLOCK)
             struct timespec ts;
-            if (clock_gettime(CLOCK_MONOTONIC, &ts) == 0) env.timer.offset = CLOCK_MONOTONIC;
+            if (clock_gettime(CLOCK_MONOTONIC, &ts) == 0)
+            {
+                env.timer.clock_id = CLOCK_MONOTONIC;
+                env.timer.offset = (u64)ts.tv_sec * 1'000'000'000 + ts.tv_nsec;
+                return;
+            }
 #endif
+            env.timer.offset = 0;
         };
 
         void destroy_platform()
@@ -35,7 +41,6 @@ namespace awin
         {
             pd.backend_type = WINDOW_BACKEND_UNKNOWN;
             const char *xdg_session = getenv("XDG_SESSION_TYPE");
-            if (!xdg_session) printf("Failed to get xdg_session\n");
             if (xdg_session == nullptr || strcmp(xdg_session, "wayland") == 0)
                 return false;
             else if (strcmp(xdg_session, "x11") == 0)
@@ -64,8 +69,9 @@ namespace awin
         u64 get_time_value()
         {
             struct timespec ts;
-            clock_gettime(env.timer.offset, &ts);
-            return (u64)ts.tv_sec * env.timer.frequency + (u64)ts.tv_nsec;
+            if (clock_gettime(env.timer.clock_id, &ts) == 0)
+                return (u64)ts.tv_sec * env.timer.frequency + (u64)ts.tv_nsec;
+            return 0;
         }
 
         bool poll_posix(struct pollfd *fds, nfds_t count, f64 *timeout)
@@ -120,6 +126,8 @@ namespace awin
         bool CursorPlatform::valid() const { return pd.ccall.valid(this); }
     } // namespace platform
 
+    MonitorInfo get_primary_monitor_info() { return platform::pd.pcall.get_primary_monitor_info(); }
+
     Window::Window(const acul::string &title, i32 width, i32 height, WindowFlags flags)
     {
         _platform.backend = platform::pd.pcall.alloc_window_data();
@@ -172,7 +180,7 @@ namespace awin
 
     void Window::hide_cursor() { platform::pd.wcall.hide_cursor(&_platform); }
 
-    void Window::show_cursor() { platform::pd.wcall.show_cursor(&_platform); }
+    void Window::show_cursor() { platform::pd.wcall.show_cursor(this, &_platform); }
 
     acul::point2D<i32> Window::position() const { return platform::pd.wcall.get_window_position(_platform.backend); }
 

@@ -405,19 +405,7 @@ namespace awin
      * resolution, position, and size for layout optimizations, window positioning, or
      * adapting to different screen sizes.
      *
-     * The function returns a MonitorInfo structure, which contains the following fields:
-     * - xpos: The X-coordinate of the top-left corner of the primary monitor relative to
-     *         the virtual screen (which may span multiple monitors).
-     * - ypos: The Y-coordinate of the top-left corner of the primary monitor.
-     * - width: The width of the primary monitor's visible display area in pixels.
-     * - height: The height of the primary monitor's visible display area in pixels.
-     *
-     * These details are crucial for handling screen coordinates and dimensions effectively,
-     * especially in multi-monitor setups. The function can be used to determine the
-     * optimal size and position for application windows, ensuring compatibility across
-     * different monitor configurations.
-     *
-     * @return MonitorInfo - A structure containing the position and size of the primary monitor.
+     * @return Position and size of the primary monitor.
      */
     APPLIB_API MonitorInfo get_primary_monitor_info();
 

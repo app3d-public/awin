@@ -281,10 +281,13 @@ namespace awin
                         {
                             for (unsigned int i = 0; i < nchildren; i++)
                             {
-                                X11WindowData *data = nullptr;
+                                WindowData *data = nullptr;
                                 if (xlib.XFindContext(display, children[i], ctx.context, (XPointer *)&data) == 0 &&
                                     data)
-                                    if (!data->ic) create_input_context(data);
+                                {
+                                    auto *x11_data = (X11WindowData *)data->backend;
+                                    if (!x11_data->ic) create_input_context(data);
+                                }
                             }
                             if (children) xlib.XFree(children);
                         }
@@ -304,7 +307,6 @@ namespace awin
 
             void create_hidden_cursor(X11Cursor &cursor)
             {
-                X11Cursor result;
                 auto &xc = ctx.xlib.xcursor;
 
                 XcursorImage *image = xc.XcursorImageCreate(1, 1);
@@ -314,7 +316,7 @@ namespace awin
                 image->yhot = 0;
                 image->pixels[0] = 0; // ARGB = transparent
 
-                result.handle = xc.XcursorImageLoadCursor(ctx.display, image);
+                cursor.handle = xc.XcursorImageLoadCursor(ctx.display, image);
                 xc.XcursorImageDestroy(image);
             }
 
@@ -372,6 +374,8 @@ namespace awin
             APPLIB_API void destroy_platform()
             {
                 auto &xlib = ctx.xlib;
+                if (ctx.hidden_cursor.valid()) destroy_cursor(&ctx.hidden_cursor);
+
                 if (ctx.helper_window)
                 {
                     if (xlib.XGetSelectionOwner(ctx.display, ctx.select_atoms.CLIPBOARD) == ctx.helper_window)
@@ -417,6 +421,7 @@ namespace awin
                 caller.get_window_size = get_window_size;
                 caller.get_clipboard_string = get_clipboard_string;
                 caller.set_clipboard_string = set_clipboard_string;
+                caller.get_primary_monitor_info = get_primary_monitor_info;
             }
 
             void init_wcall_data(LinuxWindowCaller &caller)

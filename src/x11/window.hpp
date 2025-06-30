@@ -16,7 +16,7 @@ namespace awin
         {
             struct X11WindowData final : LinuxWindowData
             {
-                XID window, parent;
+                ::Window window = 0, parent = 0;
                 XIC ic;
                 Colormap colormap;
                 // The time of the last KeyPress event per keycode, for discarding
@@ -27,7 +27,7 @@ namespace awin
             // Push contents of our selection to clipboard manager
             void push_selection_to_manager_x11();
 
-            void create_input_context(X11WindowData *window);
+            void create_input_context(WindowData *window_data);
 
             bool create_window(WindowData *window_data, const acul::string &title, i32 width, i32 height,
                                WindowFlags flags);
@@ -47,7 +47,7 @@ namespace awin
             void set_cursor_position(platform::LinuxWindowData *window_data, acul::point2D<i32> position);
 
             void hide_cursor(WindowData *window_data);
-            void show_cursor(WindowData *window_data);
+            void show_cursor(Window *, WindowData *window_data);
 
             acul::point2D<i32> get_window_position(LinuxWindowData *window);
             void set_window_position(WindowData *window, acul::point2D<i32> position);
@@ -71,6 +71,7 @@ namespace awin
             void set_clipboard_string(const acul::string &text);
 
             void set_window_icon(platform::LinuxWindowData *, const acul::vector<Image> &);
+            MonitorInfo get_primary_monitor_info();
         } // namespace x11
     } // namespace platform
 } // namespace awin

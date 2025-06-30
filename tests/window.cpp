@@ -5,6 +5,7 @@ void test_window()
 {
     acul::events::dispatcher ed;
     acul::task::service_dispatch sd;
+    sd.run();
     auto log_service = acul::alloc<acul::log::log_service>();
     sd.register_service(log_service);
     log_service->level = acul::log::level::Trace;

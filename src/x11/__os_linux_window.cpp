@@ -4,6 +4,8 @@
 #include <X11/cursorfont.h>
 #include <acul/log.hpp>
 #include <awin/window.hpp>
+#include "awin/cursor.hpp"
+#include "awin/platform.hpp"
 #include "platform.hpp"
 #include "window.hpp"
 
@@ -34,25 +36,26 @@ namespace awin
                 window->ic = NULL;
             }
 
-            void create_input_context(X11WindowData *window)
+            void create_input_context(platform::WindowData *window_data)
             {
                 XIMCallback callback;
                 auto &xlib = ctx.xlib;
                 callback.callback = (XIMProc)input_context_destroy_callback;
-                callback.client_data = (XPointer)window;
+                callback.client_data = (XPointer)window_data;
 
-                window->ic =
-                    xlib.XCreateIC(ctx.im, XNInputStyle, XIMPreeditNothing | XIMStatusNothing, XNClientWindow,
-                                   window->window, XNFocusWindow, window->window, XNDestroyCallback, &callback, NULL);
+                auto *x11_data = (X11WindowData *)window_data->backend;
+                x11_data->ic = xlib.XCreateIC(ctx.im, XNInputStyle, XIMPreeditNothing | XIMStatusNothing,
+                                              XNClientWindow, x11_data->window, XNFocusWindow, x11_data->window,
+                                              XNDestroyCallback, &callback, NULL);
 
-                if (window->ic)
+                if (x11_data->ic)
                 {
                     XWindowAttributes attribs;
-                    xlib.XGetWindowAttributes(ctx.display, window->window, &attribs);
+                    xlib.XGetWindowAttributes(ctx.display, x11_data->window, &attribs);
 
                     unsigned long filter = 0;
-                    if (xlib.XGetICValues(window->ic, XNFilterEvents, &filter, NULL) == NULL)
-                        xlib.XSelectInput(ctx.display, window->window, attribs.your_event_mask | filter);
+                    if (xlib.XGetICValues(x11_data->ic, XNFilterEvents, &filter, NULL) == NULL)
+                        xlib.XSelectInput(ctx.display, x11_data->window, attribs.your_event_mask | filter);
                 }
             }
 
@@ -75,7 +78,7 @@ namespace awin
                 if (request->selection == ctx.select_atoms.PRIMARY)
                     selection_string = (char *)ctx.primary_selection_string.c_str();
                 else
-                    selection_string = (char *)ctx.clipboard_string.c_str();
+                    selection_string = (char *)platform::env.clipboard_data.c_str();
 
                 if (request->property == None)
                 {
@@ -438,7 +441,7 @@ namespace awin
                 while (!ctx.xlib.XPending(ctx.display))
                 {
                     if (!poll_posix(fds, sizeof(fds) / sizeof(fds[0]), timeout)) return false;
-                    for (int i = 1; i < sizeof(fds) / sizeof(fds[0]); i++)
+                    for (size_t i = 1; i < sizeof(fds) / sizeof(fds[0]); i++)
                         if (fds[i].revents & POLLIN) return true;
                 }
 
@@ -571,8 +574,8 @@ namespace awin
             }
 
             // From __os_linux_keys.cpp
-            void on_key_press(XEvent *, int, Bool, platform::WindowData *);
-            void on_key_release(XEvent *, int, platform::WindowData *);
+            void on_key_press(XEvent *, unsigned int, Bool, platform::WindowData *);
+            void on_key_release(XEvent *, unsigned int, platform::WindowData *);
             void on_btn_press(XEvent *, platform::WindowData *);
             void on_btn_release(XEvent *, platform::WindowData *);
 
@@ -644,7 +647,7 @@ namespace awin
             static void process_event(XEvent *event)
             {
                 auto &xlib = ctx.xlib;
-                int keycode = 0;
+                unsigned int keycode = 0;
                 Bool filtered = False;
 
                 // HACK: Save scancode as some IMs clear the field in XFilterEvent
@@ -708,6 +711,14 @@ namespace awin
                     case EnterNotify:
                     {
                         dispatch_window_event(event_registry.mouse_enter, window_data->owner, true);
+
+                        if (!window_data->is_cursor_hidden)
+                        {
+                            if (window_data->cursor && window_data->cursor->valid())
+                                window_data->cursor->assign(window_data->owner);
+                            else if (platform::env.default_cursor.valid())
+                                platform::env.default_cursor.assign(window_data->owner);
+                        }
                         acul::point2D dim{event->xcrossing.x, event->xcrossing.y};
                         dispatch_window_event(event_registry.mouse_move_abs, event_id::MouseMoveAbs, window_data->owner,
                                               dim);
@@ -1006,13 +1017,15 @@ namespace awin
                 }
 
                 if (!prepare_window_wm_hints(x11_data, flags, {width, height}, title)) return false;
-                if (ctx.im) create_input_context(x11_data);
+                if (ctx.im) create_input_context(window_data);
 
                 set_window_title(x11_data, title);
                 get_window_pos(x11_data, window_data->backend->window_pos);
                 window_data->dimenstions = get_window_size(x11_data);
 
                 if (!(flags & WindowFlagBits::Hidden)) show_window(x11_data);
+
+                window_data->cursor = &platform::env.default_cursor;
                 return true;
             }
 
@@ -1077,9 +1090,15 @@ namespace awin
                 xlib.XFlush(ctx.display);
             }
 
-            acul::rect<long> get_screen_rect()
+            MonitorInfo get_primary_monitor_info()
             {
                 auto &xlib = ctx.xlib;
+
+                MonitorInfo result;
+
+                result.dimensions.x = DisplayWidth(ctx.display, ctx.screen);
+                result.dimensions.y = DisplayHeight(ctx.display, ctx.screen);
+
                 Atom type;
                 int format;
                 unsigned long nitems, bytes_after;
@@ -1088,28 +1107,26 @@ namespace awin
                 if (ctx.wm.NET_WORKAREA &&
                     xlib.XGetWindowProperty(ctx.display, ctx.root, ctx.wm.NET_WORKAREA, 0, 4, False, XA_CARDINAL, &type,
                                             &format, &nitems, &bytes_after, &data) == Success &&
-                    data)
+                    data && nitems >= 4)
                 {
-                    if (nitems >= 4)
-                    {
-                        long *workarea = (long *)data;
-                        acul::rect<long> result{workarea[0], workarea[1], workarea[2], workarea[3]};
-                        xlib.XFree(data);
-                        return result;
-                    }
+                    long *workarea = reinterpret_cast<long *>(data);
+                    result.work.x = workarea[2];
+                    result.work.y = workarea[3];
                     xlib.XFree(data);
                 }
-                return {0, 0, DisplayWidth(ctx.display, ctx.screen), DisplayHeight(ctx.display, ctx.screen)};
+                else
+                    result.work = result.dimensions;
+
+                return result;
             }
 
             void center_window(WindowData *window)
             {
-                acul::rect<long> screen_rect = get_screen_rect();
                 auto &xlib = ctx.xlib;
-                acul::point2D<long> center{screen_rect.x + (screen_rect.w - window->dimenstions.x) / 2,
-                                           screen_rect.y + (screen_rect.h - window->dimenstions.y) / 2};
-                if (center.y < screen_rect.y) center.y = screen_rect.y;
-
+                MonitorInfo info = get_primary_monitor_info();
+                acul::point2D<long> center = {(info.work.x - window->dimenstions.x) / 2,
+                                              (info.work.y - window->dimenstions.y) / 2};
+                if (center.y < 0) center.y = 0;
                 auto *x11_data = (X11WindowData *)window->backend;
                 xlib.XMoveResizeWindow(ctx.display, x11_data->window, center.x, center.y, window->dimenstions.x,
                                        window->dimenstions.y);
@@ -1357,14 +1374,18 @@ namespace awin
                 window_data->is_cursor_hidden = true;
             }
 
-            void show_cursor(WindowData *window_data)
+            void show_cursor(Window *window, WindowData *window_data)
             {
                 if (!window_data->is_cursor_hidden) return;
-                auto *x11_data = (X11WindowData *)window_data->backend;
-                ctx.xlib.XUndefineCursor(ctx.display, x11_data->window);
-                ctx.xlib.XFlush(ctx.display);
+                auto *x11_data = static_cast<X11WindowData *>(window_data->backend);
+
+                if (window_data->cursor && window_data->cursor->valid())
+                    window_data->cursor->assign(window);
+                else if (platform::env.default_cursor.valid())
+                    platform::env.default_cursor.assign(window);
                 window_data->is_cursor_hidden = false;
             }
+
         } // namespace x11
     } // namespace platform
 } // namespace awin

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <acul/api.hpp>
 #ifdef _WIN32
     #include <windef.h>
 #endif
@@ -8,7 +9,7 @@ namespace awin
 {
     namespace platform
     {
-        struct CursorPlatform
+        struct APPLIB_API CursorPlatform
         {
 #ifdef _WIN32
             HCURSOR cursor;

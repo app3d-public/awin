@@ -959,8 +959,8 @@ namespace awin
             static acul::string get_selection_string(Atom selection)
             {
                 auto &xlib = ctx.xlib;
-                acul::string &out =
-                    (selection == ctx.select_atoms.PRIMARY ? ctx.primary_selection_string : ctx.clipboard_string);
+                acul::string &out = (selection == ctx.select_atoms.PRIMARY ? ctx.primary_selection_string
+                                                                           : platform::env.clipboard_data);
 
                 if (xlib.XGetSelectionOwner(ctx.display, selection) == ctx.helper_window) return out;
 
@@ -972,7 +972,7 @@ namespace awin
                 {
                     XEvent event;
                     xlib.XConvertSelection(ctx.display, selection, target, ctx.select_atoms.WINDOW_SELECTION,
-                                          ctx.helper_window, CurrentTime);
+                                           ctx.helper_window, CurrentTime);
 
                     while (!xlib.XCheckTypedWindowEvent(ctx.display, ctx.helper_window, SelectionNotify, &event))
                         wait_for_x11_event(nullptr);
@@ -986,8 +986,8 @@ namespace awin
                     unsigned char *data = nullptr;
 
                     xlib.XGetWindowProperty(ctx.display, ctx.helper_window, sel->property, 0, LONG_MAX, True,
-                                           AnyPropertyType, &actual_type, &actual_format, &item_count, &bytes_after,
-                                           &data);
+                                            AnyPropertyType, &actual_type, &actual_format, &item_count, &bytes_after,
+                                            &data);
 
                     if (actual_type == ctx.select_atoms.INCR)
                     {
@@ -995,15 +995,15 @@ namespace awin
                         while (true)
                         {
                             XEvent dummy;
-                            while (
-                                !xlib.XCheckIfEvent(ctx.display, &dummy, is_sel_prop_new_value_notify, (XPointer)&event))
+                            while (!xlib.XCheckIfEvent(ctx.display, &dummy, is_sel_prop_new_value_notify,
+                                                       (XPointer)&event))
                                 wait_for_x11_event(nullptr);
 
                             xlib.XFree(data);
 
                             xlib.XGetWindowProperty(ctx.display, ctx.helper_window, sel->property, 0, LONG_MAX, True,
-                                                   AnyPropertyType, &actual_type, &actual_format, &item_count,
-                                                   &bytes_after, &data);
+                                                    AnyPropertyType, &actual_type, &actual_format, &item_count,
+                                                    &bytes_after, &data);
 
                             if (item_count > 0)
                                 aggregate.append(reinterpret_cast<char *>(data), item_count);
@@ -1042,7 +1042,7 @@ namespace awin
 
             void set_clipboard_string(const acul::string &text)
             {
-                ctx.clipboard_string = text;
+                platform::env.clipboard_data = text;
                 auto &xlib = ctx.xlib;
                 xlib.XSetSelectionOwner(ctx.display, ctx.select_atoms.CLIPBOARD, ctx.helper_window, CurrentTime);
                 if (xlib.XGetSelectionOwner(ctx.display, ctx.select_atoms.CLIPBOARD) != ctx.helper_window)
@@ -1062,7 +1062,7 @@ namespace awin
                 return mods;
             }
 
-            void on_key_press(XEvent *event, int keycode, Bool filtered, platform::WindowData *window_data)
+            void on_key_press(XEvent *event, unsigned int keycode, Bool filtered, platform::WindowData *window_data)
             {
                 auto &xlib = ctx.xlib;
                 const auto mods = translate_state(event->xkey.state);
@@ -1089,8 +1089,8 @@ namespace awin
                         char buffer[100];
                         char *chars = buffer;
 
-                        int count = xlib.Xutf8LookupString(window->ic, &event->xkey, buffer, sizeof(buffer) - 1, nullptr,
-                                                          &status);
+                        int count = xlib.Xutf8LookupString(window->ic, &event->xkey, buffer, sizeof(buffer) - 1,
+                                                           nullptr, &status);
 
                         acul::string utf8;
 
@@ -1098,7 +1098,7 @@ namespace awin
                         {
                             acul::vector<char> dyn_buf(count + 1, '\0');
                             count = xlib.Xutf8LookupString(window->ic, &event->xkey, dyn_buf.data(), count, nullptr,
-                                                          &status);
+                                                           &status);
                             utf8.assign(dyn_buf.data(), count);
                         }
                         else if (status == XLookupChars || status == XLookupBoth)
@@ -1110,7 +1110,7 @@ namespace awin
                         if (!utf8.empty())
                         {
                             const char *c = utf8.c_str();
-                            while (c - utf8.c_str() < utf8.size())
+                            while (static_cast<size_t>(c - utf8.c_str()) < utf8.size())
                                 dispatch_window_event(event_registry.char_input, window_data->owner, decode_utf8(&c));
                         }
                     }
@@ -1129,7 +1129,7 @@ namespace awin
                 }
             }
 
-            void on_key_release(XEvent *event, int keycode, platform::WindowData *window_data)
+            void on_key_release(XEvent *event, unsigned int keycode, platform::WindowData *window_data)
             {
                 auto it_key = ctx.keymap.find(keycode);
                 const io::KeyMode mods = translate_state(event->xkey.state);
@@ -1170,7 +1170,6 @@ namespace awin
 
             void on_btn_press(XEvent *event, platform::WindowData *window_data)
             {
-                const io::KeyMode mods = translate_state(event->xkey.state);
                 switch (event->xbutton.button)
                 {
                     case Button1:
@@ -1207,7 +1206,6 @@ namespace awin
 
             void on_btn_release(XEvent *event, platform::WindowData *window_data)
             {
-                const io::KeyMode mods = translate_state(event->xkey.state);
                 switch (event->xbutton.button)
                 {
                     case Button1:

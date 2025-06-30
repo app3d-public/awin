@@ -26,9 +26,10 @@ namespace awin
     {
         if (this != &other)
         {
+            if (_pd != other._pd) reset();
+
             _pd = other._pd;
-            acul::release(other._pd);
-            other._pd = NULL;
+            other._pd = nullptr;
         }
         return *this;
     }
@@ -64,11 +65,13 @@ namespace awin
         platform::init_timer();
         set_time(0.0);
         platform::env.ed = ed;
+        platform::env.default_cursor = Cursor::create(Cursor::Type::Arrow);
     }
 
     void destroy_library()
     {
         LOG_INFO("Destroying Window platform");
+        platform::env.default_cursor.reset();
         platform::destroy_platform();
     }
 
