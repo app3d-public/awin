@@ -10,7 +10,7 @@ namespace awin
 {
     namespace vulkan
     {
-        void CreateCtx::init_extensions(const acul::set<acul::string> &ext, acul::vector<const char *> &dst)
+        void CreateCtx::assign_instance_extensions(const acul::set<acul::string> &ext, acul::vector<const char *> &dst)
         {
             dst.push_back(vk::KHRSurfaceExtensionName);
 #ifdef _WIN32

@@ -9,15 +9,17 @@ namespace awin
 {
     namespace vulkan
     {
-        class APPLIB_API CreateCtx final : public acul::gpu::device::create_ctx
+        class APPLIB_API CreateCtx final : public acul::gpu::device_present_ctx
         {
         public:
-            CreateCtx(Window &window) : create_ctx(true), _window(window) {}
+            CreateCtx(Window &window) : _window(window) {}
 
             [[nodiscard]] virtual vk::Result create_surface(vk::Instance &instance, vk::SurfaceKHR &surface,
                                                             vk::DispatchLoaderDynamic &loader) override;
 
-            virtual void init_extensions(const acul::set<acul::string> &ext, acul::vector<const char *> &dst) override;
+            virtual void assign_instance_extensions(const acul::set<acul::string> &ext,
+                                                    acul::vector<const char *> &dst) override;
+
         private:
             Window &_window;
         };
