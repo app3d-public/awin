@@ -14,7 +14,7 @@ namespace awin
         {
             bool (*create_window)(WindowData *, const acul::string &, i32, i32, WindowFlags);
             void (*set_window_icon)(LinuxWindowData *, const acul::vector<Image> &);
-            void (*show_window)(LinuxWindowData *);
+            void (*show_window)(WindowData *);
             void (*hide_window)(LinuxWindowData *);
             acul::string (*get_window_title)(LinuxWindowData *);
             void (*set_window_title)(LinuxWindowData *, const acul::string &);

@@ -67,7 +67,7 @@ namespace awin
                 if (!xi.load()) return;
                 LOG_INFO("Loaded XInput library");
                 if (ctx.xlib.XQueryExtension(ctx.display, "XInputExtension", &xi.major_op_code, &xi.event_base,
-                                             &xi.error_base) != Success)
+                                             &xi.error_base))
                 {
                     xi.major = 2;
                     xi.minor = 0;

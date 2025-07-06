@@ -141,8 +141,8 @@ namespace awin
     void Window::show_window()
     {
         if (!hidden()) return;
-        platform::pd.wcall.show_window(_platform.backend);
         _platform.flags &= ~WindowFlagBits::Hidden;
+        platform::pd.wcall.show_window(&_platform);
     }
 
     void Window::hide_window()

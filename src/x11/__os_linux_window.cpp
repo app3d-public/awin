@@ -4,8 +4,6 @@
 #include <X11/cursorfont.h>
 #include <acul/log.hpp>
 #include <awin/window.hpp>
-#include "awin/cursor.hpp"
-#include "awin/platform.hpp"
 #include "platform.hpp"
 #include "window.hpp"
 
@@ -457,11 +455,27 @@ namespace awin
                 return true;
             }
 
-            void show_window(platform::LinuxWindowData *window_data)
+            void show_window(WindowData *window_data)
             {
-                auto *x11 = (X11WindowData *)window_data;
+                auto *x11 = (X11WindowData *)window_data->backend;
                 ctx.xlib.XMapWindow(ctx.display, x11->window);
                 wait_for_visibility_notify(x11);
+
+                if (window_data->flags & WindowFlagBits::Maximized)
+                {
+                    XEvent ev{};
+                    ev.xclient.type = ClientMessage;
+                    ev.xclient.window = x11->window;
+                    ev.xclient.message_type = ctx.wm.NET_WM_STATE;
+                    ev.xclient.format = 32;
+                    ev.xclient.data.l[0] = _NET_WM_STATE_ADD;
+                    ev.xclient.data.l[1] = ctx.wm.NET_WM_STATE_MAXIMIZED_HORZ;
+                    ev.xclient.data.l[2] = ctx.wm.NET_WM_STATE_MAXIMIZED_VERT;
+                    ev.xclient.data.l[3] = 1; // source = application
+                    ctx.xlib.XSendEvent(ctx.display, ctx.root, False, SubstructureRedirectMask | SubstructureNotifyMask,
+                                        &ev);
+                    ctx.xlib.XFlush(ctx.display);
+                }
             }
 
             void hide_window(platform::LinuxWindowData *window_data)
@@ -632,15 +646,28 @@ namespace awin
                 unsigned char mask[mask_len];
                 memset(mask, 0, sizeof(mask));
 
-                if (enable) XISetMask(mask, XI_RawMotion);
+                if (enable)
+                {
+                    XISetMask(mask, XI_RawMotion);
+                    XISetMask(mask, XI_ButtonPress);
+                    XISetMask(mask, XI_ButtonRelease);
+                }
 
                 XIEventMask em{};
-                em.deviceid = XIAllMasterDevices;
+                em.deviceid = XIAllDevices;
                 em.mask_len = mask_len;
                 em.mask = mask;
 
                 ctx.xlib.xi.XISelectEvents(ctx.display, ctx.root, &em, 1);
                 ctx.xlib.XFlush(ctx.display);
+            }
+
+            inline bool is_raw_event(XEvent *event)
+            {
+                auto &x11 = ctx.xlib;
+                return x11.xi.init && event->xcookie.evtype == XI_RawMotion &&
+                       event->xcookie.extension == x11.xi.major_op_code &&
+                       x11.XGetEventData(ctx.display, &event->xcookie);
             }
 
             // Process the specified X event
@@ -649,6 +676,20 @@ namespace awin
                 auto &xlib = ctx.xlib;
                 unsigned int keycode = 0;
                 Bool filtered = False;
+                static platform::WindowData *g_focused = nullptr;
+
+                if (event->type == GenericEvent && is_raw_event(event))
+                {
+                    XIRawEvent *raw = (XIRawEvent *)event->xcookie.data;
+                    acul::point2D<i32> delta{0, 0};
+                    int idx = 0;
+                    if (XIMaskIsSet(raw->valuators.mask, 0)) delta.x = raw->raw_values[idx++];
+                    if (XIMaskIsSet(raw->valuators.mask, 1)) delta.y = raw->raw_values[idx++];
+                    if (g_focused)
+                        dispatch_window_event(event_registry.mouse_move, event_id::MouseMove, g_focused->owner, delta);
+                    xlib.XFreeEventData(ctx.display, &event->xcookie);
+                    return;
+                }
 
                 // HACK: Save scancode as some IMs clear the field in XFilterEvent
                 if (event->type == KeyPress || event->type == KeyRelease) keycode = event->xkey.keycode;
@@ -666,29 +707,16 @@ namespace awin
                     }
                 }
 
-                platform::WindowData *window_data = NULL;
+                platform::WindowData *window_data = nullptr;
                 if (xlib.XFindContext(ctx.display, event->xany.window, ctx.context, (XPointer *)&window_data) != 0)
                     return;
-
-                if (event->type == GenericEvent && ctx.xlib.xi.init &&
-                    event->xcookie.extension == ctx.xlib.xi.major_op_code &&
-                    xlib.XGetEventData(ctx.display, &event->xcookie) && event->xcookie.evtype == XI_RawMotion)
-                {
-                    XIRawEvent *raw = (XIRawEvent *)event->xcookie.data;
-                    acul::point2D<i32> delta{0, 0};
-                    int idx = 0;
-                    if (XIMaskIsSet(raw->valuators.mask, 0)) delta.x = raw->raw_values[idx++];
-                    if (XIMaskIsSet(raw->valuators.mask, 1)) delta.y = raw->raw_values[idx++];
-                    dispatch_window_event(event_registry.mouse_move, event_id::MouseMove, window_data->owner, delta);
-                    xlib.XFreeEventData(ctx.display, &event->xcookie);
-                    return;
-                }
 
                 if (event->type == SelectionRequest)
                 {
                     handle_selection_request(event);
                     return;
                 }
+
                 auto *window = (X11WindowData *)window_data->backend;
 
                 switch (event->type)
@@ -787,6 +815,7 @@ namespace awin
                         window_data->focused = true;
                         dispatch_window_event(event_registry.focus, window_data->owner, true);
                         toogle_rid(true);
+                        g_focused = window_data;
                         return;
                     }
                     case FocusOut:
@@ -1023,7 +1052,7 @@ namespace awin
                 get_window_pos(x11_data, window_data->backend->window_pos);
                 window_data->dimenstions = get_window_size(x11_data);
 
-                if (!(flags & WindowFlagBits::Hidden)) show_window(x11_data);
+                if (!(flags & WindowFlagBits::Hidden)) show_window(window_data);
 
                 window_data->cursor = &platform::env.default_cursor;
                 return true;

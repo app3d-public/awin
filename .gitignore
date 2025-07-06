@@ -1,6 +1,4 @@
 .vscode/
 .cache
+lib/
 build/
-*.exe
-*.dll
-*.a

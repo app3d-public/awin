@@ -2,8 +2,7 @@
 #include <acul/string/string.hpp>
 #include <acul/string/string_view.hpp>
 #include <awin/window.hpp>
-#include "acul/fwd/string.hpp"
-#include "awin/platform.hpp"
+#include "keys.hpp"
 #include "platform.hpp"
 #include "window.hpp"
 
@@ -1065,7 +1064,7 @@ namespace awin
             void on_key_press(XEvent *event, unsigned int keycode, Bool filtered, platform::WindowData *window_data)
             {
                 auto &xlib = ctx.xlib;
-                const auto mods = translate_state(event->xkey.state);
+                auto mods = translate_state(event->xkey.state);
                 const int plain = !(mods & (io::KeyModeBits::Control | io::KeyModeBits::Alt));
 
                 auto *window = (X11WindowData *)window_data->backend;
@@ -1077,6 +1076,23 @@ namespace awin
                         if (keycode)
                         {
                             auto it = ctx.keymap.find(keycode);
+                            switch (keycode)
+                            {
+                                case KeyCode::KEY_ALT_L:
+                                case KeyCode::KEY_ALT_R:
+                                    mods |= io::KeyModeBits::Alt;
+                                    break;
+                                case KeyCode::KEY_SHIFT_L:
+                                case KeyCode::KEY_SHIFT_R:
+                                    mods |= io::KeyModeBits::Shift;
+                                    break;
+                                case KeyCode::KEY_CONTROL_L:
+                                case KeyCode::KEY_CONTROL_R:
+                                    mods |= io::KeyModeBits::Control;
+                                    break;
+                                default:
+                                    break;
+                            }
                             input_key(window_data, it != ctx.keymap.end() ? it->second : io::Key::Unknown,
                                       io::KeyPressState::Press, mods);
                         }

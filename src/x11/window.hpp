@@ -34,7 +34,7 @@ namespace awin
 
             bool wait_for_x11_event(f64 *timeout);
 
-            void show_window(platform::LinuxWindowData *window_data);
+            void show_window(WindowData *window_data);
             void hide_window(platform::LinuxWindowData *window_data);
 
             acul::string get_window_title(platform::LinuxWindowData *window_data);
