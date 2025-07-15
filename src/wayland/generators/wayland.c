@@ -1,0 +1,11 @@
+#include "redifinition.h"
+//
+#include "fractional-scale-v1-client-protocol.c"
+#include "idle-inhibit-unstable-v1-client-protocol.c"
+#include "pointer-constraints-unstable-v1-client-protocol.c"
+#include "relative-pointer-unstable-v1-client-protocol.c"
+#include "viewporter-client-protocol.c"
+#include "wayland-client-protocol.c"
+#include "xdg-activation-v1-client-protocol.c"
+#include "xdg-decoration-unstable-v1-client-protocol.c"
+#include "xdg-shell-client-protocol.c"

@@ -6,7 +6,6 @@
 #include <acul/memory.hpp>
 #include <acul/pair.hpp>
 #include <acul/scalars.hpp>
-#include "cursor.hpp"
 
 #define KEY_MOD_START_INDEX 106
 
@@ -14,6 +13,7 @@
 namespace awin
 {
     class Window;
+
     namespace io
     {
         enum class Key : i16
@@ -186,7 +186,10 @@ namespace awin
 
     class APPLIB_API Cursor
     {
+
     public:
+        struct Platform;
+
         enum class Type
         {
             Arrow,      // The regular arrow cursor.
@@ -204,7 +207,7 @@ namespace awin
             NotAllowed  // The operation-not-allowed shape.  This is usually a circle with a diagonal line through it.
         };
 
-        Cursor(platform::CursorPlatform *pd = NULL) : _pd(pd) {}
+        Cursor(Platform *pd = NULL) : _pd(pd) {}
 
         Cursor(const Cursor &) = delete;
         Cursor &operator=(const Cursor &) = delete;
@@ -212,7 +215,7 @@ namespace awin
         Cursor &operator=(Cursor &&other) noexcept;
 
         // Check if cursor is valid and was initialized.
-        bool valid() const { return _pd && _pd->valid(); }
+        bool valid() const;
 
         // Create a new cursor with the given type.
         static Cursor create(Type type);
@@ -222,12 +225,14 @@ namespace awin
 
         void reset()
         {
-            acul::release(_pd);
+            acul::mem_allocator<Platform>::deallocate(_pd);
             _pd = nullptr;
         }
 
     private:
-        platform::CursorPlatform *_pd;
+        Platform *_pd;
+
+        friend Cursor::Platform *get_cursor_pd(Cursor* cursor);
     };
 
     // Flags for window creation, stored as u16 for memory efficiency.
@@ -259,6 +264,19 @@ namespace awin
     {
         acul::point2D<int> dimenstions;
         const void *pixels;
+    };
+
+    struct WindowData
+    {
+        Window *owner;
+        acul::point2D<i32> dimenstions;
+        WindowFlags flags;
+        bool is_cursor_hidden{false};
+        bool focused{false};
+        bool ready_to_close = false;
+        acul::point2D<i32> resize_limit{0, 0};
+        io::KeyPressState keys[io::Key::Last + 1];
+        Cursor *cursor{NULL};
     };
 } // namespace awin
 #endif

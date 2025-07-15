@@ -9,13 +9,135 @@
 #define APP_WINDOW_WINDOW_H
 
 #include <acul/event.hpp>
-#include "platform.hpp"
+#include "acul/pair.hpp"
 #include "types.hpp"
 
-#define WINDOW_DONT_CARE -1
+#define WINDOW_BACKEND_UNKNOWN -1
+#define WINDOW_BACKEND_X11     0
+#define WINDOW_BACKEND_WAYLAND 1
+#define WINDOW_TIMEOUT_INF     -1
+#define WINDOW_DONT_CARE       -1
 
 namespace awin
 {
+    // A window entity in the windowing system
+    class APPLIB_API Window
+    {
+    public:
+        // Initialize a window with a title, dimensions, and creation flags.
+        explicit Window(const acul::string &title, i32 width = WINDOW_DONT_CARE, i32 height = WINDOW_DONT_CARE,
+                        WindowFlags flags = WINDOW_DEFAULT_FLAGS);
+
+        // Destroy the window
+        void destroy();
+
+        // Get the window title
+        acul::string title() const;
+
+        // Set the window title
+        void title(const acul::string &title);
+
+        // Returns the width of the window.
+        acul::point2D<i32> dimensions() const { return _data->dimenstions; }
+
+        // Check if the window has decorations
+        inline bool decorated() const { return (_data->flags & awin::WindowFlagBits::Decorated) != 0; }
+
+        // Check if the window is resizable.
+        inline bool resizable() const { return (_data->flags & awin::WindowFlagBits::Resizable) != 0; }
+
+        // Check if the window is in fullscreen mode.
+        bool fullscreen() const { return (_data->flags & awin::WindowFlagBits::Fullscreen) != 0; }
+
+        // Enable fullscreen mode.
+        void enable_fullscreen();
+
+        // Disable fullscreen mode.
+        void disable_fullscreen();
+
+        // Get the current cursor position.
+        acul::point2D<i32> cursor_position() const;
+
+        // Set the cursor position
+        void cursor_position(acul::point2D<i32> position);
+
+        // Show the cursor.
+        void show_cursor();
+
+        // Hide the cursor.
+        void hide_cursor();
+
+        // Check if the cursor is hidden.
+        inline bool is_cursor_hidden() const { return _data->is_cursor_hidden; }
+
+        // Set cursor
+        inline void set_cursor(Cursor *cursor) { _data->cursor = cursor; }
+
+        // Check if the window is focused.
+        inline bool focused() const { return _data->focused; }
+
+        // Check if the window is minimized.
+        inline bool minimized() const { return _data->flags & awin::WindowFlagBits::Minimized; }
+
+        // Minimize the window
+        void minimize();
+
+        // Check if the window is maximized.
+        inline bool maximized() const { return _data->flags & awin::WindowFlagBits::Maximized; }
+
+        // Maximize the window
+        void maximize();
+
+        // Check if the window is hidden.
+        inline bool hidden() const { return _data->flags & awin::WindowFlagBits::Hidden; }
+
+        // Get the window's resize limits.
+        inline acul::point2D<i32> resize_limit() const { return _data->resize_limit; }
+
+        // Set the window's resize limits.
+        void resize_limit(acul::point2D<i32> size)
+        {
+            _data->resize_limit = size;
+            update_resize_limit();
+        }
+
+        // Check if the window is ready to be closed.
+        inline bool ready_to_close() const { return _data->ready_to_close; }
+
+        // Change the window's ready-to-close state.
+        inline void ready_to_close(bool ready_to_close) { _data->ready_to_close = ready_to_close; }
+
+        // Show the window if it is hidden.
+        void show_window();
+
+        // Hide the window
+        void hide_window();
+
+        // Get current window position
+        acul::point2D<i32> position() const;
+
+        // Set window position
+        void position(acul::point2D<i32> position);
+
+        // Center the window to the parent
+        void center_window();
+
+    private:
+        WindowData *_data;
+
+        void update_resize_limit();
+
+        friend WindowData *get_window_data(const Window &);
+    };
+
+    // Updates the event registry by associating different types of window events with their listeners.
+    // This function gathers listeners for various event types like mouse clicks, keyboard input,
+    // focus changes, etc., and registers them to corresponding events. This allows the system
+    // to efficiently dispatch events to the appropriate listeners as they occur.
+    // Specific actions are taken for different platforms (e.g., Windows-specific event listeners)
+    // to ensure compatibility and proper handling across different operating systems.
+    APPLIB_API void update_events();
+
     // Data structures and platform-specific functions that are utilized by internal Window API and offer secure data
     // exchange with external API interfaces.
     namespace platform
@@ -40,127 +162,6 @@ namespace awin
         // appropriate event handlers.
         void input_key(WindowData *data, io::Key key, io::KeyPressState action, io::KeyMode mods);
     } // namespace platform
-
-    // A window entity in the windowing system
-    class APPLIB_API Window
-    {
-    public:
-        // Initialize a window with a title, dimensions, and creation flags.
-        explicit Window(const acul::string &title, i32 width = WINDOW_DONT_CARE, i32 height = WINDOW_DONT_CARE,
-                        WindowFlags flags = WINDOW_DEFAULT_FLAGS);
-
-        // Destroy the window
-        void destroy();
-
-        // Get the window title
-        acul::string title() const;
-
-        // Set the window title
-        void title(const acul::string &title);
-
-        // Returns the width of the window.
-        acul::point2D<i32> dimensions() const { return _platform.dimenstions; }
-
-        // Check if the window has decorations
-        inline bool decorated() const { return (_platform.flags & awin::WindowFlagBits::Decorated) != 0; }
-
-        // Check if the window is resizable.
-        inline bool resizable() const { return (_platform.flags & awin::WindowFlagBits::Resizable) != 0; }
-
-        // Check if the window is in fullscreen mode.
-        bool fullscreen() const { return (_platform.flags & awin::WindowFlagBits::Fullscreen) != 0; }
-
-        // Enable fullscreen mode.
-        void enable_fullscreen();
-
-        // Disable fullscreen mode.
-        void disable_fullscreen();
-
-        // Get the current cursor position.
-        acul::point2D<i32> cursor_position() const;
-
-        // Set the cursor position
-        void cursor_position(acul::point2D<i32> position);
-
-        // Show the cursor.
-        void show_cursor();
-
-        // Hide the cursor.
-        void hide_cursor();
-
-        // Check if the cursor is hidden.
-        inline bool is_cursor_hidden() const { return _platform.is_cursor_hidden; }
-
-        // Set cursor
-        inline void set_cursor(Cursor *cursor) { _platform.cursor = cursor; }
-
-        // Check if the window is focused.
-        inline bool focused() const { return _platform.focused; }
-
-        // Check if the window is minimized.
-        inline bool minimized() const { return _platform.flags & awin::WindowFlagBits::Minimized; }
-
-        // Minimize the window
-        void minimize();
-
-        // Check if the window is maximized.
-        inline bool maximized() const { return _platform.flags & awin::WindowFlagBits::Maximized; }
-
-        // Maximize the window
-        void maximize();
-
-        // Check if the window is hidden.
-        inline bool hidden() const { return (_platform.flags & awin::WindowFlagBits::Hidden) != 0; }
-
-        // Get the window's resize limits.
-        inline acul::point2D<i32> resize_limit() const { return _platform.resize_limit; }
-
-        // Set the window's resize limits.
-        void resize_limit(acul::point2D<i32> size)
-        {
-            _platform.resize_limit = size;
-            update_resize_limit();
-        }
-
-        // Check if the window is ready to be closed.
-        inline bool ready_to_close() const { return _platform.ready_to_close; }
-
-        // Change the window's ready-to-close state.
-        inline void ready_to_close(bool ready_to_close) { _platform.ready_to_close = ready_to_close; }
-
-        // Show the window if it is hidden.
-        void show_window();
-
-        // Hide the window
-        void hide_window();
-
-        // Get current window position
-        acul::point2D<i32> position() const;
-
-        // Set window position
-        void position(acul::point2D<i32> position);
-
-        // Center the window to the parent
-        void center_window();
-
-    private:
-        platform::WindowData _platform;
-
-        void update_resize_limit();
-
-        friend platform::native_access;
-#ifdef __unix__
-        friend void set_window_icon(Window &, const acul::vector<Image> &);
-#endif
-    };
-
-    // Updates the event registry by associating different types of window events with their listeners.
-    // This function gathers listeners for various event types like mouse clicks, keyboard input,
-    // focus changes, etc., and registers them to corresponding events. This allows the system
-    // to efficiently dispatch events to the appropriate listeners as they occur.
-    // Specific actions are taken for different platforms (e.g., Windows-specific event listeners)
-    // to ensure compatibility and proper handling across different operating systems.
-    APPLIB_API void update_events();
 
     // Events
     namespace event_id
@@ -319,79 +320,13 @@ namespace awin
     struct DpiChangedEvent : public acul::events::event
     {
         awin::Window *window; // Pointer to the associated Window object.
-        f32 xDpi;             // New DPI value in the x-axis.
-        f32 yDpi;             // New DPI value in the y-axis.
+        acul::point2D<f32> dpi;
 
-        explicit DpiChangedEvent(awin::Window *window = nullptr, f32 xDpi = 0.0f, f32 yDpi = 0.0f)
-            : event(event_id::DpiChanged), window(window), xDpi(xDpi), yDpi(yDpi)
+        explicit DpiChangedEvent(awin::Window *window = nullptr, f32 x_dpi = 0.0f, f32 y_dpi = 0.0f)
+            : event(event_id::DpiChanged), window(window), dpi(x_dpi, y_dpi)
         {
         }
     };
-
-    // A structure that contains event-related data and listeners for window events
-    extern struct DefaultRegistry
-    {
-#ifdef _WIN32
-        // Handling non-client area mouse clicks on Windows.
-        acul::events::listener<Win32NativeEvent> *ncl_mouse_down;
-
-        // Performing hit testing in the non-client area on Windows.
-        acul::events::listener<Win32NativeEvent> *nc_hit_test;
-#endif
-        // List of event listeners for focus-related events.
-        acul::vector<acul::events::listener<FocusEvent> *> focus;
-
-        // List of event listeners for character input events.
-        acul::vector<acul::events::listener<CharInputEvent> *> char_input;
-
-        // List of event listeners for keyboard input events.
-        acul::vector<acul::events::listener<KeyInputEvent> *> key_input;
-
-        // List of event listeners for mouse click events.
-        acul::vector<acul::events::listener<MouseClickEvent> *> mouse_click;
-
-        // List of event listeners for cursor enter/leave events.
-        acul::vector<acul::events::listener<MouseEnterEvent> *> mouse_enter;
-
-        //  Listener for handling when the mouse position changes in RAW Input mode.
-        acul::vector<acul::events::listener<PosEvent> *> mouse_move;
-
-        //  Listener for handling when the mouse position changes in absolute (per Window dimensions) values
-        acul::vector<acul::events::listener<PosEvent> *> mouse_move_abs;
-
-        // List of event listeners for scroll events.
-        acul::vector<acul::events::listener<ScrollEvent> *> scroll;
-
-        // List of event listeners for window minimize events.
-        acul::vector<acul::events::listener<StateEvent> *> minimize;
-
-        // List of event listeners for window maximize events.
-        acul::vector<acul::events::listener<StateEvent> *> maximize;
-
-        // List of event listeners for window resize events.
-        acul::vector<acul::events::listener<PosEvent> *> resize;
-
-        // List of event listeners for window move events.
-        acul::vector<acul::events::listener<PosEvent> *> move;
-
-        // List of event listeners for DPI (dots per inch) changed events.
-        acul::vector<acul::events::listener<DpiChangedEvent> *> dpi_changed;
-
-    } event_registry;
-
-    /**
-     * dispatchs a window event to the specified listeners.
-     *
-     * @param listener a list of event listeners
-     * @param args event arguments
-     */
-    template <typename T, typename... Args>
-    inline void dispatch_window_event(const acul::vector<acul::events::listener<T> *> &listener, Args &&...args)
-    {
-        T event(std::forward<Args>(args)...);
-        for (const auto &l : listener) l->invoke(event);
-    }
-
     // Get the time elapsed since library initialization in seconds as a floating-point value.
     APPLIB_API f64 get_time();
 
@@ -433,7 +368,7 @@ namespace awin
     APPLIB_API void push_empty_event();
 
     // Retrieves the current dots per inch (DPI) value of the display.
-    APPLIB_API f32 get_dpi();
+    APPLIB_API f32 get_dpi(const Window &window);
 
     // Get the client area size
     APPLIB_API acul::point2D<i32> get_window_size(const Window &window);

@@ -27,6 +27,8 @@ endif(USE_ASAN)
 
 if(WIN32)
     gen_manifest_lib(${PROJECT_NAME} ${PROJECT_VERSION})
+elseif(UNIX AND NOT APPLE) # Generate by wayland-scanner
+    add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/src/wayland/generators")
 endif()
 
 set_target_properties(${PROJECT_NAME}
@@ -37,6 +39,7 @@ set_target_properties(${PROJECT_NAME}
 )
 
 if(BUILD_TESTS)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE PROCESS_UNITTEST)
     enable_testing()
     add_subdirectory(tests)
 endif()

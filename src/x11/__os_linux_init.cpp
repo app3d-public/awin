@@ -1,8 +1,8 @@
+#include <X11/X.h>
 #include <acul/log.hpp>
 #include <awin/window.hpp>
 #include <fcntl.h>
 #include "../linux_pd.hpp"
-#include "awin/platform.hpp"
 #include "platform.hpp"
 #include "window.hpp"
 
@@ -281,11 +281,11 @@ namespace awin
                         {
                             for (unsigned int i = 0; i < nchildren; i++)
                             {
-                                WindowData *data = nullptr;
+                                X11WindowData *data = nullptr;
                                 if (xlib.XFindContext(display, children[i], ctx.context, (XPointer *)&data) == 0 &&
                                     data)
                                 {
-                                    auto *x11_data = (X11WindowData *)data->backend;
+                                    auto *x11_data = (X11WindowData *)data;
                                     if (!x11_data->ic) create_input_context(data);
                                 }
                             }
@@ -296,7 +296,7 @@ namespace awin
             }
 
             // Create a helper window for IPC
-            static XID create_helper_window()
+            static ::Window create_helper_window()
             {
                 XSetWindowAttributes wa;
                 wa.event_mask = PropertyChangeMask;
@@ -371,10 +371,10 @@ namespace awin
                 return true;
             }
 
-            APPLIB_API void destroy_platform()
+            void destroy_platform()
             {
                 auto &xlib = ctx.xlib;
-                if (ctx.hidden_cursor.valid()) destroy_cursor(&ctx.hidden_cursor);
+                if (ctx.hidden_cursor.handle) destroy_cursor(&ctx.hidden_cursor);
 
                 if (ctx.helper_window)
                 {
@@ -406,7 +406,7 @@ namespace awin
                 }
             }
 
-            LinuxWindowData *alloc_window_data() { return acul::alloc<X11WindowData>(); }
+            WindowData *alloc_window_data() { return acul::alloc<X11WindowData>(); }
 
             void init_pcall_data(LinuxPlatformCaller &caller)
             {
@@ -446,7 +446,6 @@ namespace awin
                 caller.minimize_window = minimize_window;
                 caller.maximize_window = maximize_window;
             }
-
             void init_ccall_data(LinuxCursorCaller &caller)
             {
                 caller.create = create_cursor;

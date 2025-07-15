@@ -2,6 +2,7 @@
 #define APP_WINDOW_POPUP_H
 
 #include <acul/api.hpp>
+#include <acul/string/string.hpp>
 #include <acul/vector.hpp>
 #include <initializer_list>
 #include "window.hpp"

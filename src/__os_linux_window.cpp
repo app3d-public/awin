@@ -1,7 +1,9 @@
+#include <X11/X.h>
 #include <acul/log.hpp>
 #include <acul/pair.hpp>
-#include <awin/platform.hpp>
-#include <awin/window.hpp>
+#include <awin/native_access.hpp>
+#include "env.hpp"
+#include "wayland/platform.hpp"
 #include "x11/platform.hpp"
 
 namespace awin
@@ -41,8 +43,16 @@ namespace awin
         {
             pd.backend_type = WINDOW_BACKEND_UNKNOWN;
             const char *xdg_session = getenv("XDG_SESSION_TYPE");
-            if (xdg_session == nullptr || strcmp(xdg_session, "wayland") == 0)
+            if (!xdg_session)
                 return false;
+            else if (strcmp(xdg_session, "wayland") == 0)
+            {
+                platform::wayland::init_pcall_data(pd.pcall);
+                platform::wayland::init_wcall_data(pd.wcall);
+                platform::wayland::init_ccall_data(pd.ccall);
+                pd.backend_type = WINDOW_BACKEND_WAYLAND;
+                return true;
+            }
             else if (strcmp(xdg_session, "x11") == 0)
             {
                 platform::x11::init_pcall_data(pd.pcall);
@@ -118,81 +128,105 @@ namespace awin
             }
         }
 
-        CursorPlatform::~CursorPlatform()
+        void sync_mods_by_key(io::Key key, io::KeyMode &mods)
         {
-            if (pd.ccall.destroy) pd.ccall.destroy(this);
-        }
+            switch (key)
+            {
+                case io::Key::LeftAlt:
+                case io::Key::RightAlt:
+                    mods |= io::KeyModeBits::Alt;
+                    break;
+                case io::Key::LeftControl:
+                case io::Key::RightControl:
+                    mods |= io::KeyModeBits::Control;
+                    break;
 
-        bool CursorPlatform::valid() const { return pd.ccall.valid(this); }
+                case io::Key::LeftShift:
+                case io::Key::RightShift:
+                    mods |= io::KeyModeBits::Shift;
+                    break;
+
+                case io::Key::LeftSuper:
+                case io::Key::RightSuper:
+                    mods |= io::KeyModeBits::Super;
+                    break;
+                default:
+                    break;
+            }
+        }
     } // namespace platform
+
+    Cursor::Platform::~Platform()
+    {
+        if (platform::pd.ccall.destroy) platform::pd.ccall.destroy(this);
+    }
+
+    bool Cursor::valid() const { return platform::pd.ccall.valid(_pd); }
 
     MonitorInfo get_primary_monitor_info() { return platform::pd.pcall.get_primary_monitor_info(); }
 
     Window::Window(const acul::string &title, i32 width, i32 height, WindowFlags flags)
+        : _data(platform::pd.pcall.alloc_window_data())
     {
-        _platform.backend = platform::pd.pcall.alloc_window_data();
-        _platform.owner = this;
-        if (!platform::pd.wcall.create_window(&_platform, title, width, height, flags))
+        _data->owner = this;
+        if (!platform::pd.wcall.create_window(_data, title, width, height, flags))
             throw acul::runtime_error("Failed to create Window");
     }
 
-    void Window::destroy() { platform::pd.wcall.destroy(_platform.backend); }
+    void Window::destroy() { platform::pd.wcall.destroy(_data); }
 
     void Window::show_window()
     {
         if (!hidden()) return;
-        _platform.flags &= ~WindowFlagBits::Hidden;
-        platform::pd.wcall.show_window(&_platform);
+        _data->flags &= ~WindowFlagBits::Hidden;
+        platform::pd.wcall.show_window(_data);
     }
 
     void Window::hide_window()
     {
         if (hidden()) return;
-        platform::pd.wcall.hide_window(_platform.backend);
-        _platform.flags |= WindowFlagBits::Hidden;
+        platform::pd.wcall.hide_window(_data);
+        _data->flags |= WindowFlagBits::Hidden;
     }
 
-    acul::string Window::title() const { return platform::pd.wcall.get_window_title(_platform.backend); }
+    acul::string Window::title() const { return platform::pd.wcall.get_window_title(_data); }
 
-    void Window::title(const acul::string &title) { platform::pd.wcall.set_window_title(_platform.backend, title); }
+    void Window::title(const acul::string &title) { platform::pd.wcall.set_window_title(_data, title); }
 
     void Window::enable_fullscreen()
     {
-        _platform.flags |= WindowFlagBits::Fullscreen;
-        platform::pd.wcall.enable_fullscreen(_platform.backend);
+        _data->flags |= WindowFlagBits::Fullscreen;
+        platform::pd.wcall.enable_fullscreen(_data);
     }
 
     void Window::disable_fullscreen()
     {
-        _platform.flags &= ~WindowFlagBits::Fullscreen;
-        platform::pd.wcall.disable_fullscreen(_platform.backend);
+        _data->flags &= ~WindowFlagBits::Fullscreen;
+        platform::pd.wcall.disable_fullscreen(_data);
     }
 
-    acul::point2D<i32> Window::cursor_position() const
-    {
-        return platform::pd.wcall.get_cursor_position(_platform.backend);
-    }
+    acul::point2D<i32> Window::cursor_position() const { return platform::pd.wcall.get_cursor_position(_data); }
 
     void Window::cursor_position(acul::point2D<i32> position)
     {
-        platform::pd.wcall.set_cursor_position(_platform.backend, position);
+        platform::pd.wcall.set_cursor_position(_data, position);
     }
 
-    void Window::hide_cursor() { platform::pd.wcall.hide_cursor(&_platform); }
+    void Window::hide_cursor() { platform::pd.wcall.hide_cursor(_data); }
 
-    void Window::show_cursor() { platform::pd.wcall.show_cursor(this, &_platform); }
+    void Window::show_cursor() { platform::pd.wcall.show_cursor(this, _data); }
 
-    acul::point2D<i32> Window::position() const { return platform::pd.wcall.get_window_position(_platform.backend); }
+    acul::point2D<i32> Window::position() const { return platform::pd.wcall.get_window_position(_data); }
 
-    void Window::position(acul::point2D<i32> position) { platform::pd.wcall.set_window_position(&_platform, position); }
+    void Window::position(acul::point2D<i32> position) { platform::pd.wcall.set_window_position(_data, position); }
 
-    void Window::center_window() { platform::pd.wcall.center_window(&_platform); }
+    void Window::center_window() { platform::pd.wcall.center_window(_data); }
 
-    void Window::update_resize_limit() { platform::pd.wcall.update_resize_limit(&_platform); }
+    void Window::update_resize_limit() { platform::pd.wcall.update_resize_limit(_data); }
 
-    void Window::minimize() { platform::pd.wcall.minimize_window(_platform.backend); }
+    void Window::minimize() { platform::pd.wcall.minimize_window(_data); }
 
-    void Window::maximize() { platform::pd.wcall.maximize_window(&_platform); }
+    void Window::maximize() { platform::pd.wcall.maximize_window(_data); }
 
     void poll_events() { platform::pd.pcall.poll_events(); }
 
@@ -202,12 +236,9 @@ namespace awin
 
     void push_empty_event() { platform::pd.pcall.push_empty_event(); }
 
-    f32 get_dpi() { return platform::pd.pcall.get_dpi(); }
+    f32 get_dpi(const Window &window) { return platform::pd.pcall.get_dpi(get_window_data(window)); }
 
-    acul::point2D<i32> get_window_size(const Window &window)
-    {
-        return platform::pd.pcall.get_window_size(platform::native_access::get_window_data(window));
-    }
+    acul::point2D<i32> get_window_size(const Window &window) { return platform::pd.pcall.get_window_size(window); }
 
     acul::string get_clipboard_string(const Window &window) { return platform::pd.pcall.get_clipboard_string(); }
 
@@ -218,20 +249,12 @@ namespace awin
 
     void set_window_icon(Window &window, const acul::vector<Image> &images)
     {
-        platform::pd.wcall.set_window_icon(window._platform.backend, images);
+        platform::pd.wcall.set_window_icon(get_window_data(window), images);
     }
 
-    platform::LinuxWindowData *platform::native_access::get_window_data(const Window &window)
-    {
-        return window._platform.backend;
-    }
-
-    int platform::native_access::get_backend_type() { return pd.backend_type; }
+    int native_access::get_backend_type() { return platform::pd.backend_type; }
 
     Cursor Cursor::create(Type type) { return {platform::pd.ccall.create(type)}; }
 
-    void Cursor::assign(Window *window)
-    {
-        platform::pd.ccall.assign(platform::native_access::get_window_data(*window), _pd);
-    }
+    void Cursor::assign(Window *window) { platform::pd.ccall.assign(window, _pd); }
 } // namespace awin

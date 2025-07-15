@@ -1,3 +1,4 @@
+#include <awin/native_access.hpp>
 #include <awin/vulkan.hpp>
 #ifdef _WIN32
     #include "win32_pd.hpp"
@@ -16,7 +17,7 @@ namespace awin
 #ifdef _WIN32
             dst.push_back(vk::KHRWin32SurfaceExtensionName);
 #else
-            int backend = platform::native_access::get_backend_type();
+            int backend = native_access::get_backend_type();
             if (backend == WINDOW_BACKEND_X11)
             {
     #ifdef VK_USE_PLATFORM_XCB_KHR
@@ -49,9 +50,8 @@ namespace awin
                 LOG_ERROR("X11: Failed to retrieve XCB connection");
                 return vk::Result::eErrorExtensionNotPresent;
             }
-            auto *x11_data = (platform::x11::X11WindowData *)platform::native_access::get_window_data(window);
             vk::XcbSurfaceCreateInfoKHR info;
-            info.setConnection(connection).setWindow(x11_data->window);
+            info.setConnection(connection).setWindow(native_access::get_x11_window_handle(window));
             surface = instance.createXcbSurfaceKHR(info, nullptr, loader);
             return vk::Result::eSuccess;
         }
@@ -60,9 +60,8 @@ namespace awin
         static vk::Result create_xlib_surface(vk::Instance &instance, vk::SurfaceKHR &surface,
                                               vk::DispatchLoaderDynamic &loader, Window &window)
         {
-            auto *x11_data = (platform::x11::X11WindowData *)platform::native_access::get_window_data(window);
             vk::XlibSurfaceCreateInfoKHR info;
-            info.setDpy(platform::x11::ctx.display).setWindow(x11_data->window);
+            info.setDpy(platform::x11::ctx.display).setWindow(native_access::get_x11_window_handle(window));
             surface = instance.createXlibSurfaceKHR(info, nullptr, loader);
             return vk::Result::eSuccess;
         }
@@ -80,7 +79,7 @@ namespace awin
                 surface = instance.createWin32SurfaceKHR(info, nullptr, loader);
                 return vk::Result::eSuccess;
 #else
-                int backend = platform::native_access::get_backend_type();
+                int backend = native_access::get_backend_type();
                 if (backend == WINDOW_BACKEND_X11)
                 {
     #ifdef VK_USE_PLATFORM_XCB_KHR

@@ -3,7 +3,9 @@
 #include <X11/Xmd.h>
 #include <X11/cursorfont.h>
 #include <acul/log.hpp>
+#include <awin/native_access.hpp>
 #include <awin/window.hpp>
+#include "../env.hpp"
 #include "platform.hpp"
 #include "window.hpp"
 
@@ -27,33 +29,31 @@ namespace awin
     {
         namespace x11
         {
-
             void input_context_destroy_callback(XIC ic, XPointer clientData, XPointer callData)
             {
                 X11WindowData *window = (X11WindowData *)clientData;
                 window->ic = NULL;
             }
 
-            void create_input_context(platform::WindowData *window_data)
+            void create_input_context(X11WindowData *window_data)
             {
                 XIMCallback callback;
                 auto &xlib = ctx.xlib;
                 callback.callback = (XIMProc)input_context_destroy_callback;
-                callback.client_data = (XPointer)window_data;
+                callback.client_data = (XPointer)&window_data;
 
-                auto *x11_data = (X11WindowData *)window_data->backend;
-                x11_data->ic = xlib.XCreateIC(ctx.im, XNInputStyle, XIMPreeditNothing | XIMStatusNothing,
-                                              XNClientWindow, x11_data->window, XNFocusWindow, x11_data->window,
-                                              XNDestroyCallback, &callback, NULL);
+                window_data->ic = xlib.XCreateIC(ctx.im, XNInputStyle, XIMPreeditNothing | XIMStatusNothing,
+                                                 XNClientWindow, window_data->window, XNFocusWindow,
+                                                 window_data->window, XNDestroyCallback, &callback, NULL);
 
-                if (x11_data->ic)
+                if (window_data->ic)
                 {
                     XWindowAttributes attribs;
-                    xlib.XGetWindowAttributes(ctx.display, x11_data->window, &attribs);
+                    xlib.XGetWindowAttributes(ctx.display, window_data->window, &attribs);
 
                     unsigned long filter = 0;
-                    if (xlib.XGetICValues(x11_data->ic, XNFilterEvents, &filter, NULL) == NULL)
-                        xlib.XSelectInput(ctx.display, x11_data->window, attribs.your_event_mask | filter);
+                    if (xlib.XGetICValues(window_data->ic, XNFilterEvents, &filter, NULL) == NULL)
+                        xlib.XSelectInput(ctx.display, window_data->window, attribs.your_event_mask | filter);
                 }
             }
 
@@ -233,7 +233,7 @@ namespace awin
                                          reinterpret_cast<unsigned char *>(&hints), sizeof(hints) / sizeof(long));
             }
 
-            acul::string get_window_title(platform::LinuxWindowData *window_data)
+            acul::string get_window_title(WindowData *window_data)
             {
                 auto *x11_data = (X11WindowData *)window_data;
                 auto &xlib = ctx.xlib;
@@ -255,7 +255,7 @@ namespace awin
                 return {};
             }
 
-            void set_window_title(platform::LinuxWindowData *window_data, const acul::string &title)
+            void set_window_title(WindowData *window_data, const acul::string &title)
             {
                 auto *x11_data = (X11WindowData *)window_data;
                 auto &xlib = ctx.xlib;
@@ -270,7 +270,7 @@ namespace awin
                 xlib.XFlush(ctx.display);
             }
 
-            void enable_fullscreen(LinuxWindowData *window_data)
+            void enable_fullscreen(WindowData *window_data)
             {
                 auto *x11 = (X11WindowData *)window_data;
                 if (!ctx.wm.NET_WM_STATE || !ctx.wm.NET_WM_STATE_FULLSCREEN) return;
@@ -291,7 +291,7 @@ namespace awin
                 ctx.xlib.XFlush(ctx.display);
             }
 
-            void disable_fullscreen(LinuxWindowData *window_data)
+            void disable_fullscreen(WindowData *window_data)
             {
                 auto *x11 = (X11WindowData *)window_data;
                 if (!ctx.wm.NET_WM_STATE || !ctx.wm.NET_WM_STATE_FULLSCREEN) return;
@@ -457,7 +457,7 @@ namespace awin
 
             void show_window(WindowData *window_data)
             {
-                auto *x11 = (X11WindowData *)window_data->backend;
+                auto *x11 = (X11WindowData *)window_data;
                 ctx.xlib.XMapWindow(ctx.display, x11->window);
                 wait_for_visibility_notify(x11);
 
@@ -478,7 +478,7 @@ namespace awin
                 }
             }
 
-            void hide_window(platform::LinuxWindowData *window_data)
+            void hide_window(WindowData *window_data)
             {
                 auto *x11 = (X11WindowData *)window_data;
                 ctx.xlib.XUnmapWindow(ctx.display, x11->window);
@@ -562,7 +562,7 @@ namespace awin
             // Ungrabs the cursor
             static void release_cursor() { ctx.xlib.XUngrabPointer(ctx.display, CurrentTime); }
 
-            acul::point2D<i32> get_cursor_position(platform::LinuxWindowData *window_data)
+            acul::point2D<i32> get_cursor_position(WindowData *window_data)
             {
                 auto *x11_data = (X11WindowData *)window_data;
                 auto &xlib = ctx.xlib;
@@ -576,7 +576,7 @@ namespace awin
                 return {};
             }
 
-            void set_cursor_position(platform::LinuxWindowData *window_data, acul::point2D<i32> position)
+            void set_cursor_position(WindowData *window_data, acul::point2D<i32> position)
             {
                 acul::point2D<int> abs_pos;
                 auto &xlib = ctx.xlib;
@@ -588,12 +588,12 @@ namespace awin
             }
 
             // From __os_linux_keys.cpp
-            void on_key_press(XEvent *, unsigned int, Bool, platform::WindowData *);
-            void on_key_release(XEvent *, unsigned int, platform::WindowData *);
-            void on_btn_press(XEvent *, platform::WindowData *);
-            void on_btn_release(XEvent *, platform::WindowData *);
+            void on_key_press(XEvent *, unsigned int, Bool, X11WindowData *);
+            void on_key_release(XEvent *, unsigned int, X11WindowData *);
+            void on_btn_press(XEvent *, X11WindowData *);
+            void on_btn_release(XEvent *, X11WindowData *);
 
-            void on_client_msg(XEvent *event, platform::WindowData *window_data)
+            void on_client_msg(XEvent *event, WindowData *window_data)
             {
                 auto &xlib = ctx.xlib;
                 if (event->xclient.message_type == ctx.wm.WM_PROTOCOLS)
@@ -676,7 +676,6 @@ namespace awin
                 auto &xlib = ctx.xlib;
                 unsigned int keycode = 0;
                 Bool filtered = False;
-                static platform::WindowData *g_focused = nullptr;
 
                 if (event->type == GenericEvent && is_raw_event(event))
                 {
@@ -685,8 +684,9 @@ namespace awin
                     int idx = 0;
                     if (XIMaskIsSet(raw->valuators.mask, 0)) delta.x = raw->raw_values[idx++];
                     if (XIMaskIsSet(raw->valuators.mask, 1)) delta.y = raw->raw_values[idx++];
-                    if (g_focused)
-                        dispatch_window_event(event_registry.mouse_move, event_id::MouseMove, g_focused->owner, delta);
+                    if (ctx.focused_window)
+                        dispatch_window_event(event_registry.mouse_move, event_id::MouseMove, ctx.focused_window->owner,
+                                              delta);
                     xlib.XFreeEventData(ctx.display, &event->xcookie);
                     return;
                 }
@@ -707,7 +707,7 @@ namespace awin
                     }
                 }
 
-                platform::WindowData *window_data = nullptr;
+                X11WindowData *window_data = nullptr;
                 if (xlib.XFindContext(ctx.display, event->xany.window, ctx.context, (XPointer *)&window_data) != 0)
                     return;
 
@@ -717,12 +717,10 @@ namespace awin
                     return;
                 }
 
-                auto *window = (X11WindowData *)window_data->backend;
-
                 switch (event->type)
                 {
                     case ReparentNotify:
-                        window->parent = event->xreparent.parent;
+                        window_data->parent = event->xreparent.parent;
                         return;
                     case KeyPress:
                         on_key_press(event, keycode, filtered, window_data);
@@ -778,21 +776,21 @@ namespace awin
                         // NOTE: ConfigureNotify events from the server are in local
                         //       coordinates, so if we are reparented we need to translate
                         //       the position into root (screen) coordinates
-                        if (!event->xany.send_event && window->parent != ctx.root)
+                        if (!event->xany.send_event && window_data->parent != ctx.root)
                         {
                             grab_error_handler();
 
                             XID dummy;
-                            xlib.XTranslateCoordinates(ctx.display, window->parent, ctx.root, pos.x, pos.y, &pos.x,
+                            xlib.XTranslateCoordinates(ctx.display, window_data->parent, ctx.root, pos.x, pos.y, &pos.x,
                                                        &pos.y, &dummy);
 
                             release_error_handler();
                             if (ctx.error_code == BadWindow) return;
                         }
 
-                        if (window_data->backend->window_pos != pos)
+                        if (window_data->window_pos != pos)
                         {
-                            window_data->backend->window_pos = pos;
+                            window_data->window_pos = pos;
                             dispatch_window_event(event_registry.move, event_id::Move, window_data->owner, pos);
                         }
                         return;
@@ -809,13 +807,13 @@ namespace awin
                             // key chords and window dragging
                             return;
                         }
-                        if (window_data->is_cursor_hidden) capture_cursor(window);
-                        if (window->ic) xlib.XSetICFocus(window->ic);
+                        if (window_data->is_cursor_hidden) capture_cursor(window_data);
+                        if (window_data->ic) xlib.XSetICFocus(window_data->ic);
 
                         window_data->focused = true;
                         dispatch_window_event(event_registry.focus, window_data->owner, true);
                         toogle_rid(true);
-                        g_focused = window_data;
+                        ctx.focused_window = window_data;
                         return;
                     }
                     case FocusOut:
@@ -827,7 +825,7 @@ namespace awin
                             return;
                         }
                         if (window_data->is_cursor_hidden) release_cursor();
-                        if (window->ic) xlib.XUnsetICFocus(window->ic);
+                        if (window_data->ic) xlib.XUnsetICFocus(window_data->ic);
 
                         window_data->focused = false;
                         dispatch_window_event(event_registry.focus, window_data->owner, false);
@@ -840,7 +838,7 @@ namespace awin
 
                         if (event->xproperty.atom == ctx.wm.WM_STATE)
                         {
-                            const int state = get_window_state(window);
+                            const int state = get_window_state(window_data);
                             if (state != IconicState && state != NormalState) return;
 
                             const bool iconified = (state == IconicState);
@@ -859,7 +857,7 @@ namespace awin
                         }
                         else if (event->xproperty.atom == ctx.wm.NET_WM_STATE)
                         {
-                            const bool maximized = is_window_maximized(window);
+                            const bool maximized = is_window_maximized(window_data);
                             const bool already = (window_data->flags & WindowFlagBits::Maximized);
 
                             if (maximized != already)
@@ -977,22 +975,26 @@ namespace awin
                                                &dummy);
             }
 
-            acul::point2D<i32> get_window_size(LinuxWindowData *window)
+            acul::point2D<i32> get_window_size(::Window window)
             {
                 XWindowAttributes attribs;
-                auto *x11_data = (X11WindowData *)window;
-                ctx.xlib.XGetWindowAttributes(ctx.display, x11_data->window, &attribs);
+                ctx.xlib.XGetWindowAttributes(ctx.display, window, &attribs);
                 return {attribs.width, attribs.height};
             }
 
-            bool create_window(platform::WindowData *window_data, const acul::string &title, i32 width, i32 height,
+            acul::point2D<i32> get_window_size(const Window &window)
+            {
+                return get_window_size(native_access::get_x11_window_handle(window));
+            }
+
+            bool create_window(WindowData *window_data, const acul::string &title, i32 width, i32 height,
                                WindowFlags flags)
             {
                 auto &xlib = ctx.xlib;
                 Visual *visual = DefaultVisual(ctx.display, ctx.screen);
                 int depth = DefaultDepth(ctx.display, ctx.screen);
                 // Create a colormap based on the visual used by the current context
-                auto *x11_data = (X11WindowData *)window_data->backend;
+                auto *x11_data = (X11WindowData *)window_data;
                 x11_data->colormap = xlib.XCreateColormap(ctx.display, ctx.root, visual, AllocNone);
 
                 XSetWindowAttributes wa = {0};
@@ -1014,7 +1016,7 @@ namespace awin
                     return false;
                 }
                 LOG_INFO("Created X11 window: %lu", x11_data->window);
-                xlib.XSaveContext(ctx.display, x11_data->window, ctx.context, (XPointer)window_data);
+                xlib.XSaveContext(ctx.display, x11_data->window, ctx.context, (XPointer)&window_data);
                 window_data->flags = flags;
                 apply_motif_hints(ctx.display, x11_data->window, flags);
 
@@ -1046,11 +1048,11 @@ namespace awin
                 }
 
                 if (!prepare_window_wm_hints(x11_data, flags, {width, height}, title)) return false;
-                if (ctx.im) create_input_context(window_data);
+                if (ctx.im) create_input_context(x11_data);
 
                 set_window_title(x11_data, title);
-                get_window_pos(x11_data, window_data->backend->window_pos);
-                window_data->dimenstions = get_window_size(x11_data);
+                get_window_pos(x11_data, x11_data->window_pos);
+                window_data->dimenstions = get_window_size(x11_data->window);
 
                 if (!(flags & WindowFlagBits::Hidden)) show_window(window_data);
 
@@ -1058,9 +1060,9 @@ namespace awin
                 return true;
             }
 
-            void destroy(LinuxWindowData *impl)
+            void destroy(WindowData *window_data)
             {
-                auto *x11_data = (X11WindowData *)impl;
+                auto *x11_data = (X11WindowData *)window_data;
                 auto &xlib = ctx.xlib;
 
                 if (x11_data->ic)
@@ -1087,7 +1089,7 @@ namespace awin
                 xlib.XFlush(ctx.display);
             }
 
-            acul::point2D<i32> get_window_position(LinuxWindowData *window)
+            acul::point2D<i32> get_window_position(WindowData *window)
             {
                 auto *x11_data = (X11WindowData *)window;
                 ::Window dummy;
@@ -1098,7 +1100,7 @@ namespace awin
 
             void set_window_position(WindowData *window, acul::point2D<i32> position)
             {
-                auto *x11_data = (X11WindowData *)window->backend;
+                auto *x11_data = (X11WindowData *)window;
                 auto &xlib = ctx.xlib;
                 if (window->flags & WindowFlagBits::Hidden)
                 {
@@ -1156,31 +1158,31 @@ namespace awin
                 acul::point2D<long> center = {(info.work.x - window->dimenstions.x) / 2,
                                               (info.work.y - window->dimenstions.y) / 2};
                 if (center.y < 0) center.y = 0;
-                auto *x11_data = (X11WindowData *)window->backend;
+                auto *x11_data = (X11WindowData *)window;
                 xlib.XMoveResizeWindow(ctx.display, x11_data->window, center.x, center.y, window->dimenstions.x,
                                        window->dimenstions.y);
                 xlib.XFlush(ctx.display);
             }
 
-            static void update_normal_hints(WindowData *window, acul::point2D<i32> dim)
+            static void update_normal_hints(X11WindowData *window_data, acul::point2D<i32> dim)
             {
                 auto &xlib = ctx.xlib;
                 XSizeHints *hints = xlib.XAllocSizeHints();
                 if (!hints) return;
 
                 long supplied;
-                auto *x11_data = (X11WindowData *)window->backend;
-                xlib.XGetWMNormalHints(ctx.display, x11_data->window, hints, &supplied);
+                xlib.XGetWMNormalHints(ctx.display, window_data->window, hints, &supplied);
 
                 hints->flags &= ~(PMinSize | PMaxSize | PAspect);
 
-                if (window->flags & WindowFlagBits::Resizable)
+                if (window_data->flags & WindowFlagBits::Resizable)
                 {
-                    if (window->resize_limit.x != WINDOW_DONT_CARE && window->resize_limit.y != WINDOW_DONT_CARE)
+                    if (window_data->resize_limit.x != WINDOW_DONT_CARE &&
+                        window_data->resize_limit.y != WINDOW_DONT_CARE)
                     {
                         hints->flags |= PMinSize;
-                        hints->min_width = window->resize_limit.x;
-                        hints->min_height = window->resize_limit.y;
+                        hints->min_width = window_data->resize_limit.x;
+                        hints->min_height = window_data->resize_limit.y;
                     }
                 }
                 else
@@ -1190,18 +1192,17 @@ namespace awin
                     hints->min_height = hints->max_height = dim.y;
                 }
 
-                xlib.XSetWMNormalHints(ctx.display, x11_data->window, hints);
+                xlib.XSetWMNormalHints(ctx.display, window_data->window, hints);
                 xlib.XFree(hints);
             }
 
             void update_resize_limit(WindowData *window)
             {
-                update_normal_hints(window, window->dimenstions);
-                auto *x11_data = (X11WindowData *)window->backend;
+                update_normal_hints((X11WindowData *)window, window->dimenstions);
                 ctx.xlib.XFlush(ctx.display);
             }
 
-            void minimize_window(LinuxWindowData *window)
+            void minimize_window(WindowData *window)
             {
                 auto *x11_data = (X11WindowData *)window;
                 auto &xlib = ctx.xlib;
@@ -1214,7 +1215,7 @@ namespace awin
                 if (!ctx.wm.NET_WM_STATE || !ctx.wm.NET_WM_STATE_MAXIMIZED_VERT || !ctx.wm.NET_WM_STATE_MAXIMIZED_HORZ)
                     return;
                 auto &xlib = ctx.xlib;
-                auto *x11_data = (X11WindowData *)window->backend;
+                auto *x11_data = (X11WindowData *)window;
                 if (window->flags & WindowFlagBits::Hidden)
                 {
                     Atom *states = NULL;
@@ -1287,9 +1288,9 @@ namespace awin
                 }
             }
 
-            f32 get_dpi() { return ctx.dpi.x; }
+            f32 get_dpi(WindowData *) { return ctx.dpi.x; }
 
-            void set_window_icon(LinuxWindowData *w, const acul::vector<Image> &images)
+            void set_window_icon(WindowData *w, const acul::vector<Image> &images)
             {
                 size_t total = 0;
                 for (const auto &img : images) { total += 2 + size_t(img.dimenstions.x) * size_t(img.dimenstions.y); }
@@ -1335,7 +1336,7 @@ namespace awin
                 return ctx.xlib.XCreateFontCursor(display, fallback_shape);
             }
 
-            CursorPlatform *create_cursor(Cursor::Type type)
+            Cursor::Platform *create_cursor(Cursor::Type type)
             {
                 struct Shape
                 {
@@ -1366,19 +1367,19 @@ namespace awin
                 return cursor;
             }
 
-            void assign_cursor(LinuxWindowData *window_data, CursorPlatform *cursor)
+            void assign_cursor(Window *window_data, Cursor::Platform *cursor)
             {
                 auto *x11_cursor = (X11Cursor *)cursor;
                 auto &xlib = ctx.xlib;
                 auto *x11_data = (X11WindowData *)window_data;
-                if (x11_cursor->valid())
+                if (x11_cursor->handle)
                     xlib.XDefineCursor(ctx.display, x11_data->window, x11_cursor->handle);
                 else
                     xlib.XUndefineCursor(ctx.display, x11_data->window);
                 xlib.XFlush(ctx.display);
             }
 
-            void destroy_cursor(CursorPlatform *cursor)
+            void destroy_cursor(Cursor::Platform *cursor)
             {
                 auto *x11_cursor = (X11Cursor *)cursor;
                 if (x11_cursor->handle)
@@ -1388,7 +1389,7 @@ namespace awin
                 }
             }
 
-            bool is_cursor_valid(const platform::CursorPlatform *cursor)
+            bool is_cursor_valid(const Cursor::Platform *cursor)
             {
                 auto *x11_cursor = (X11Cursor *)cursor;
                 return x11_cursor->handle != 0;
@@ -1396,8 +1397,8 @@ namespace awin
 
             void hide_cursor(WindowData *window_data)
             {
+                auto *x11_data = (X11WindowData *)window_data;
                 if (window_data->is_cursor_hidden) return;
-                auto *x11_data = (X11WindowData *)window_data->backend;
                 ctx.xlib.XDefineCursor(ctx.display, x11_data->window, ctx.hidden_cursor.handle);
                 ctx.xlib.XFlush(ctx.display);
                 window_data->is_cursor_hidden = true;
@@ -1406,8 +1407,6 @@ namespace awin
             void show_cursor(Window *window, WindowData *window_data)
             {
                 if (!window_data->is_cursor_hidden) return;
-                auto *x11_data = static_cast<X11WindowData *>(window_data->backend);
-
                 if (window_data->cursor && window_data->cursor->valid())
                     window_data->cursor->assign(window);
                 else if (platform::env.default_cursor.valid())
@@ -1417,4 +1416,9 @@ namespace awin
 
         } // namespace x11
     } // namespace platform
+
+    ::Window native_access::get_x11_window_handle(const Window &window)
+    {
+        return static_cast<platform::x11::X11WindowData *>(get_window_data(window))->window;
+    }
 } // namespace awin

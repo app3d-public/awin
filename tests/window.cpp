@@ -16,7 +16,6 @@ void test_window()
 
     awin::init_library(&ed);
     awin::Window window("Test Window", 640, 480);
-
     window.resize_limit({500, 400});
 
     bool resize_called = false;
@@ -24,12 +23,12 @@ void test_window()
     ed.bind_event(&resize_called, awin::event_id::Resize, [&](awin::PosEvent &event) {
         if (event.window != &window || event.position.x <= 0 || event.position.y <= 0) return;
         resize_called = true;
-        awin::push_empty_event();
         window.ready_to_close(true);
     });
     awin::update_events();
 
     while (!window.ready_to_close()) awin::poll_events();
+    window.destroy();
     assert(resize_called && "Close event was not called");
     awin::destroy_library();
 }

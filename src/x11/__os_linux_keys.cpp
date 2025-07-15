@@ -2,7 +2,7 @@
 #include <acul/string/string.hpp>
 #include <acul/string/string_view.hpp>
 #include <awin/window.hpp>
-#include "keys.hpp"
+#include "../env.hpp"
 #include "platform.hpp"
 #include "window.hpp"
 
@@ -1061,42 +1061,25 @@ namespace awin
                 return mods;
             }
 
-            void on_key_press(XEvent *event, unsigned int keycode, Bool filtered, platform::WindowData *window_data)
+            void on_key_press(XEvent *event, unsigned int keycode, Bool filtered, X11WindowData *window_data)
             {
                 auto &xlib = ctx.xlib;
                 auto mods = translate_state(event->xkey.state);
                 const int plain = !(mods & (io::KeyModeBits::Control | io::KeyModeBits::Alt));
 
-                auto *window = (X11WindowData *)window_data->backend;
-                if (window->ic)
+                if (window_data->ic)
                 {
-                    Time diff = event->xkey.time - window->key_press_times[keycode];
+                    Time diff = event->xkey.time - window_data->key_press_times[keycode];
                     if (diff == event->xkey.time || (diff > 0 && diff < ((Time)1 << 31)))
                     {
                         if (keycode)
                         {
                             auto it = ctx.keymap.find(keycode);
-                            switch (keycode)
-                            {
-                                case KeyCode::KEY_ALT_L:
-                                case KeyCode::KEY_ALT_R:
-                                    mods |= io::KeyModeBits::Alt;
-                                    break;
-                                case KeyCode::KEY_SHIFT_L:
-                                case KeyCode::KEY_SHIFT_R:
-                                    mods |= io::KeyModeBits::Shift;
-                                    break;
-                                case KeyCode::KEY_CONTROL_L:
-                                case KeyCode::KEY_CONTROL_R:
-                                    mods |= io::KeyModeBits::Control;
-                                    break;
-                                default:
-                                    break;
-                            }
+                            if (it != ctx.keymap.end()) sync_mods_by_key(it->second, mods);
                             input_key(window_data, it != ctx.keymap.end() ? it->second : io::Key::Unknown,
                                       io::KeyPressState::Press, mods);
                         }
-                        window->key_press_times[keycode] = event->xkey.time;
+                        window_data->key_press_times[keycode] = event->xkey.time;
                     }
 
                     if (!filtered)
@@ -1105,7 +1088,7 @@ namespace awin
                         char buffer[100];
                         char *chars = buffer;
 
-                        int count = xlib.Xutf8LookupString(window->ic, &event->xkey, buffer, sizeof(buffer) - 1,
+                        int count = xlib.Xutf8LookupString(window_data->ic, &event->xkey, buffer, sizeof(buffer) - 1,
                                                            nullptr, &status);
 
                         acul::string utf8;
@@ -1113,8 +1096,8 @@ namespace awin
                         if (status == XBufferOverflow)
                         {
                             acul::vector<char> dyn_buf(count + 1, '\0');
-                            count = xlib.Xutf8LookupString(window->ic, &event->xkey, dyn_buf.data(), count, nullptr,
-                                                           &status);
+                            count = xlib.Xutf8LookupString(window_data->ic, &event->xkey, dyn_buf.data(), count,
+                                                           nullptr, &status);
                             utf8.assign(dyn_buf.data(), count);
                         }
                         else if (status == XLookupChars || status == XLookupBoth)
@@ -1145,7 +1128,7 @@ namespace awin
                 }
             }
 
-            void on_key_release(XEvent *event, unsigned int keycode, platform::WindowData *window_data)
+            void on_key_release(XEvent *event, unsigned int keycode, X11WindowData *window_data)
             {
                 auto it_key = ctx.keymap.find(keycode);
                 const io::KeyMode mods = translate_state(event->xkey.state);
@@ -1184,7 +1167,7 @@ namespace awin
                           io::KeyPressState::Release, mods);
             }
 
-            void on_btn_press(XEvent *event, platform::WindowData *window_data)
+            void on_btn_press(XEvent *event, X11WindowData *window_data)
             {
                 switch (event->xbutton.button)
                 {
@@ -1220,7 +1203,7 @@ namespace awin
                 }
             }
 
-            void on_btn_release(XEvent *event, platform::WindowData *window_data)
+            void on_btn_release(XEvent *event, X11WindowData *window_data)
             {
                 switch (event->xbutton.button)
                 {
