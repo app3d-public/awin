@@ -1,4 +1,5 @@
 #include <acul/log.hpp>
+#include <awin/native_access.hpp>
 #include <awin/window.hpp>
 
 void test_window()
@@ -8,19 +9,22 @@ void test_window()
     sd.run();
     auto log_service = acul::alloc<acul::log::log_service>();
     sd.register_service(log_service);
-    log_service->level = acul::log::level::Trace;
+    log_service->level = acul::log::level::trace;
     auto *app_logger = log_service->add_logger<acul::log::console_logger>("app");
-    log_service->level = acul::log::level::Trace;
     app_logger->set_pattern("%(message)\n");
     log_service->default_logger = app_logger;
 
     awin::init_library(&ed);
+#ifdef __unix__
+    int backend_type = awin::native_access::get_backend_type();
+    if (backend_type == WINDOW_BACKEND_WAYLAND) awin::native_access::enable_wayland_surface_placeholder();
+#endif
     awin::Window window("Test Window", 640, 480);
     window.resize_limit({500, 400});
 
     bool resize_called = false;
 
-    ed.bind_event(&resize_called, awin::event_id::Resize, [&](awin::PosEvent &event) {
+    ed.bind_event(&resize_called, awin::event_id::resize, [&](awin::PosEvent &event) {
         if (event.window != &window || event.position.x <= 0 || event.position.y <= 0) return;
         resize_called = true;
         window.ready_to_close(true);

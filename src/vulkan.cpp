@@ -3,8 +3,8 @@
 #ifdef _WIN32
     #include "win32_pd.hpp"
 #else
+    #include "wayland/platform.hpp"
     #include "x11/platform.hpp"
-    #include "x11/window.hpp"
 #endif
 
 namespace awin
@@ -92,7 +92,16 @@ namespace awin
                     return vk::Result::eErrorExtensionNotPresent;
     #endif
                 }
-                // else if (backend == WINDOW_BACKEND_WAYLAND) // todo: Add Wayland Support
+                else if (backend == WINDOW_BACKEND_WAYLAND)
+                {
+    #ifdef VK_USE_PLATFORM_WAYLAND_KHR
+                    vk::WaylandSurfaceCreateInfoKHR info;
+                    info.setDisplay(platform::wayland::ctx.display)
+                        .setSurface(native_access::get_wayland_surface(_window));
+                    surface = instance.createWaylandSurfaceKHR(info, nullptr, loader);
+                    return vk::Result::eSuccess;
+    #endif
+                }
                 return vk::Result::eErrorExtensionNotPresent;
 #endif
             }

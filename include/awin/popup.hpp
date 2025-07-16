@@ -14,31 +14,31 @@ namespace awin
         // Specifies the visual theme of popup windows to reflect the nature of the message.
         enum class Style
         {
-            Info,
-            Warning,
-            Error,
-            Question
+            info,
+            warning,
+            error,
+            question
         };
 
         // Defines the set of buttons to be displayed in a popup window.
         enum class Buttons
         {
-            OK,
-            Yes,
-            No,
-            Cancel,
-            Error
+            ok,
+            yes,
+            no,
+            cancel,
+            error
         };
 
         // Displays a popup window with a message, title, and configurable style and buttons.
-        APPLIB_API Buttons message_box(const char *message, const char *title, Style style = Style::Info,
-                                       std::initializer_list<Buttons> buttons = {Buttons::OK},
+        APPLIB_API Buttons message_box(const char *message, const char *title, Style style = Style::info,
+                                       std::initializer_list<Buttons> buttons = {Buttons::ok},
                                        awin::Window *parent = nullptr);
 
         // Displays a popup with "Yes" and "No" options, returning true if "Yes" is selected.
         inline bool confirm_message_box(const char *message, const char *title, awin::Window *parent = nullptr)
         {
-            return message_box(message, title, Style::Question, {Buttons::Yes, Buttons::No}, parent) == Buttons::Yes;
+            return message_box(message, title, Style::question, {Buttons::yes, Buttons::no}, parent) == Buttons::yes;
         }
 
         struct FilePattern

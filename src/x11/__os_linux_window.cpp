@@ -224,11 +224,11 @@ namespace awin
                 hints.flags = MWM_HINTS_FUNCTIONS | MWM_HINTS_DECORATIONS;
                 // functions
                 hints.functions = MWM_FUNC_MOVE | MWM_FUNC_CLOSE;
-                if (window_flags & WindowFlagBits::Resizable) hints.functions |= MWM_FUNC_RESIZE;
-                if (window_flags & WindowFlagBits::MinimizeBox) hints.functions |= MWM_FUNC_MINIMIZE;
-                if (window_flags & WindowFlagBits::MaximizeBox) hints.functions |= MWM_FUNC_MAXIMIZE;
+                if (window_flags & WindowFlagBits::resizable) hints.functions |= MWM_FUNC_RESIZE;
+                if (window_flags & WindowFlagBits::minimize_box) hints.functions |= MWM_FUNC_MINIMIZE;
+                if (window_flags & WindowFlagBits::maximize_box) hints.functions |= MWM_FUNC_MAXIMIZE;
                 // decorations
-                hints.decorations = window_flags & WindowFlagBits::Decorated ? MWM_DECOR_ALL : 0;
+                hints.decorations = window_flags & WindowFlagBits::decorated ? MWM_DECOR_ALL : 0;
                 ctx.xlib.XChangeProperty(dpy, window, ctx.wm.MOTIF_WM_HINTS, ctx.wm.MOTIF_WM_HINTS, 32, PropModeReplace,
                                          reinterpret_cast<unsigned char *>(&hints), sizeof(hints) / sizeof(long));
             }
@@ -321,7 +321,7 @@ namespace awin
                     Atom states[3];
                     int count = 0;
 
-                    if (flags & WindowFlagBits::Maximized && ctx.wm.NET_WM_STATE_MAXIMIZED_VERT &&
+                    if (flags & WindowFlagBits::maximized && ctx.wm.NET_WM_STATE_MAXIMIZED_VERT &&
                         ctx.wm.NET_WM_STATE_MAXIMIZED_HORZ)
                     {
                         states[count++] = ctx.wm.NET_WM_STATE_MAXIMIZED_VERT;
@@ -378,7 +378,7 @@ namespace awin
                         return false;
                     }
 
-                    if (!(flags & WindowFlagBits::Resizable))
+                    if (!(flags & WindowFlagBits::resizable))
                     {
                         hints->flags |= (PMinSize | PMaxSize);
                         hints->min_width = hints->max_width = width;
@@ -461,7 +461,7 @@ namespace awin
                 ctx.xlib.XMapWindow(ctx.display, x11->window);
                 wait_for_visibility_notify(x11);
 
-                if (window_data->flags & WindowFlagBits::Maximized)
+                if (window_data->flags & WindowFlagBits::maximized)
                 {
                     XEvent ev{};
                     ev.xclient.type = ClientMessage;
@@ -685,8 +685,8 @@ namespace awin
                     if (XIMaskIsSet(raw->valuators.mask, 0)) delta.x = raw->raw_values[idx++];
                     if (XIMaskIsSet(raw->valuators.mask, 1)) delta.y = raw->raw_values[idx++];
                     if (ctx.focused_window)
-                        dispatch_window_event(event_registry.mouse_move, event_id::MouseMove, ctx.focused_window->owner,
-                                              delta);
+                        dispatch_window_event(event_registry.mouse_move_delta, event_id::mouse_move_delta,
+                                              ctx.focused_window->owner, delta);
                     xlib.XFreeEventData(ctx.display, &event->xcookie);
                     return;
                 }
@@ -746,8 +746,7 @@ namespace awin
                                 platform::env.default_cursor.assign(window_data->owner);
                         }
                         acul::point2D dim{event->xcrossing.x, event->xcrossing.y};
-                        dispatch_window_event(event_registry.mouse_move_abs, event_id::MouseMoveAbs, window_data->owner,
-                                              dim);
+                        dispatch_window_event(event_registry.mouse_move, event_id::mouse_move, window_data->owner, dim);
                         return;
                     }
                     case LeaveNotify:
@@ -758,8 +757,7 @@ namespace awin
                     case MotionNotify:
                     {
                         acul::point2D pos{event->xmotion.x, event->xmotion.y};
-                        dispatch_window_event(event_registry.mouse_move_abs, event_id::MouseMoveAbs, window_data->owner,
-                                              pos);
+                        dispatch_window_event(event_registry.mouse_move, event_id::mouse_move, window_data->owner, pos);
                         return;
                     }
                     case ConfigureNotify:
@@ -768,7 +766,7 @@ namespace awin
                         if (dimenstions != window_data->dimenstions)
                         {
                             window_data->dimenstions = dimenstions;
-                            dispatch_window_event(event_registry.resize, event_id::Resize, window_data->owner,
+                            dispatch_window_event(event_registry.resize, event_id::resize, window_data->owner,
                                                   window_data->dimenstions);
                         }
                         acul::point2D<i32> pos(event->xconfigure.x, event->xconfigure.y);
@@ -791,7 +789,7 @@ namespace awin
                         if (window_data->window_pos != pos)
                         {
                             window_data->window_pos = pos;
-                            dispatch_window_event(event_registry.move, event_id::Move, window_data->owner, pos);
+                            dispatch_window_event(event_registry.move, event_id::move, window_data->owner, pos);
                         }
                         return;
                     }
@@ -842,32 +840,32 @@ namespace awin
                             if (state != IconicState && state != NormalState) return;
 
                             const bool iconified = (state == IconicState);
-                            const bool already = (window_data->flags & WindowFlagBits::Minimized);
+                            const bool already = (window_data->flags & WindowFlagBits::minimized);
 
                             if (iconified != already)
                             {
                                 if (iconified)
-                                    window_data->flags |= WindowFlagBits::Minimized;
+                                    window_data->flags |= WindowFlagBits::minimized;
                                 else
-                                    window_data->flags &= ~WindowFlagBits::Minimized;
+                                    window_data->flags &= ~WindowFlagBits::minimized;
 
-                                dispatch_window_event(event_registry.minimize, event_id::Minimize, window_data->owner,
+                                dispatch_window_event(event_registry.minimize, event_id::minimize, window_data->owner,
                                                       iconified);
                             }
                         }
                         else if (event->xproperty.atom == ctx.wm.NET_WM_STATE)
                         {
                             const bool maximized = is_window_maximized(window_data);
-                            const bool already = (window_data->flags & WindowFlagBits::Maximized);
+                            const bool already = (window_data->flags & WindowFlagBits::maximized);
 
                             if (maximized != already)
                             {
                                 if (maximized)
-                                    window_data->flags |= WindowFlagBits::Maximized;
+                                    window_data->flags |= WindowFlagBits::maximized;
                                 else
-                                    window_data->flags &= ~WindowFlagBits::Maximized;
+                                    window_data->flags &= ~WindowFlagBits::maximized;
 
-                                dispatch_window_event(event_registry.maximize, event_id::Maximize, window_data->owner,
+                                dispatch_window_event(event_registry.maximize, event_id::maximize, window_data->owner,
                                                       maximized);
                             }
                         }
@@ -888,7 +886,7 @@ namespace awin
                 {
                     XWMHints *hints = xlib.XAllocWMHints();
                     hints->flags = StateHint;
-                    hints->initial_state = (flags & WindowFlagBits::Minimized) ? IconicState : NormalState;
+                    hints->initial_state = (flags & WindowFlagBits::minimized) ? IconicState : NormalState;
                     xlib.XSetWMHints(ctx.display, x11_data->window, hints);
                     xlib.XFree(hints);
                 }
@@ -938,7 +936,7 @@ namespace awin
                         return false;
                     }
 
-                    if (!(flags & WindowFlagBits::Resizable))
+                    if (!(flags & WindowFlagBits::resizable))
                     {
                         hints->flags |= (PMinSize | PMaxSize);
                         hints->min_width = hints->max_width = dim.x;
@@ -1024,7 +1022,7 @@ namespace awin
                 if (ctx.wm.NET_WM_STATE)
                 {
                     acul::vector<Atom> wm_states;
-                    if ((flags & WindowFlagBits::Fullscreen))
+                    if ((flags & WindowFlagBits::fullscreen))
                     {
                         if (ctx.wm.NET_WM_STATE_FULLSCREEN) wm_states.push_back(ctx.wm.NET_WM_STATE_FULLSCREEN);
                         if (ctx.wm.NET_WM_BYPASS_COMPOSITOR)
@@ -1035,7 +1033,7 @@ namespace awin
                                                  reinterpret_cast<unsigned char *>(&one), 1);
                         }
                     }
-                    if ((flags & WindowFlagBits::Maximized) && ctx.wm.NET_WM_STATE_MAXIMIZED_VERT &&
+                    if ((flags & WindowFlagBits::maximized) && ctx.wm.NET_WM_STATE_MAXIMIZED_VERT &&
                         ctx.wm.NET_WM_STATE_MAXIMIZED_HORZ)
                     {
                         wm_states.push_back(ctx.wm.NET_WM_STATE_MAXIMIZED_VERT);
@@ -1054,7 +1052,7 @@ namespace awin
                 get_window_pos(x11_data, x11_data->window_pos);
                 window_data->dimenstions = get_window_size(x11_data->window);
 
-                if (!(flags & WindowFlagBits::Hidden)) show_window(window_data);
+                if (!(flags & WindowFlagBits::hidden)) show_window(window_data);
 
                 window_data->cursor = &platform::env.default_cursor;
                 return true;
@@ -1102,7 +1100,7 @@ namespace awin
             {
                 auto *x11_data = (X11WindowData *)window;
                 auto &xlib = ctx.xlib;
-                if (window->flags & WindowFlagBits::Hidden)
+                if (window->flags & WindowFlagBits::hidden)
                 {
                     long supplied;
                     XSizeHints *hints = xlib.XAllocSizeHints();
@@ -1175,7 +1173,7 @@ namespace awin
 
                 hints->flags &= ~(PMinSize | PMaxSize | PAspect);
 
-                if (window_data->flags & WindowFlagBits::Resizable)
+                if (window_data->flags & WindowFlagBits::resizable)
                 {
                     if (window_data->resize_limit.x != WINDOW_DONT_CARE &&
                         window_data->resize_limit.y != WINDOW_DONT_CARE)
@@ -1216,7 +1214,7 @@ namespace awin
                     return;
                 auto &xlib = ctx.xlib;
                 auto *x11_data = (X11WindowData *)window;
-                if (window->flags & WindowFlagBits::Hidden)
+                if (window->flags & WindowFlagBits::hidden)
                 {
                     Atom *states = NULL;
                     unsigned long count =
@@ -1345,16 +1343,16 @@ namespace awin
                 };
 
                 static const acul::hashmap<Cursor::Type, Shape> cursor_map = {
-                    {Cursor::Type::Arrow, {"left_ptr", XC_left_ptr}},
-                    {Cursor::Type::Ibeam, {"xterm", XC_xterm}},
-                    {Cursor::Type::Crosshair, {"crosshair", XC_crosshair}},
-                    {Cursor::Type::Hand, {"hand2", XC_hand2}},
-                    {Cursor::Type::ResizeEW, {"sb_h_double_arrow", XC_sb_h_double_arrow}},
-                    {Cursor::Type::ResizeNS, {"sb_v_double_arrow", XC_sb_v_double_arrow}},
-                    {Cursor::Type::ResizeNWSE, {"bottom_right_corner", XC_bottom_right_corner}},
-                    {Cursor::Type::ResizeNESW, {"bottom_left_corner", XC_bottom_left_corner}},
-                    {Cursor::Type::ResizeAll, {"fleur", XC_fleur}},
-                    {Cursor::Type::NotAllowed, {"not-allowed", XC_pirate}}, // fallback shape
+                    {Cursor::Type::arrow, {"left_ptr", XC_left_ptr}},
+                    {Cursor::Type::ibeam, {"xterm", XC_xterm}},
+                    {Cursor::Type::crosshair, {"crosshair", XC_crosshair}},
+                    {Cursor::Type::hand, {"hand2", XC_hand2}},
+                    {Cursor::Type::resize_ew, {"sb_h_double_arrow", XC_sb_h_double_arrow}},
+                    {Cursor::Type::resize_ns, {"sb_v_double_arrow", XC_sb_v_double_arrow}},
+                    {Cursor::Type::resize_nwse, {"bottom_right_corner", XC_bottom_right_corner}},
+                    {Cursor::Type::resize_nesw, {"bottom_left_corner", XC_bottom_left_corner}},
+                    {Cursor::Type::resize_all, {"fleur", XC_fleur}},
+                    {Cursor::Type::not_allowed, {"not-allowed", XC_pirate}}, // fallback shape
                 };
 
                 auto it = cursor_map.find(type);

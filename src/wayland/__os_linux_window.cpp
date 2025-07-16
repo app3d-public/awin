@@ -1,11 +1,11 @@
 #include <acul/log.hpp>
+#include <awin/native_access.hpp>
 #include <awin/window.hpp>
 #include <fcntl.h>
 #include <linux/input-event-codes.h>
 #include <sys/mman.h>
 #include <sys/timerfd.h>
 #include "../env.hpp"
-#include "awin/types.hpp"
 #include "generators/redifinition.h"
 #include "loaders.hpp"
 #include "platform.hpp"
@@ -90,8 +90,7 @@ namespace awin
                 if (wl_data->hovered)
                 {
                     ctx.cursor_previous_name = NULL;
-                    dispatch_window_event(event_registry.mouse_move_abs, event_id::MouseMoveAbs, wl_data->owner,
-                                          cursor_pos);
+                    dispatch_window_event(event_registry.mouse_move, event_id::mouse_move, wl_data->owner, cursor_pos);
                     return;
                 }
 
@@ -99,7 +98,7 @@ namespace awin
                 {
                     const char *cursor_name = "left_ptr";
 
-                    if (wl_data->flags & WindowFlagBits::Resizable)
+                    if (wl_data->flags & WindowFlagBits::resizable)
                     {
                         if (wl_data->fallback.focus == wl_data->fallback.top.surface)
                         {
@@ -167,8 +166,8 @@ namespace awin
                     ctx.serial = serial;
                     dispatch_window_event(event_registry.mouse_click, wl_data->owner,
                                           static_cast<io::MouseKey>(button - BTN_LEFT),
-                                          state == WL_POINTER_BUTTON_STATE_PRESSED ? io::KeyPressState::Press
-                                                                                   : io::KeyPressState::Release);
+                                          state == WL_POINTER_BUTTON_STATE_PRESSED ? io::KeyPressState::press
+                                                                                   : io::KeyPressState::release);
                     return;
                 }
 
@@ -367,11 +366,11 @@ namespace awin
                 if (!window_data) return;
 
                 const io::KeyPressState action =
-                    state == WL_KEYBOARD_KEY_STATE_PRESSED ? io::KeyPressState::Press : io::KeyPressState::Release;
+                    state == WL_KEYBOARD_KEY_STATE_PRESSED ? io::KeyPressState::press : io::KeyPressState::release;
                 ctx.serial = serial;
                 itimerspec timer = {0};
 
-                if (action == io::KeyPressState::Press)
+                if (action == io::KeyPressState::press)
                 {
                     const xkb_keycode_t keycode = scancode + 8;
 
@@ -392,9 +391,9 @@ namespace awin
                 auto it = ctx.keymap.find(scancode);
                 io::KeyMode mods = ctx.xkb.modifiers;
                 if (it != ctx.keymap.end()) sync_mods_by_key(it->second, mods);
-                input_key(window_data, it != ctx.keymap.end() ? it->second : io::Key::Unknown, action, mods);
+                input_key(window_data, it != ctx.keymap.end() ? it->second : io::Key::unknown, action, mods);
 
-                if (action == io::KeyPressState::Press) input_text(window_data, scancode);
+                if (action == io::KeyPressState::press) input_text(window_data, scancode);
             }
 
             static void keyboard_handle_modifiers(void *user_data, wl_keyboard *keyboard, u32 serial,
@@ -412,12 +411,12 @@ namespace awin
                     xkb_mod_index_t index;
                     i8 bit;
                 } modifiers[] = {
-                    {ctx.xkb.control_index, io::KeyModeBits::Control},
-                    {ctx.xkb.alt_index, io::KeyModeBits::Alt},
-                    {ctx.xkb.shift_index, io::KeyModeBits::Shift},
-                    {ctx.xkb.super_index, io::KeyModeBits::Super},
-                    {ctx.xkb.caps_lock_index, io::KeyModeBits::CapsLock},
-                    {ctx.xkb.num_lock_index, io::KeyModeBits::NumLock},
+                    {ctx.xkb.control_index, io::KeyModeBits::control},
+                    {ctx.xkb.alt_index, io::KeyModeBits::alt},
+                    {ctx.xkb.shift_index, io::KeyModeBits::shift},
+                    {ctx.xkb.super_index, io::KeyModeBits::super},
+                    {ctx.xkb.caps_lock_index, io::KeyModeBits::caps_lock},
+                    {ctx.xkb.num_lock_index, io::KeyModeBits::num_lock},
                 };
 
                 for (size_t i = 0; i < sizeof(modifiers) / sizeof(modifiers[0]); i++)
@@ -572,13 +571,13 @@ namespace awin
                     switch (state)
                     {
                         case XDG_TOPLEVEL_STATE_MAXIMIZED:
-                            window->pending.flags |= WaylandWindowData::Pending::FlagBits::Maximized;
+                            window->pending.flags |= WindowFlagBits::maximized;
                             break;
                         case XDG_TOPLEVEL_STATE_FULLSCREEN:
-                            window->pending.flags |= WaylandWindowData::Pending::FlagBits::Fullscreen;
+                            window->pending.flags |= WindowFlagBits::fullscreen;
                             break;
                         case XDG_TOPLEVEL_STATE_ACTIVATED:
-                            window->pending.flags |= WaylandWindowData::Pending::FlagBits::Activated;
+                            window->pending.flags |= WindowFlagBits::activated;
                             break;
                         default:
                             break;
@@ -646,31 +645,28 @@ namespace awin
                 auto *window = (WaylandWindowData *)user_data;
                 xdg_surface_ack_configure(surface, serial);
 
-                const bool is_pending_activated =
-                    window->pending.flags & WaylandWindowData::Pending::FlagBits::Activated;
+                const bool is_pending_activated = window->pending.flags & WindowFlagBits::activated;
                 if (window->activated != is_pending_activated)
                 {
                     window->activated = is_pending_activated;
                     if (!window->activated) xdg_toplevel_set_minimized(window->xdg.toplevel);
                 }
 
-                const bool is_pending_maximized =
-                    window->pending.flags & WaylandWindowData::Pending::FlagBits::Maximized;
-                const bool is_maximized = window->flags & WindowFlagBits::Maximized;
+                const bool is_pending_maximized = window->pending.flags & WindowFlagBits::maximized;
+                const bool is_maximized = window->flags & WindowFlagBits::maximized;
                 if (is_maximized != is_pending_maximized)
                 {
-                    window->flags = is_pending_maximized ? (window->flags | WindowFlagBits::Maximized)
-                                                         : (window->flags & ~WindowFlagBits::Maximized);
-                    dispatch_window_event(event_registry.maximize, event_id::Maximize, window->owner,
+                    window->flags = is_pending_maximized ? (window->flags | WindowFlagBits::maximized)
+                                                         : (window->flags & ~WindowFlagBits::maximized);
+                    dispatch_window_event(event_registry.maximize, event_id::maximize, window->owner,
                                           is_pending_maximized);
                 }
-                const bool is_pending_fullscreen =
-                    window->pending.flags & WaylandWindowData::Pending::FlagBits::Fullscreen;
-                window->flags = is_pending_fullscreen ? (window->flags | WindowFlagBits::Fullscreen)
-                                                      : (window->flags & ~WindowFlagBits::Fullscreen);
+                const bool is_pending_fullscreen = window->pending.flags & WindowFlagBits::fullscreen;
+                window->flags = is_pending_fullscreen ? (window->flags | WindowFlagBits::fullscreen)
+                                                      : (window->flags & ~WindowFlagBits::fullscreen);
 
                 if (resize_window(window, window->pending.dimensions))
-                    dispatch_window_event(event_registry.resize, event_id::Resize, window->owner,
+                    dispatch_window_event(event_registry.resize, event_id::resize, window->owner,
                                           window->pending.dimensions);
             }
 
@@ -692,9 +688,9 @@ namespace awin
                 }
                 else
                 {
-                    fullscreen = window->flags & WindowFlagBits::Fullscreen;
+                    fullscreen = window->flags & WindowFlagBits::fullscreen;
                     activated = window->activated;
-                    maximized = window->flags & WindowFlagBits::Maximized;
+                    maximized = window->flags & WindowFlagBits::maximized;
                 }
 
                 if (!libdecor_configuration_get_content_size(config, frame, &size.x, &size.y))
@@ -706,20 +702,20 @@ namespace awin
 
                 window->activated = activated;
 
-                if ((window->flags & WindowFlagBits::Maximized) != maximized)
+                if ((window->flags & WindowFlagBits::maximized) != maximized)
                 {
-                    window->flags = maximized ? (window->flags | WindowFlagBits::Maximized)
-                                              : (window->flags & ~WindowFlagBits::Maximized);
-                    dispatch_window_event(event_registry.maximize, event_id::Maximize, window->owner, maximized);
+                    window->flags = maximized ? (window->flags | WindowFlagBits::maximized)
+                                              : (window->flags & ~WindowFlagBits::maximized);
+                    dispatch_window_event(event_registry.maximize, event_id::maximize, window->owner, maximized);
                 }
 
-                window->flags = fullscreen ? (window->flags | WindowFlagBits::Fullscreen)
-                                           : (window->flags & ~WindowFlagBits::Fullscreen);
+                window->flags = fullscreen ? (window->flags | WindowFlagBits::fullscreen)
+                                           : (window->flags & ~WindowFlagBits::fullscreen);
 
-                if (!(window->flags & WindowFlagBits::Hidden)) window->flags &= ~WindowFlagBits::Hidden;
+                if (!(window->flags & WindowFlagBits::hidden)) window->flags &= ~WindowFlagBits::hidden;
 
                 if (resize_window(window, size))
-                    dispatch_window_event(event_registry.resize, event_id::Resize, window->owner, window->dimenstions);
+                    dispatch_window_event(event_registry.resize, event_id::resize, window->owner, window->dimenstions);
                 wl_surface_commit(window->surface);
             }
 
@@ -780,18 +776,18 @@ namespace awin
                     libdecor_frame_set_min_content_size(window->libdecor_frame, window->resize_limit.x,
                                                         window->resize_limit.y);
 
-                if (!(window->flags & WindowFlagBits::Resizable))
+                if (!(window->flags & WindowFlagBits::resizable))
                     libdecor_frame_unset_capabilities(window->libdecor_frame, LIBDECOR_ACTION_RESIZE);
 
-                if (window->flags & WindowFlagBits::Fullscreen)
+                if (window->flags & WindowFlagBits::fullscreen)
                 {
                     libdecor_frame_set_fullscreen(window->libdecor_frame, NULL);
                     set_idle_inhibitor(window, true);
                 }
                 else
                 {
-                    if (window->flags & WindowFlagBits::Maximized) libdecor_frame_set_maximized(window->libdecor_frame);
-                    if (!(window->flags & WindowFlagBits::Decorated))
+                    if (window->flags & WindowFlagBits::maximized) libdecor_frame_set_maximized(window->libdecor_frame);
+                    if (!(window->flags & WindowFlagBits::decorated))
                         libdecor_frame_set_visibility(window->libdecor_frame, false);
                     set_idle_inhibitor(window, false);
                 }
@@ -804,7 +800,7 @@ namespace awin
             static void update_xdg_size_limits(WaylandWindowData *window)
             {
                 acul::point2D<int> limit;
-                if (window->flags & WindowFlagBits::Resizable)
+                if (window->flags & WindowFlagBits::resizable)
                 {
                     if (window->resize_limit.x == 0 || window->resize_limit.y == 0)
                         limit = {0, 0};
@@ -982,7 +978,7 @@ namespace awin
                 window->xdg.decoration_mode = mode;
                 if (mode == ZXDG_TOPLEVEL_DECORATION_V1_MODE_CLIENT_SIDE)
                 {
-                    if (window->flags & WindowFlagBits::Decorated) create_fallback_decorations(window);
+                    if (window->flags & WindowFlagBits::decorated) create_fallback_decorations(window);
                 }
                 else
                     destroy_fallback_decorations(window);
@@ -998,17 +994,20 @@ namespace awin
                 {
                     if (create_libdecor_frame(wl_data))
                     {
-#ifdef PROCESS_UNITTEST
-                        static wl_buffer *stub = nullptr;
-                        if (!stub)
+#ifdef AWIN_TEST_BUILD
+                        if (ctx.is_surface_placeholder_enabled)
                         {
-                            unsigned char data[] = {0, 0, 0, 255};
-                            const Image image = {{1, 1}, data};
-                            stub = create_shm_buffer(&image);
+                            static wl_buffer *stub = nullptr;
+                            if (!stub)
+                            {
+                                unsigned char data[] = {0, 0, 0, 255};
+                                const Image image = {{1, 1}, data};
+                                stub = create_shm_buffer(&image);
+                            }
+                            wl_surface_attach(wl_data->surface, stub, 0, 0);
+                            wl_surface_damage(wl_data->surface, 0, 0, 1, 1);
+                            wl_surface_commit(wl_data->surface);
                         }
-                        wl_surface_attach(wl_data->surface, stub, 0, 0);
-                        wl_surface_damage(wl_data->surface, 0, 0, 1, 1);
-                        wl_surface_commit(wl_data->surface);
 #endif
                         return true;
                     }
@@ -1034,14 +1033,14 @@ namespace awin
                 xdg_toplevel_set_app_id(wl_data->xdg.toplevel, wl_data->title.c_str());
                 xdg_toplevel_set_title(wl_data->xdg.toplevel, wl_data->title.c_str());
 
-                if (wl_data->flags & WindowFlagBits::Fullscreen)
+                if (wl_data->flags & WindowFlagBits::fullscreen)
                 {
                     xdg_toplevel_set_fullscreen(wl_data->xdg.toplevel, NULL);
                     set_idle_inhibitor(wl_data, true);
                 }
                 else
                 {
-                    if (wl_data->flags & WindowFlagBits::Maximized) xdg_toplevel_set_maximized(wl_data->xdg.toplevel);
+                    if (wl_data->flags & WindowFlagBits::maximized) xdg_toplevel_set_maximized(wl_data->xdg.toplevel);
                     set_idle_inhibitor(wl_data, false);
                 }
 
@@ -1052,12 +1051,12 @@ namespace awin
                     zxdg_toplevel_decoration_v1_add_listener(wl_data->xdg.decoration, &xdg_decoration_listener,
                                                              wl_data);
 
-                    u32 mode = wl_data->flags & WindowFlagBits::Decorated
+                    u32 mode = wl_data->flags & WindowFlagBits::decorated
                                    ? ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE
                                    : ZXDG_TOPLEVEL_DECORATION_V1_MODE_CLIENT_SIDE;
                     zxdg_toplevel_decoration_v1_set_mode(wl_data->xdg.decoration, mode);
                 }
-                else if (wl_data->flags & WindowFlagBits::Decorated)
+                else if (wl_data->flags & WindowFlagBits::decorated)
                     create_fallback_decorations(wl_data);
 
                 update_xdg_size_limits(wl_data);
@@ -1136,7 +1135,7 @@ namespace awin
                 }
 
                 wl_data->title = title;
-                if (!(flags & WindowFlagBits::Hidden))
+                if (!(flags & WindowFlagBits::hidden))
                 {
                     if (!create_shell_objects(wl_data)) return false;
                 }
@@ -1300,8 +1299,8 @@ namespace awin
                                 for (u64 i = 0; i < repeats; i++)
                                 {
                                     input_key(ctx.keyboard_focus,
-                                              it != ctx.keymap.end() ? it->second : io::Key::Unknown,
-                                              io::KeyPressState::Press, ctx.xkb.modifiers);
+                                              it != ctx.keymap.end() ? it->second : io::Key::unknown,
+                                              io::KeyPressState::press, ctx.xkb.modifiers);
                                     input_text(ctx.keyboard_focus, ctx.key_repeat_scancode);
                                 }
 
@@ -1536,7 +1535,7 @@ namespace awin
                 if (!wl_data->libdecor_frame &&
                     wl_data->xdg.decoration_mode != ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE)
                 {
-                    if (wl_data->flags & WindowFlagBits::Decorated) create_fallback_decorations(wl_data);
+                    if (wl_data->flags & WindowFlagBits::decorated) create_fallback_decorations(wl_data);
                 }
             }
 
@@ -1557,7 +1556,7 @@ namespace awin
                 WaylandWindowData *window = static_cast<WaylandWindowData *>(user_data);
                 acul::point2D<i32> delta = {static_cast<i32>(wl_fixed_to_double(dx)),
                                             static_cast<i32>(wl_fixed_to_double(dy))};
-                dispatch_window_event(event_registry.mouse_move, event_id::MouseMove, window->owner, delta);
+                dispatch_window_event(event_registry.mouse_move_delta, event_id::mouse_move_delta, window->owner, delta);
             }
 
             static const struct zwp_relative_pointer_v1_listener relative_pointer_listener = {
@@ -1587,16 +1586,16 @@ namespace awin
                 };
 
                 static const acul::hashmap<Cursor::Type, Shape> cursor_map = {
-                    {Cursor::Type::Arrow, {"default", "left_ptr"}},
-                    {Cursor::Type::Ibeam, {"text", "xterm"}},
-                    {Cursor::Type::Crosshair, {"crosshair", "crosshair"}},
-                    {Cursor::Type::Hand, {"pointer", "hand2"}},
-                    {Cursor::Type::ResizeEW, {"ew-resize", "sb_h_double_arrow"}},
-                    {Cursor::Type::ResizeNS, {"ns-resize", "sb_v_double_arrow"}},
-                    {Cursor::Type::ResizeNWSE, {"nwse-resize", "bottom_right_corner"}},
-                    {Cursor::Type::ResizeNESW, {"nesw-resize", "bottom_left_corner"}},
-                    {Cursor::Type::ResizeAll, {"all-scroll", "fleur"}},
-                    {Cursor::Type::NotAllowed, {"not-allowed", "not-allowed"}}};
+                    {Cursor::Type::arrow, {"default", "left_ptr"}},
+                    {Cursor::Type::ibeam, {"text", "xterm"}},
+                    {Cursor::Type::crosshair, {"crosshair", "crosshair"}},
+                    {Cursor::Type::hand, {"pointer", "hand2"}},
+                    {Cursor::Type::resize_ew, {"ew-resize", "sb_h_double_arrow"}},
+                    {Cursor::Type::resize_ns, {"ns-resize", "sb_v_double_arrow"}},
+                    {Cursor::Type::resize_nwse, {"nwse-resize", "bottom_right_corner"}},
+                    {Cursor::Type::resize_nesw, {"nesw-resize", "bottom_left_corner"}},
+                    {Cursor::Type::resize_all, {"all-scroll", "fleur"}},
+                    {Cursor::Type::not_allowed, {"not-allowed", "not-allowed"}}};
 
                 auto it = cursor_map.find(type);
                 if (it == cursor_map.end()) return nullptr;
@@ -1714,16 +1713,16 @@ namespace awin
             void maximize_window(WindowData *window)
             {
                 auto *wl_data = (WaylandWindowData *)window;
-                if (wl_data->flags & WindowFlagBits::Minimized)
+                if (wl_data->flags & WindowFlagBits::minimized)
                     return; // There is no way to unset minimized, so there is nothing to do in this case.
-                if (wl_data->flags & WindowFlagBits::Maximized)
+                if (wl_data->flags & WindowFlagBits::maximized)
                 {
                     if (wl_data->libdecor_frame)
                         libdecor_frame_unset_maximized(wl_data->libdecor_frame);
                     else if (wl_data->xdg.toplevel)
                         xdg_toplevel_unset_maximized(wl_data->xdg.toplevel);
                     else
-                        window->flags &= ~WindowFlagBits::Maximized;
+                        window->flags &= ~WindowFlagBits::maximized;
                 }
                 else
                 {
@@ -1735,4 +1734,17 @@ namespace awin
             }
         } // namespace wayland
     } // namespace platform
+
+    namespace native_access
+    {
+        wl_surface *get_wayland_surface(const Window &window)
+        {
+            auto *wl_data = (platform::wayland::WaylandWindowData *)get_window_data(window);
+            return wl_data->surface;
+        }
+
+#ifdef AWIN_TEST_BUILD
+        void enable_wayland_surface_placeholder() { platform::wayland::ctx.is_surface_placeholder_enabled = true; }
+#endif
+    } // namespace native_access
 } // namespace awin

@@ -49,10 +49,10 @@ namespace awin
             acul::vector<acul::events::listener<MouseEnterEvent> *> mouse_enter;
 
             //  Listener for handling when the mouse position changes in RAW Input mode.
-            acul::vector<acul::events::listener<PosEvent> *> mouse_move;
+            acul::vector<acul::events::listener<PosEvent> *> mouse_move_delta;
 
             //  Listener for handling when the mouse position changes in absolute (per Window dimensions) values
-            acul::vector<acul::events::listener<PosEvent> *> mouse_move_abs;
+            acul::vector<acul::events::listener<PosEvent> *> mouse_move;
 
             // List of event listeners for scroll events.
             acul::vector<acul::events::listener<ScrollEvent> *> scroll;

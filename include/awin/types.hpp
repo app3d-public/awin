@@ -18,125 +18,125 @@ namespace awin
     {
         enum class Key : i16
         {
-            Unknown,
-            Space,
-            Apostroph,
-            Comma,
-            Minus,
-            Period,
-            Slash,
-            D0,
-            D1,
-            D2,
-            D3,
-            D4,
-            D5,
-            D6,
-            D7,
-            D8,
-            D9,
-            Semicolon,
-            Equal,
-            A,
-            B,
-            C,
-            D,
-            E,
-            F,
-            G,
-            H,
-            I,
-            J,
-            K,
-            L,
-            M,
-            N,
-            O,
-            P,
-            Q,
-            R,
-            S,
-            T,
-            U,
-            V,
-            W,
-            X,
-            Y,
-            Z,
-            LeftBrace,
-            Backslash,
-            RightBrace,
-            GraveAccent,
-            Escape,
-            Enter,
-            Tab,
-            Backspace,
-            Insert,
-            Delete,
-            Right,
-            Left,
-            Down,
-            Up,
-            PageUp,
-            PageDown,
-            Home,
-            End,
-            PrintScreen,
-            Pause,
-            F1,
-            F2,
-            F3,
-            F4,
-            F5,
-            F6,
-            F7,
-            F8,
-            F9,
-            F10,
-            F11,
-            F12,
-            F13,
-            F14,
-            F15,
-            F16,
-            F17,
-            F18,
-            F19,
-            F20,
-            F21,
-            F22,
-            F23,
-            F24,
-            KP0,
-            KP1,
-            KP2,
-            KP3,
-            KP4,
-            KP5,
-            KP6,
-            KP7,
-            KP8,
-            KP9,
-            KPDecimal,
-            KPDivide,
-            KPMultiply,
-            KPSubtract,
-            KPAdd,
-            KPEnter,
-            KPEqual,
-            CapsLock,
-            ScrollLock,
-            NumLock,
-            LeftShift,
-            LeftControl,
-            LeftAlt,
-            LeftSuper,
-            RightShift,
-            RightControl,
-            RightAlt,
-            RightSuper,
-            Menu,
-            Last = Menu
+            unknown,
+            space,
+            apostroph,
+            comma,
+            minus,
+            period,
+            slash,
+            d0,
+            d1,
+            d2,
+            d3,
+            d4,
+            d5,
+            d6,
+            d7,
+            d8,
+            d9,
+            semicolon,
+            equal,
+            a,
+            b,
+            c,
+            d,
+            e,
+            f,
+            g,
+            h,
+            i,
+            j,
+            k,
+            l,
+            m,
+            n,
+            o,
+            p,
+            q,
+            r,
+            s,
+            t,
+            u,
+            v,
+            w,
+            x,
+            y,
+            z,
+            lbrace,
+            backslash,
+            rbrace,
+            grave_accent,
+            escape,
+            enter,
+            tab,
+            backspace,
+            insert,
+            del,
+            right,
+            left,
+            down,
+            up,
+            page_up,
+            page_down,
+            home,
+            end,
+            print_screen,
+            pause,
+            f1,
+            f2,
+            f3,
+            f4,
+            f5,
+            f6,
+            f7,
+            f8,
+            f9,
+            f10,
+            f11,
+            f12,
+            f13,
+            f14,
+            f15,
+            f16,
+            f17,
+            f18,
+            f19,
+            f20,
+            f21,
+            f22,
+            f23,
+            f24,
+            kp_0,
+            kp_1,
+            kp_2,
+            kp_3,
+            kp_4,
+            kp_5,
+            kp_6,
+            kp_7,
+            kp_8,
+            kp_9,
+            kp_decimal,
+            kp_divide,
+            kp_multiply,
+            kp_subtract,
+            kp_add,
+            kp_enter,
+            kp_equal,
+            caps_lock,
+            scroll_lock,
+            num_lock,
+            lshift,
+            lcontrol,
+            lalt,
+            lsuper,
+            rshift,
+            rcontrol,
+            ralt,
+            rsuper,
+            menu,
+            last = menu
         };
 
         inline constexpr i16 operator+(Key k) { return static_cast<i16>(k); }
@@ -144,10 +144,10 @@ namespace awin
 
         enum class MouseKey
         {
-            Unknown = -1,
-            Left = 0,
-            Right = 1,
-            Middle = 2
+            unknown = -1,
+            left = 0,
+            right = 1,
+            middle = 2
         };
 
         inline constexpr i16 operator+(MouseKey k) { return static_cast<i16>(k); }
@@ -155,21 +155,21 @@ namespace awin
 
         enum class KeyPressState : i8
         {
-            Release,
-            Press,
-            Repeat
+            release,
+            press,
+            repeat
         };
 
         struct KeyModeBits
         {
             enum enum_type : i8
             {
-                Shift = 0x0001,
-                Control = 0x0002,
-                Alt = 0x0004,
-                Super = 0x0008,
-                CapsLock = 0x0010,
-                NumLock = 0x0020
+                shift = 0x0001,
+                control = 0x0002,
+                alt = 0x0004,
+                super = 0x0008,
+                caps_lock = 0x0010,
+                num_lock = 0x0020
             };
             using flag_bitmask = std::true_type;
         };
@@ -192,19 +192,19 @@ namespace awin
 
         enum class Type
         {
-            Arrow,      // The regular arrow cursor.
-            Ibeam,      // The text input I-beam cursor.
-            Crosshair,  // The crosshair cursor.
-            Hand,       // The pointing hand cursor.
-            ResizeEW,   // The horizontal resize/move arrow cursor.  This is usually a horizontal double-headed arrow.
-            ResizeNS,   // The vertical resize/move cursor. This is usually a vertical double-headed arrow.
-            ResizeNWSE, // The top-left to bottom-right diagonal resize/move cursor.  This is usually a diagonal
-                        // double-headed arrow.
-            ResizeNESW, // The top-right to bottom-left diagonal resize/move cursor.  This is usually a diagonal
-                        // double-headed arrow.
-            ResizeAll,  // The omni-directional resize cursor/move.  This is usually either a combined horizontal and
-                        // vertical double-headed arrow or a grabbing hand.
-            NotAllowed  // The operation-not-allowed shape.  This is usually a circle with a diagonal line through it.
+            arrow,       // The regular arrow cursor.
+            ibeam,       // The text input I-beam cursor.
+            crosshair,   // The crosshair cursor.
+            hand,        // The pointing hand cursor.
+            resize_ew,   // The horizontal resize/move arrow cursor.  This is usually a horizontal double-headed arrow.
+            resize_ns,   // The vertical resize/move cursor. This is usually a vertical double-headed arrow.
+            resize_nwse, // The top-left to bottom-right diagonal resize/move cursor.  This is usually a diagonal
+                         // double-headed arrow.
+            resize_nesw, // The top-right to bottom-left diagonal resize/move cursor.  This is usually a diagonal
+                         // double-headed arrow.
+            resize_all,  // The omni-directional resize cursor/move.  This is usually either a combined horizontal and
+                         // vertical double-headed arrow or a grabbing hand.
+            not_allowed  // The operation-not-allowed shape.  This is usually a circle with a diagonal line through it.
         };
 
         Cursor(Platform *pd = NULL) : _pd(pd) {}
@@ -232,23 +232,31 @@ namespace awin
     private:
         Platform *_pd;
 
-        friend Cursor::Platform *get_cursor_pd(Cursor* cursor);
+        friend Cursor::Platform *get_cursor_pd(Cursor *cursor);
     };
 
     // Flags for window creation, stored as u16 for memory efficiency.
     struct WindowFlagBits
     {
+#ifdef _WIN32
+    #define NATIVE_RESERVE_FLAG snapped
+#else
+    #define NATIVE_RESERVE_FLAG activated
+#endif
         enum enum_type : u16
         {
-            Resizable = 0x0001,    // Allows window resizing.
-            Snapped = 0x0002,      // [WIN32 Only] Enables window snapping to screen edges.
-            Decorated = 0x0004,    // Adds decorations like title bar and borders.
-            Fullscreen = 0x0008,   // Enables fullscreen mode.
-            MinimizeBox = 0x00010, // Includes a minimize button.
-            MaximizeBox = 0x00020, // Includes a maximize button.
-            Hidden = 0x00040,      // Does not show the window on creation.
-            Minimized = 0x00080,   // Minimized.
-            Maximized = 0x00100,   // Maximized.
+            resizable = 0x0001,           // Allows window resizing.
+            NATIVE_RESERVE_FLAG = 0x0002, //
+                                          // Win32: Enables window snapping to screen edges.
+                                          // Wayland: Reserved for internal API.
+                                          // Actually doesn't need in a Window instance
+            decorated = 0x0004,           // Adds decorations like title bar and borders.
+            fullscreen = 0x0008,          // Enables fullscreen mode.
+            minimize_box = 0x00010,       // Includes a minimize button.
+            maximize_box = 0x00020,       // Includes a maximize button.
+            hidden = 0x00040,             // Does not show the window on creation.
+            minimized = 0x00080,          // Minimized.
+            maximized = 0x00100,          // Maximized.
         };
         using flag_bitmask = std::true_type;
     };
@@ -256,9 +264,9 @@ namespace awin
     // Flags for window creation, stored as u8 for memory efficiency.
     using WindowFlags = acul::flags<WindowFlagBits>;
 
-#define WINDOW_DEFAULT_FLAGS                                                                \
-    WindowFlagBits::Resizable | WindowFlagBits::MinimizeBox | WindowFlagBits::MaximizeBox | \
-        WindowFlagBits::Decorated | WindowFlagBits::Snapped
+#define WINDOW_DEFAULT_FLAGS                                                                  \
+    WindowFlagBits::resizable | WindowFlagBits::minimize_box | WindowFlagBits::maximize_box | \
+        WindowFlagBits::decorated | WindowFlagBits::NATIVE_RESERVE_FLAG
 
     struct Image
     {
@@ -275,7 +283,7 @@ namespace awin
         bool focused{false};
         bool ready_to_close = false;
         acul::point2D<i32> resize_limit{0, 0};
-        io::KeyPressState keys[io::Key::Last + 1];
+        io::KeyPressState keys[io::Key::last + 1];
         Cursor *cursor{NULL};
     };
 } // namespace awin

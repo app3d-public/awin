@@ -51,17 +51,7 @@ namespace awin
                 struct Pending
                 {
                     acul::point2D<int> dimensions;
-                    struct FlagBits
-                    {
-                        enum enum_type : u8
-                        {
-                            Maximized = 0x1,
-                            Activated = 0x2,
-                            Fullscreen = 0x4,
-                        };
-                        using flag_bitmask = std::true_type;
-                    };
-                    acul::flags<FlagBits> flags;
+                    WindowFlags flags;
                 } pending;
             };
 

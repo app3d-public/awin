@@ -12,6 +12,7 @@
 #include <X11/extensions/shape.h>
 #include <X11/keysym.h>
 #include <dlfcn.h>
+#include <xcb/xcb.h>
 
 typedef XClassHint *(*PFN_XAllocClassHint)(void);
 typedef XSizeHints *(*PFN_XAllocSizeHints)(void);
@@ -149,9 +150,6 @@ typedef ::Cursor (*PFN_XcursorImageLoadCursor)(Display *, const XcursorImage *);
 typedef ::Cursor (*PFN_XcursorLibraryLoadCursor)(Display *, const char *);
 
 // XCB
-typedef XID xcb_window_t;
-typedef XID xcb_visualid_t;
-typedef struct xcb_connection_t xcb_connection_t;
 typedef xcb_connection_t *(*PFN_XGetXCBConnection)(Display *);
 
 // XRender

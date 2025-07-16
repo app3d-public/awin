@@ -1052,12 +1052,12 @@ namespace awin
             static io::KeyMode translate_state(int state)
             {
                 io::KeyMode mods = 0;
-                if (state & ShiftMask) mods |= io::KeyModeBits::Shift;
-                if (state & ControlMask) mods |= io::KeyModeBits::Control;
-                if (state & Mod1Mask) mods |= io::KeyModeBits::Alt;
-                if (state & Mod4Mask) mods |= io::KeyModeBits::Super;
-                if (state & LockMask) mods |= io::KeyModeBits::CapsLock;
-                if (state & Mod2Mask) mods |= io::KeyModeBits::NumLock;
+                if (state & ShiftMask) mods |= io::KeyModeBits::shift;
+                if (state & ControlMask) mods |= io::KeyModeBits::control;
+                if (state & Mod1Mask) mods |= io::KeyModeBits::alt;
+                if (state & Mod4Mask) mods |= io::KeyModeBits::super;
+                if (state & LockMask) mods |= io::KeyModeBits::caps_lock;
+                if (state & Mod2Mask) mods |= io::KeyModeBits::num_lock;
                 return mods;
             }
 
@@ -1065,7 +1065,7 @@ namespace awin
             {
                 auto &xlib = ctx.xlib;
                 auto mods = translate_state(event->xkey.state);
-                const int plain = !(mods & (io::KeyModeBits::Control | io::KeyModeBits::Alt));
+                const int plain = !(mods & (io::KeyModeBits::control | io::KeyModeBits::alt));
 
                 if (window_data->ic)
                 {
@@ -1076,8 +1076,8 @@ namespace awin
                         {
                             auto it = ctx.keymap.find(keycode);
                             if (it != ctx.keymap.end()) sync_mods_by_key(it->second, mods);
-                            input_key(window_data, it != ctx.keymap.end() ? it->second : io::Key::Unknown,
-                                      io::KeyPressState::Press, mods);
+                            input_key(window_data, it != ctx.keymap.end() ? it->second : io::Key::unknown,
+                                      io::KeyPressState::press, mods);
                         }
                         window_data->key_press_times[keycode] = event->xkey.time;
                     }
@@ -1119,8 +1119,8 @@ namespace awin
                     KeySym keysym;
                     xlib.XLookupString(&event->xkey, NULL, 0, &keysym, NULL);
                     auto it = ctx.keymap.find(keycode);
-                    input_key(window_data, it != ctx.keymap.end() ? it->second : io::Key::Unknown,
-                              io::KeyPressState::Press, mods);
+                    input_key(window_data, it != ctx.keymap.end() ? it->second : io::Key::unknown,
+                              io::KeyPressState::press, mods);
 
                     const u32 codepoint = keysym_to_unicode(keysym);
                     if (codepoint != UINT32_MAX)
@@ -1163,8 +1163,8 @@ namespace awin
                         }
                     }
                 }
-                input_key(window_data, it_key != ctx.keymap.end() ? it_key->second : io::Key::Unknown,
-                          io::KeyPressState::Release, mods);
+                input_key(window_data, it_key != ctx.keymap.end() ? it_key->second : io::Key::unknown,
+                          io::KeyPressState::release, mods);
             }
 
             void on_btn_press(XEvent *event, X11WindowData *window_data)
@@ -1172,16 +1172,16 @@ namespace awin
                 switch (event->xbutton.button)
                 {
                     case Button1:
-                        dispatch_window_event(event_registry.mouse_click, window_data->owner, io::MouseKey::Left,
-                                              io::KeyPressState::Press);
+                        dispatch_window_event(event_registry.mouse_click, window_data->owner, io::MouseKey::left,
+                                              io::KeyPressState::press);
                         return;
                     case Button2:
-                        dispatch_window_event(event_registry.mouse_click, window_data->owner, io::MouseKey::Middle,
-                                              io::KeyPressState::Press);
+                        dispatch_window_event(event_registry.mouse_click, window_data->owner, io::MouseKey::middle,
+                                              io::KeyPressState::press);
                         return;
                     case Button3:
-                        dispatch_window_event(event_registry.mouse_click, window_data->owner, io::MouseKey::Right,
-                                              io::KeyPressState::Press);
+                        dispatch_window_event(event_registry.mouse_click, window_data->owner, io::MouseKey::right,
+                                              io::KeyPressState::press);
                         return;
                         // Modern X provides scroll events as mouse button presses
                     case Button4:
@@ -1197,8 +1197,8 @@ namespace awin
                         dispatch_window_event(event_registry.scroll, window_data->owner, -1.0, 0.0);
                         return;
                     default:
-                        dispatch_window_event(event_registry.mouse_click, window_data->owner, io::MouseKey::Unknown,
-                                              io::KeyPressState::Press);
+                        dispatch_window_event(event_registry.mouse_click, window_data->owner, io::MouseKey::unknown,
+                                              io::KeyPressState::press);
                         return;
                 }
             }
@@ -1208,20 +1208,20 @@ namespace awin
                 switch (event->xbutton.button)
                 {
                     case Button1:
-                        dispatch_window_event(event_registry.mouse_click, window_data->owner, io::MouseKey::Left,
-                                              io::KeyPressState::Release);
+                        dispatch_window_event(event_registry.mouse_click, window_data->owner, io::MouseKey::left,
+                                              io::KeyPressState::release);
                         return;
                     case Button2:
-                        dispatch_window_event(event_registry.mouse_click, window_data->owner, io::MouseKey::Middle,
-                                              io::KeyPressState::Release);
+                        dispatch_window_event(event_registry.mouse_click, window_data->owner, io::MouseKey::middle,
+                                              io::KeyPressState::release);
                         return;
                     case Button3:
-                        dispatch_window_event(event_registry.mouse_click, window_data->owner, io::MouseKey::Right,
-                                              io::KeyPressState::Release);
+                        dispatch_window_event(event_registry.mouse_click, window_data->owner, io::MouseKey::right,
+                                              io::KeyPressState::release);
                         return;
                     default:
-                        dispatch_window_event(event_registry.mouse_click, window_data->owner, io::MouseKey::Unknown,
-                                              io::KeyPressState::Press);
+                        dispatch_window_event(event_registry.mouse_click, window_data->owner, io::MouseKey::unknown,
+                                              io::KeyPressState::press);
                 }
             }
         } // namespace x11

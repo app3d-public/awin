@@ -24,12 +24,12 @@ namespace awin
         DWORD get_window_style(WindowFlags flags)
         {
             DWORD style = WS_CLIPSIBLINGS | WS_CLIPCHILDREN;
-            if (flags & WindowFlagBits::Fullscreen) style |= WS_POPUP;
+            if (flags & WindowFlagBits::fullscreen) style |= WS_POPUP;
             if (flags & WindowFlagBits::Snapped) style |= WS_SYSMENU;
-            if (flags & WindowFlagBits::MinimizeBox) style |= WS_MINIMIZEBOX;
+            if (flags & WindowFlagBits::minimizeBox) style |= WS_MINIMIZEBOX;
             if (flags & WindowFlagBits::MaximizeBox) style |= WS_MAXIMIZEBOX;
-            if (flags & WindowFlagBits::Resizable) style |= WS_THICKFRAME;
-            if (flags & WindowFlagBits::Decorated) style |= WS_CAPTION;
+            if (flags & WindowFlagBits::resizable) style |= WS_THICKFRAME;
+            if (flags & WindowFlagBits::decorated) style |= WS_CAPTION;
             return style;
         }
 
@@ -78,8 +78,8 @@ namespace awin
                     ctx.frame.y = GetSystemMetricsForDpi(SM_CYFRAME, ctx.dpi);
                     ctx.padding = GetSystemMetricsForDpi(SM_CXPADDEDBORDER, ctx.dpi);
 
-                    if (!wParam || !window || (window->flags & WindowFlagBits::Decorated) ||
-                        (window->flags & WindowFlagBits::Fullscreen))
+                    if (!wParam || !window || (window->flags & WindowFlagBits::decorated) ||
+                        (window->flags & WindowFlagBits::fullscreen))
                         break;
 
                     NCCALCSIZE_PARAMS *params = (NCCALCSIZE_PARAMS *)lParam;
@@ -95,13 +95,13 @@ namespace awin
                     MonitorInfo monitor_info = get_primary_monitor_info();
                     ctx.screen.x = monitor_info.dimensions.x;
                     ctx.screen.y = monitor_info.dimensions.y;
-                    if (window->flags & WindowFlagBits::Fullscreen)
+                    if (window->flags & WindowFlagBits::fullscreen)
                     {
                         SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, ctx.screen.x, ctx.screen.y, SWP_SHOWWINDOW);
                         return 0;
                     }
 
-                    if (window->flags & WindowFlagBits::Decorated) break;
+                    if (window->flags & WindowFlagBits::decorated) break;
                     RECT size_rect;
                     GetWindowRect(hwnd, &size_rect);
 
@@ -127,7 +127,7 @@ namespace awin
 
                 case WM_NCHITTEST:
                 {
-                    if (window->flags & WindowFlagBits::Decorated) break;
+                    if (window->flags & WindowFlagBits::decorated) break;
                     LRESULT hit = DefWindowProcW(hwnd, uMsg, wParam, lParam);
                     switch (hit)
                     {
@@ -181,31 +181,31 @@ namespace awin
                     {
                         case WM_LBUTTONDOWN:
                             button = io::MouseKey::Left;
-                            action = io::KeyPressState::Press;
+                            action = io::KeyPressState::press;
                             break;
                         case WM_LBUTTONUP:
                             button = io::MouseKey::Left;
-                            action = io::KeyPressState::Release;
+                            action = io::KeyPressState::release;
                             break;
                         case WM_RBUTTONDOWN:
                             button = io::MouseKey::Right;
-                            action = io::KeyPressState::Press;
+                            action = io::KeyPressState::press;
                             break;
                         case WM_RBUTTONUP:
                             button = io::MouseKey::Right;
-                            action = io::KeyPressState::Release;
+                            action = io::KeyPressState::release;
                             break;
                         case WM_MBUTTONDOWN:
                             button = io::MouseKey::Middle;
-                            action = io::KeyPressState::Press;
+                            action = io::KeyPressState::press;
                             break;
                         case WM_MBUTTONUP:
                             button = io::MouseKey::Middle;
-                            action = io::KeyPressState::Release;
+                            action = io::KeyPressState::release;
                             break;
                         default:
-                            button = io::MouseKey::Unknown;
-                            action = io::KeyPressState::Release;
+                            button = io::MouseKey::unknown;
+                            action = io::KeyPressState::release;
                             break;
                     };
                     dispatch_window_event(event_registry.mouse_click, window->owner, button, action);
@@ -276,7 +276,7 @@ namespace awin
                         case SC_SCREENSAVE:
                         case SC_MONITORPOWER:
                         {
-                            if (window->flags & WindowFlagBits::Fullscreen)
+                            if (window->flags & WindowFlagBits::fullscreen)
                                 return 0;
                             else
                                 break;
@@ -290,9 +290,9 @@ namespace awin
                 case WM_SYSKEYUP:
                 {
                     const auto action =
-                        (HIWORD(lParam) & KF_UP) ? io::KeyPressState::Release : io::KeyPressState::Press;
+                        (HIWORD(lParam) & KF_UP) ? io::KeyPressState::release : io::KeyPressState::press;
                     const auto mods = get_key_mods();
-                    io::Key key = io::Key::Unknown;
+                    io::Key key = io::Key::unknown;
                     switch (wParam)
                     {
                         case VK_MENU:
@@ -300,7 +300,7 @@ namespace awin
                             break;
                         case VK_SHIFT:
                         {
-                            if (action == io::KeyPressState::Release)
+                            if (action == io::KeyPressState::release)
                             {
                                 // HACK: Release both Shift keys on Shift up event, as when both
                                 //       are pressed the first release does not dispatch any event
@@ -346,18 +346,18 @@ namespace awin
                             break;
                         case VK_SNAPSHOT:
                             // HACK: Key down is not reported for the Print Screen key
-                            input_key(window, key, io::KeyPressState::Press, mods);
-                            input_key(window, key, io::KeyPressState::Release, mods);
+                            input_key(window, key, io::KeyPressState::press, mods);
+                            input_key(window, key, io::KeyPressState::release, mods);
                             break;
                         default:
                         {
                             auto it = ctx.keymap.find(wParam);
-                            key = it != ctx.keymap.end() ? it->second : io::Key::Unknown;
+                            key = it != ctx.keymap.end() ? it->second : io::Key::unknown;
                             break;
                         }
                     }
 
-                    if (key != io::Key::Unknown) input_key(window, key, action, mods);
+                    if (key != io::Key::unknown) input_key(window, key, action, mods);
                     // Prevent Alt to call Menu Behavior
                     if (wParam == VK_MENU) return 0;
                     break;
@@ -375,7 +375,7 @@ namespace awin
                         window->backend.cursor_tracked = true;
                         dispatch_window_event(event_registry.mouse_enter, window->owner, true);
                     }
-                    dispatch_window_event(event_registry.mouse_move_abs, event_id::MouseMoveAbs, window->owner,
+                    dispatch_window_event(event_registry.mouse_move, event_id::mouse_move, window->owner,
                                           acul::point2D(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)));
                     return 0;
                 }
@@ -398,27 +398,27 @@ namespace awin
                 case WM_SIZE:
                 {
                     acul::point2D<i32> dimenstions(LOWORD(lParam), HIWORD(lParam));
-                    if (!(window->flags & WindowFlagBits::Hidden))
+                    if (!(window->flags & WindowFlagBits::hidden))
                     {
                         bool want_min = (wParam == SIZE_MINIMIZED);
                         bool want_max = (wParam == SIZE_MAXIMIZED);
-                        if ((window->flags & WindowFlagBits::Minimized) != want_min)
+                        if ((window->flags & WindowFlagBits::minimized) != want_min)
                         {
                             if (want_min)
                             {
-                                window->flags |= WindowFlagBits::Minimized;
+                                window->flags |= WindowFlagBits::minimized;
                                 dimenstions = {0, 0};
                             }
                             else
-                                window->flags &= ~WindowFlagBits::Minimized;
+                                window->flags &= ~WindowFlagBits::minimized;
                             dispatch_window_event(event_registry.minimize, event_id::Minimize, window->owner, want_min);
                         }
-                        if ((window->flags & WindowFlagBits::Maximized) != want_max)
+                        if ((window->flags & WindowFlagBits::maximized) != want_max)
                         {
                             if (want_max)
-                                window->flags |= WindowFlagBits::Maximized;
+                                window->flags |= WindowFlagBits::maximized;
                             else
-                                window->flags &= ~WindowFlagBits::Maximized;
+                                window->flags &= ~WindowFlagBits::maximized;
                             dispatch_window_event(event_registry.maximize, event_id::Maximize, window->owner, want_max);
                         }
                     }
@@ -482,7 +482,7 @@ namespace awin
                     if (raw->header.dwType == RIM_TYPEMOUSE)
                     {
                         acul::point2D<i32> delta{raw->data.mouse.lLastX, raw->data.mouse.lLastY};
-                        dispatch_window_event(event_registry.mouse_move, event_id::MouseMove, window->owner, delta);
+                        dispatch_window_event(event_registry.mouse_move_delta, event_id::mouse_move_delta, window->owner, delta);
                     }
                     return 0;
                 }
@@ -575,11 +575,11 @@ namespace awin
                             nullptr, platform::ctx.instance, (LPVOID)&_platform);
 
         if (!_platform.backend.hwnd) throw acul::runtime_error("Failed to create window");
-        if (!(flags & WindowFlagBits::Hidden))
+        if (!(flags & WindowFlagBits::hidden))
         {
-            if (flags & WindowFlagBits::Minimized)
+            if (flags & WindowFlagBits::minimized)
                 ShowWindow(_platform.backend.hwnd, SW_MINIMIZE);
-            else if (flags & WindowFlagBits::Maximized)
+            else if (flags & WindowFlagBits::maximized)
                 ShowWindow(_platform.backend.hwnd, SW_MAXIMIZE);
             else
                 ShowWindow(_platform.backend.hwnd, SW_SHOWNORMAL);
@@ -613,16 +613,16 @@ namespace awin
         if (!hidden()) return;
         WINDOWPLACEMENT placement = {sizeof(WINDOWPLACEMENT)};
         GetWindowPlacement(_platform.backend.hwnd, &placement);
-        placement.showCmd = _platform.flags & WindowFlagBits::Maximized ? SW_SHOWMAXIMIZED : SW_NORMAL;
+        placement.showCmd = _platform.flags & WindowFlagBits::maximized ? SW_SHOWMAXIMIZED : SW_NORMAL;
         SetWindowPlacement(_platform.backend.hwnd, &placement);
-        _platform.flags &= ~WindowFlagBits::Hidden;
+        _platform.flags &= ~WindowFlagBits::hidden;
     }
 
     void Window::hide_window()
     {
         if (hidden()) return;
         ShowWindow(_platform.backend.hwnd, SW_HIDE);
-        _platform.flags |= WindowFlagBits::Hidden;
+        _platform.flags |= WindowFlagBits::hidden;
     }
 
     acul::string Window::title() const { return acul::utf16_to_utf8(_platform.backend.title); }
@@ -635,7 +635,7 @@ namespace awin
 
     void Window::enable_fullscreen()
     {
-        _platform.flags |= WindowFlagBits::Fullscreen;
+        _platform.flags |= WindowFlagBits::fullscreen;
         SetWindowLongPtr(_platform.backend.hwnd, GWL_STYLE, WS_VISIBLE | WS_POPUP);
         SetWindowPos(_platform.backend.hwnd, HWND_TOPMOST, 0, 0, platform::ctx.screen.x, platform::ctx.screen.y,
                      SWP_SHOWWINDOW);
@@ -643,7 +643,7 @@ namespace awin
 
     void Window::disable_fullscreen()
     {
-        _platform.flags &= ~WindowFlagBits::Fullscreen;
+        _platform.flags &= ~WindowFlagBits::fullscreen;
         SetWindowLongPtr(_platform.backend.hwnd, GWL_STYLE, _platform.backend.style);
         SetWindowPos(_platform.backend.hwnd, HWND_NOTOPMOST, 0, 0, _platform.dimenstions.x, _platform.dimenstions.y,
                      SWP_SHOWWINDOW);
@@ -701,7 +701,7 @@ namespace awin
         WINDOWPLACEMENT wp = {sizeof(WINDOWPLACEMENT)};
         GetWindowPlacement(_platform.backend.hwnd, &wp);
 
-        acul::point2D<i32> dimensions = _platform.flags & WindowFlagBits::Decorated
+        acul::point2D<i32> dimensions = _platform.flags & WindowFlagBits::decorated
                                             ? get_window_size(*this)
                                             : platform::native_access::get_full_client_size(*this);
         wp.rcNormalPosition.left = position.x;
@@ -918,7 +918,7 @@ namespace awin
     {
         RECT clent_rect;
         GetClientRect(window._platform.backend.hwnd, &clent_rect);
-        platform::add_frame_to_client_area(&clent_rect, window._platform.flags & WindowFlagBits::Maximized, 1);
+        platform::add_frame_to_client_area(&clent_rect, window._platform.flags & WindowFlagBits::maximized, 1);
         return {clent_rect.right - clent_rect.left, clent_rect.bottom - clent_rect.top};
     }
 

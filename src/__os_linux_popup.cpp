@@ -34,23 +34,23 @@ namespace awin
 
         enum BackendType
         {
-            Undefined,
-            Kdialog,
-            Zenity
+            undefined,
+            kdialog,
+            zenity
         };
 
         struct Context
         {
             BackendType backend;
             bool init;
-        } ctx{BackendType::Undefined, false};
+        } ctx{BackendType::undefined, false};
 
         void init_ctx()
         {
             if (check_app_exists("kdialog"))
-                ctx.backend = BackendType::Kdialog;
+                ctx.backend = BackendType::kdialog;
             else if (check_app_exists("zenity"))
-                ctx.backend = BackendType::Zenity;
+                ctx.backend = BackendType::zenity;
             else
                 LOG_ERROR("Failed to initialize popup app provider");
             ctx.init = true;
@@ -63,16 +63,16 @@ namespace awin
             acul::string icon;
             switch (style)
             {
-                case Style::Info:
+                case Style::info:
                     icon = "information";
                     break;
-                case Style::Warning:
+                case Style::warning:
                     icon = "warning";
                     break;
-                case Style::Error:
+                case Style::error:
                     icon = "error";
                     break;
-                case Style::Question:
+                case Style::question:
                     icon = "question";
                     break;
             }
@@ -80,30 +80,30 @@ namespace awin
             acul::stringstream cmd;
             switch (ctx.backend)
             {
-                case Kdialog:
+                case kdialog:
                     cmd << "kdialog --";
-                    if (buttons.size() == 2 && *buttons.begin() == Buttons::Yes &&
-                        *(buttons.begin() + 1) == Buttons::No)
+                    if (buttons.size() == 2 && *buttons.begin() == Buttons::yes &&
+                        *(buttons.begin() + 1) == Buttons::no)
                         cmd << "yesno ";
-                    else if (buttons.size() == 2 && *buttons.begin() == Buttons::OK &&
-                             *(buttons.begin() + 1) == Buttons::Cancel)
+                    else if (buttons.size() == 2 && *buttons.begin() == Buttons::ok &&
+                             *(buttons.begin() + 1) == Buttons::cancel)
                         cmd << "yesno --yes-label 'OK' --no-label 'Cancel' ";
                     else
                         cmd << "msgbox ";
                     cmd << "\"" << message << "\"";
                     if (title && *title) cmd << " --title \"" << title << "\"";
                     break;
-                case Zenity:
+                case zenity:
                     cmd << "zenity --";
-                    if (buttons.size() == 2 && *buttons.begin() == Buttons::Yes &&
-                        *(buttons.begin() + 1) == Buttons::No)
+                    if (buttons.size() == 2 && *buttons.begin() == Buttons::yes &&
+                        *(buttons.begin() + 1) == Buttons::no)
                         cmd << "question";
-                    else if (buttons.size() == 2 && *buttons.begin() == Buttons::OK &&
-                             *(buttons.begin() + 1) == Buttons::Cancel)
+                    else if (buttons.size() == 2 && *buttons.begin() == Buttons::ok &&
+                             *(buttons.begin() + 1) == Buttons::cancel)
                         cmd << "question --ok-label='OK' --cancel-label='Cancel'";
-                    else if (style == Style::Error)
+                    else if (style == Style::error)
                         cmd << "error";
-                    else if (style == Style::Warning)
+                    else if (style == Style::warning)
                         cmd << "warning";
                     else
                         cmd << "info";
@@ -114,12 +114,12 @@ namespace awin
                 default:
                     // fallback to stderr
                     fprintf(stderr, "%s: %s\n", title ? title : "Message", message ? message : "");
-                    return Buttons::Error;
+                    return Buttons::error;
             }
             cmd << " 2>/dev/null"; // suppress GTK or shell warnings
 
             FILE *pipe = popen(cmd.str().c_str(), "r");
-            if (!pipe) return Buttons::Error;
+            if (!pipe) return Buttons::error;
 
             char buffer[256] = {};
             fgets(buffer, sizeof(buffer), pipe);
@@ -128,23 +128,23 @@ namespace awin
             // Interpret result
             switch (ctx.backend)
             {
-                case Kdialog:
-                    return code == 0 ? Buttons::Yes : Buttons::No;
+                case kdialog:
+                    return code == 0 ? Buttons::yes : Buttons::no;
 
-                case Zenity:
+                case zenity:
                     if (code == 0) // OK or Yes
                     {
                         if (buttons.size() == 2) return *buttons.begin();
-                        return Buttons::OK;
+                        return Buttons::ok;
                     }
                     else // Cancel or No
                     {
                         if (buttons.size() == 2) return *(buttons.begin() + 1);
-                        return Buttons::Cancel;
+                        return Buttons::cancel;
                     }
 
                 default:
-                    return Buttons::Error;
+                    return Buttons::error;
             }
         }
 
@@ -156,7 +156,7 @@ namespace awin
 
             switch (ctx.backend)
             {
-                case Kdialog:
+                case kdialog:
                     cmd << "kdialog --getopenfilename";
                     if (default_path && *default_path)
                         cmd << " \"" << default_path << "\"";
@@ -181,7 +181,7 @@ namespace awin
                     if (title && *title) cmd << " --title \"" << title << "\"";
                     break;
 
-                case Zenity:
+                case zenity:
                     cmd << "zenity --file-selection";
                     if (default_path && *default_path) cmd << " --filename=\"" << default_path << "/\"";
 
@@ -223,7 +223,7 @@ namespace awin
 
             switch (ctx.backend)
             {
-                case Kdialog:
+                case kdialog:
                     cmd << "kdialog --getopenfilename";
                     if (default_path && *default_path)
                         cmd << " \"" << default_path << "\"";
@@ -250,7 +250,7 @@ namespace awin
                     cmd << " --multiple --separate-output";
                     break;
 
-                case Zenity:
+                case zenity:
                     cmd << "zenity --file-selection";
                     if (default_path && *default_path) cmd << " --filename=\"" << default_path << "/\"";
 
@@ -284,7 +284,7 @@ namespace awin
 
             acul::vector<acul::string> result;
 
-            if (ctx.backend == Kdialog)
+            if (ctx.backend == kdialog)
             {
                 size_t start = 0;
                 while (start < raw.size())
@@ -295,7 +295,7 @@ namespace awin
                     start = end + 1;
                 }
             }
-            else if (ctx.backend == Zenity)
+            else if (ctx.backend == zenity)
             {
                 size_t start = 0;
                 while (start < raw.size())
@@ -321,7 +321,7 @@ namespace awin
             acul::stringstream cmd;
             switch (ctx.backend)
             {
-                case Kdialog:
+                case kdialog:
                     cmd << "kdialog --getexistingdirectory";
                     if (default_path && *default_path)
                         cmd << " \"" << default_path << "\"";
@@ -331,7 +331,7 @@ namespace awin
                     if (title && *title) cmd << " --title \"" << title << "\"";
                     break;
 
-                case Zenity:
+                case zenity:
                     cmd << "zenity --file-selection --directory";
                     if (default_path && *default_path) cmd << " --filename=\"" << default_path << "/\"";
 
@@ -364,7 +364,7 @@ namespace awin
             acul::stringstream cmd;
             switch (ctx.backend)
             {
-                case Kdialog:
+                case kdialog:
                     cmd << "kdialog --getsavefilename";
                     if (default_path && *default_path)
                         cmd << " \"" << default_path << "\"";
@@ -389,7 +389,7 @@ namespace awin
                     if (title && *title) cmd << " --title \"" << title << "\"";
                     break;
 
-                case Zenity:
+                case zenity:
                     cmd << "zenity --file-selection --save --confirm-overwrite";
                     if (default_path && *default_path) cmd << " --filename=\"" << default_path << "\"";
 

@@ -25,9 +25,9 @@ namespace awin
                     return MB_ICONINFORMATION;
                 case Style::Warning:
                     return MB_ICONWARNING;
-                case Style::Error:
+                case Style::error:
                     return MB_ICONERROR;
-                case Style::Question:
+                case Style::question:
                     return MB_ICONQUESTION;
             }
             return MB_ICONINFORMATION;
@@ -40,16 +40,16 @@ namespace awin
             {
                 switch (btn)
                 {
-                    case Buttons::OK:
+                    case Buttons::ok:
                         mask |= BTN_OK;
                         break;
-                    case Buttons::Yes:
+                    case Buttons::yes:
                         mask |= BTN_YES;
                         break;
-                    case Buttons::No:
+                    case Buttons::no:
                         mask |= BTN_NO;
                         break;
-                    case Buttons::Cancel:
+                    case Buttons::cancel:
                         mask |= BTN_CANCEL;
                         break;
                     default:
@@ -77,13 +77,13 @@ namespace awin
             switch (MessageBoxW(hwnd, lp_text, lp_caption, flags))
             {
                 case IDOK:
-                    return Buttons::OK;
+                    return Buttons::ok;
                 case IDYES:
-                    return Buttons::Yes;
+                    return Buttons::yes;
                 case IDNO:
-                    return Buttons::No;
+                    return Buttons::no;
                 case IDCANCEL:
-                    return Buttons::Cancel;
+                    return Buttons::cancel;
                 default:
                     return Buttons::Error;
             };

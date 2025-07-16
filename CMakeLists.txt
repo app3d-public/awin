@@ -39,7 +39,7 @@ set_target_properties(${PROJECT_NAME}
 )
 
 if(BUILD_TESTS)
-    target_compile_definitions(${PROJECT_NAME} PRIVATE PROCESS_UNITTEST)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE AWIN_TEST_BUILD)
     enable_testing()
     add_subdirectory(tests)
 endif()

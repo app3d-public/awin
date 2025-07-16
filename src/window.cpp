@@ -11,13 +11,13 @@ namespace awin
 
         void input_key(WindowData *data, io::Key key, io::KeyPressState action, io::KeyMode mods)
         {
-            if (+key >= 0 && key <= io::Key::Last)
+            if (+key >= 0 && key <= io::Key::last)
             {
                 bool repeated{false};
-                if (action == io::KeyPressState::Release && data->keys[+key] == io::KeyPressState::Release) return;
-                if (action == io::KeyPressState::Press && data->keys[+key] == io::KeyPressState::Press) repeated = true;
+                if (action == io::KeyPressState::release && data->keys[+key] == io::KeyPressState::release) return;
+                if (action == io::KeyPressState::press && data->keys[+key] == io::KeyPressState::press) repeated = true;
                 data->keys[+key] = action;
-                if (repeated) action = io::KeyPressState::Repeat;
+                if (repeated) action = io::KeyPressState::repeat;
             }
             dispatch_window_event(event_registry.key_input, data->owner, key, action, mods);
         }
@@ -39,25 +39,26 @@ namespace awin
     {
         assert(platform::env.ed);
 #ifdef _WIN32
-        auto NCLMouseDownList = platform::env.ed->get_listeners<Win32NativeEvent>(event_id::NCMouseDown);
-        if (!NCLMouseDownList.empty()) event_registry.ncl_mouse_down = NCLMouseDownList[0];
+        auto nc_mouse_down = platform::env.ed->get_listeners<Win32NativeEvent>(event_id::nc_mouse_down);
+        if (!nc_mouse_down.empty()) event_registry.ncl_mouse_down = NCLMouseDownList[0];
 
-        auto NCHitTestList = platform::env.ed->get_listeners<Win32NativeEvent>(event_id::NCHitTest);
-        if (!NCHitTestList.empty()) event_registry.nc_hit_test = NCHitTestList[0];
+        auto nc_hit_test = platform::env.ed->get_listeners<Win32NativeEvent>(event_id::nc_hit_test);
+        if (!nc_hit_test.empty()) event_registry.nc_hit_test = NCHitTestList[0];
 #endif
-        platform::event_registry.focus = platform::env.ed->get_listeners<FocusEvent>(event_id::Focus);
-        platform::event_registry.scroll = platform::env.ed->get_listeners<ScrollEvent>(event_id::Scroll);
-        platform::event_registry.minimize = platform::env.ed->get_listeners<StateEvent>(event_id::Minimize);
-        platform::event_registry.maximize = platform::env.ed->get_listeners<StateEvent>(event_id::Maximize);
-        platform::event_registry.resize = platform::env.ed->get_listeners<PosEvent>(event_id::Resize);
-        platform::event_registry.move = platform::env.ed->get_listeners<PosEvent>(event_id::Move);
-        platform::event_registry.char_input = platform::env.ed->get_listeners<CharInputEvent>(event_id::CharInput);
-        platform::event_registry.key_input = platform::env.ed->get_listeners<KeyInputEvent>(event_id::KeyInput);
-        platform::event_registry.mouse_click = platform::env.ed->get_listeners<MouseClickEvent>(event_id::MouseClick);
-        platform::event_registry.mouse_enter = platform::env.ed->get_listeners<MouseEnterEvent>(event_id::MouseEnter);
-        platform::event_registry.mouse_move = platform::env.ed->get_listeners<PosEvent>(event_id::MouseMove);
-        platform::event_registry.mouse_move_abs = platform::env.ed->get_listeners<PosEvent>(event_id::MouseMoveAbs);
-        platform::event_registry.dpi_changed = platform::env.ed->get_listeners<DpiChangedEvent>(event_id::DpiChanged);
+        platform::event_registry.focus = platform::env.ed->get_listeners<FocusEvent>(event_id::focus);
+        platform::event_registry.scroll = platform::env.ed->get_listeners<ScrollEvent>(event_id::scroll);
+        platform::event_registry.minimize = platform::env.ed->get_listeners<StateEvent>(event_id::minimize);
+        platform::event_registry.maximize = platform::env.ed->get_listeners<StateEvent>(event_id::maximize);
+        platform::event_registry.resize = platform::env.ed->get_listeners<PosEvent>(event_id::resize);
+        platform::event_registry.move = platform::env.ed->get_listeners<PosEvent>(event_id::move);
+        platform::event_registry.char_input = platform::env.ed->get_listeners<CharInputEvent>(event_id::char_input);
+        platform::event_registry.key_input = platform::env.ed->get_listeners<KeyInputEvent>(event_id::key_input);
+        platform::event_registry.mouse_click = platform::env.ed->get_listeners<MouseClickEvent>(event_id::mouse_click);
+        platform::event_registry.mouse_enter = platform::env.ed->get_listeners<MouseEnterEvent>(event_id::mouse_enter);
+        platform::event_registry.mouse_move_delta =
+            platform::env.ed->get_listeners<PosEvent>(event_id::mouse_move_delta);
+        platform::event_registry.mouse_move = platform::env.ed->get_listeners<PosEvent>(event_id::mouse_move);
+        platform::event_registry.dpi_changed = platform::env.ed->get_listeners<DpiChangedEvent>(event_id::dpi_changed);
     }
 
     void init_library(acul::events::dispatcher *ed)
@@ -66,7 +67,7 @@ namespace awin
         platform::init_timer();
         set_time(0.0);
         platform::env.ed = ed;
-        platform::env.default_cursor = Cursor::create(Cursor::Type::Arrow);
+        platform::env.default_cursor = Cursor::create(Cursor::Type::arrow);
     }
 
     void destroy_library()

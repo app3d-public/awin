@@ -132,23 +132,23 @@ namespace awin
         {
             switch (key)
             {
-                case io::Key::LeftAlt:
-                case io::Key::RightAlt:
-                    mods |= io::KeyModeBits::Alt;
+                case io::Key::lalt:
+                case io::Key::ralt:
+                    mods |= io::KeyModeBits::alt;
                     break;
-                case io::Key::LeftControl:
-                case io::Key::RightControl:
-                    mods |= io::KeyModeBits::Control;
-                    break;
-
-                case io::Key::LeftShift:
-                case io::Key::RightShift:
-                    mods |= io::KeyModeBits::Shift;
+                case io::Key::lcontrol:
+                case io::Key::rcontrol:
+                    mods |= io::KeyModeBits::control;
                     break;
 
-                case io::Key::LeftSuper:
-                case io::Key::RightSuper:
-                    mods |= io::KeyModeBits::Super;
+                case io::Key::lshift:
+                case io::Key::rshift:
+                    mods |= io::KeyModeBits::shift;
+                    break;
+
+                case io::Key::lsuper:
+                case io::Key::rsuper:
+                    mods |= io::KeyModeBits::super;
                     break;
                 default:
                     break;
@@ -178,7 +178,7 @@ namespace awin
     void Window::show_window()
     {
         if (!hidden()) return;
-        _data->flags &= ~WindowFlagBits::Hidden;
+        _data->flags &= ~WindowFlagBits::hidden;
         platform::pd.wcall.show_window(_data);
     }
 
@@ -186,7 +186,7 @@ namespace awin
     {
         if (hidden()) return;
         platform::pd.wcall.hide_window(_data);
-        _data->flags |= WindowFlagBits::Hidden;
+        _data->flags |= WindowFlagBits::hidden;
     }
 
     acul::string Window::title() const { return platform::pd.wcall.get_window_title(_data); }
@@ -195,13 +195,13 @@ namespace awin
 
     void Window::enable_fullscreen()
     {
-        _data->flags |= WindowFlagBits::Fullscreen;
+        _data->flags |= WindowFlagBits::fullscreen;
         platform::pd.wcall.enable_fullscreen(_data);
     }
 
     void Window::disable_fullscreen()
     {
-        _data->flags &= ~WindowFlagBits::Fullscreen;
+        _data->flags &= ~WindowFlagBits::fullscreen;
         platform::pd.wcall.disable_fullscreen(_data);
     }
 

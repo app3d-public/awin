@@ -41,13 +41,13 @@ namespace awin
         acul::point2D<i32> dimensions() const { return _data->dimenstions; }
 
         // Check if the window has decorations
-        inline bool decorated() const { return (_data->flags & awin::WindowFlagBits::Decorated) != 0; }
+        inline bool decorated() const { return (_data->flags & WindowFlagBits::decorated) != 0; }
 
         // Check if the window is resizable.
-        inline bool resizable() const { return (_data->flags & awin::WindowFlagBits::Resizable) != 0; }
+        inline bool resizable() const { return (_data->flags & WindowFlagBits::resizable) != 0; }
 
         // Check if the window is in fullscreen mode.
-        bool fullscreen() const { return (_data->flags & awin::WindowFlagBits::Fullscreen) != 0; }
+        bool fullscreen() const { return (_data->flags & WindowFlagBits::fullscreen) != 0; }
 
         // Enable fullscreen mode.
         void enable_fullscreen();
@@ -77,19 +77,19 @@ namespace awin
         inline bool focused() const { return _data->focused; }
 
         // Check if the window is minimized.
-        inline bool minimized() const { return _data->flags & awin::WindowFlagBits::Minimized; }
+        inline bool minimized() const { return _data->flags & WindowFlagBits::minimized; }
 
         // Minimize the window
         void minimize();
 
         // Check if the window is maximized.
-        inline bool maximized() const { return _data->flags & awin::WindowFlagBits::Maximized; }
+        inline bool maximized() const { return _data->flags & WindowFlagBits::maximized; }
 
         // Maximize the window
         void maximize();
 
         // Check if the window is hidden.
-        inline bool hidden() const { return _data->flags & awin::WindowFlagBits::Hidden; }
+        inline bool hidden() const { return _data->flags & awin::WindowFlagBits::hidden; }
 
         // Get the window's resize limits.
         inline acul::point2D<i32> resize_limit() const { return _data->resize_limit; }
@@ -168,24 +168,24 @@ namespace awin
     {
         enum : u64
         {
-            Unknown = 0x0,
+            unknown = 0x0,
 #ifdef _WIN32
-            NCHitTest = 0x2D5AA1F9EE962269,
-            NCMouseDown = 0x12D7ACB8440B7678,
+            nc_hit_test = 0x2D5AA1F9EE962269,
+            nc_mouse_down = 0x12D7ACB8440B7678,
 #endif
-            Focus = 0x05AC2ABF9E301AD1,
-            CharInput = 0x0B37F6873EA5B017,
-            KeyInput = 0x0E8A91707EFCEB90,
-            MouseClick = 0x06254FC551B67986,
-            MouseEnter = 0x1DFE0E9A4D85B1EE,
-            MouseMove = 0x15F068FC45DB86CE,
-            MouseMoveAbs = 0x037E8253212E7276,
-            Scroll = 0x0D66A892FC053357,
-            DpiChanged = 0x37516DB961C1BF7A,
-            Minimize = 0x16AB16E6670A5AC2,
-            Maximize = 0x0A8C9013D84CEC08,
-            Resize = 0x1FB82ED0F4C701CB,
-            Move = 0x2A5416AB994F5AAE
+            focus = 0x05AC2ABF9E301AD1,
+            char_input = 0x0B37F6873EA5B017,
+            key_input = 0x0E8A91707EFCEB90,
+            mouse_click = 0x06254FC551B67986,
+            mouse_enter = 0x1DFE0E9A4D85B1EE,
+            mouse_move_delta = 0x15F068FC45DB86CE,
+            mouse_move = 0x037E8253212E7276,
+            scroll = 0x0D66A892FC053357,
+            dpi_changed = 0x37516DB961C1BF7A,
+            minimize = 0x16AB16E6670A5AC2,
+            maximize = 0x0A8C9013D84CEC08,
+            resize = 0x1FB82ED0F4C701CB,
+            move = 0x2A5416AB994F5AAE
         };
     }; // namespace event_id
 
@@ -218,7 +218,7 @@ namespace awin
         bool focused;
 
         explicit FocusEvent(awin::Window *window = nullptr, bool focused = false)
-            : event(event_id::Focus), window(window), focused(focused)
+            : event(event_id::focus), window(window), focused(focused)
         {
         }
     };
@@ -230,7 +230,7 @@ namespace awin
         u32 charCode;         // Unicode character code.
 
         explicit CharInputEvent(awin::Window *window = nullptr, u32 charCode = 0)
-            : event(event_id::CharInput), window(window), charCode(charCode)
+            : event(event_id::char_input), window(window), charCode(charCode)
         {
         }
     };
@@ -243,9 +243,9 @@ namespace awin
         io::KeyPressState action; // The action (press, release, repeat) associated with the key.
         io::KeyMode mods;         // The key modifiers associated with the key.
 
-        explicit KeyInputEvent(awin::Window *window = nullptr, io::Key key = io::Key::Unknown,
-                               io::KeyPressState action = io::KeyPressState::Release, io::KeyMode mods = io::KeyMode{})
-            : event(event_id::KeyInput), window(window), key(key), action(action), mods(mods)
+        explicit KeyInputEvent(awin::Window *window = nullptr, io::Key key = io::Key::unknown,
+                               io::KeyPressState action = io::KeyPressState::release, io::KeyMode mods = io::KeyMode{})
+            : event(event_id::key_input), window(window), key(key), action(action), mods(mods)
         {
         }
     };
@@ -258,10 +258,10 @@ namespace awin
         io::KeyPressState action; // The action (press, release, repeat) associated with the key.
         io::KeyMode mods;         // The key modifiers associated with the key.
 
-        explicit MouseClickEvent(awin::Window *window = nullptr, io::MouseKey button = io::MouseKey::Unknown,
-                                 io::KeyPressState action = io::KeyPressState::Release,
+        explicit MouseClickEvent(awin::Window *window = nullptr, io::MouseKey button = io::MouseKey::unknown,
+                                 io::KeyPressState action = io::KeyPressState::release,
                                  io::KeyMode mods = io::KeyMode{})
-            : event(event_id::MouseClick), window(window), button(button), action(action), mods(mods)
+            : event(event_id::mouse_click), window(window), button(button), action(action), mods(mods)
         {
         }
     };
@@ -274,7 +274,7 @@ namespace awin
         bool entered;         // Whether the mouse entered or left the window.
 
         explicit MouseEnterEvent(awin::Window *window = nullptr, bool entered = false)
-            : event(event_id::MouseEnter), window(window), entered(entered)
+            : event(event_id::mouse_enter), window(window), entered(entered)
         {
         }
     };
@@ -311,7 +311,7 @@ namespace awin
         f32 v;                // The Vertical scroll value.
 
         explicit ScrollEvent(awin::Window *window = nullptr, f32 hscroll = 0.0f, f32 vscroll = 0.0f)
-            : event(event_id::Scroll), window(window), h(hscroll), v(vscroll)
+            : event(event_id::scroll), window(window), h(hscroll), v(vscroll)
         {
         }
     };
@@ -323,7 +323,7 @@ namespace awin
         acul::point2D<f32> dpi;
 
         explicit DpiChangedEvent(awin::Window *window = nullptr, f32 x_dpi = 0.0f, f32 y_dpi = 0.0f)
-            : event(event_id::DpiChanged), window(window), dpi(x_dpi, y_dpi)
+            : event(event_id::dpi_changed), window(window), dpi(x_dpi, y_dpi)
         {
         }
     };
