@@ -13,7 +13,6 @@
 //
 #include "fractional-scale-v1-client-protocol.h"
 #include "idle-inhibit-unstable-v1-client-protocol.h"
-#include "pointer-constraints-unstable-v1-client-protocol.h"
 #include "relative-pointer-unstable-v1-client-protocol.h"
 #include "viewporter-client-protocol.h"
 #include "wayland-client-protocol.h"
@@ -302,6 +301,46 @@ namespace awin
                 ctx.xkb.num_lock_index = xkb_keymap_mod_get_index(ctx.xkb.keymap, "Mod2");
             }
 
+            static void relative_pointer_handle_motion(void *user_data, zwp_relative_pointer_v1 *, u32 time_hi,
+                                                       u32 time_lo, wl_fixed_t dx, wl_fixed_t dy, wl_fixed_t,
+                                                       wl_fixed_t)
+            {
+                WaylandWindowData *window = static_cast<WaylandWindowData *>(user_data);
+                acul::point2D<i32> delta = {static_cast<i32>(wl_fixed_to_double(dx)),
+                                            static_cast<i32>(wl_fixed_to_double(dy))};
+                dispatch_window_event(event_registry.mouse_move_delta, event_id::mouse_move_delta, window->owner,
+                                      delta);
+            }
+
+            static const struct zwp_relative_pointer_v1_listener relative_pointer_listener = {
+                .relative_motion = relative_pointer_handle_motion};
+
+            void disable_relative_pointer(WaylandWindowData *window)
+            {
+                if (!window->relative_pointer) return;
+                zwp_relative_pointer_v1_destroy(window->relative_pointer);
+                window->relative_pointer = nullptr;
+            }
+
+            inline void mark_focus_window(WaylandWindowData *window)
+            {
+                window->focused = true;
+                dispatch_window_event(event_registry.focus, window->owner, true);
+                if (!ctx.relative_pointer_manager || window->relative_pointer) return;
+                window->relative_pointer =
+                    zwp_relative_pointer_manager_v1_get_relative_pointer(ctx.relative_pointer_manager, ctx.pointer);
+                zwp_relative_pointer_v1_add_listener(window->relative_pointer, &relative_pointer_listener, window);
+            }
+
+            inline void unmark_focus_window(WaylandWindowData *window)
+            {
+                window->focused = false;
+                dispatch_window_event(event_registry.focus, window->owner, false);
+                if (!window->relative_pointer) return;
+                zwp_relative_pointer_v1_destroy(window->relative_pointer);
+                window->relative_pointer = nullptr;
+            }
+
             static void keyboard_handle_enter(void *user_data, wl_keyboard *keyboard, u32 serial, wl_surface *surface,
                                               wl_array *keys)
             {
@@ -313,7 +352,7 @@ namespace awin
 
                 ctx.serial = serial;
                 ctx.keyboard_focus = wl_data;
-                dispatch_window_event(event_registry.focus, wl_data->owner, true);
+                mark_focus_window(wl_data);
             }
 
             static void keyboard_handle_leave(void *user_data, wl_keyboard *keyboard, u32 serial, wl_surface *surface)
@@ -321,12 +360,12 @@ namespace awin
                 auto *window_data = ctx.keyboard_focus;
                 if (!window_data) return;
 
-                itimerspec timer = {0};
+                itimerspec timer = {{0}};
                 timerfd_settime(ctx.key_repeat_timer_fd, 0, &timer, NULL);
 
                 ctx.serial = serial;
                 ctx.keyboard_focus = NULL;
-                dispatch_window_event(event_registry.focus, window_data->owner, false);
+                unmark_focus_window(window_data);
             }
 
             static xkb_keysym_t compose_symbol(xkb_keysym_t sym)
@@ -368,7 +407,7 @@ namespace awin
                 const io::KeyPressState action =
                     state == WL_KEYBOARD_KEY_STATE_PRESSED ? io::KeyPressState::press : io::KeyPressState::release;
                 ctx.serial = serial;
-                itimerspec timer = {0};
+                itimerspec timer = {{0}};
 
                 if (action == io::KeyPressState::press)
                 {
@@ -990,6 +1029,7 @@ namespace awin
 
             static bool create_shell_objects(WaylandWindowData *wl_data)
             {
+                mark_focus_window(wl_data);
                 if (ctx.libdecor.context)
                 {
                     if (create_libdecor_frame(wl_data))
@@ -1190,7 +1230,7 @@ namespace awin
 
             static void set_cursor_image(WaylandWindowData *wl_data, WaylandCursor *wl_cursor)
             {
-                itimerspec timer = {0};
+                itimerspec timer = {{0}};
                 auto *handle = wl_cursor->handle;
                 wl_cursor_image *image;
                 wl_buffer *buffer;
@@ -1331,7 +1371,7 @@ namespace awin
 
             void wait_events() { handle_events(NULL); }
 
-            void wait_events_timeout() { handle_events(&env.timeout); }
+            void wait_events_timeout() { handle_events(env.timeout > WINDOW_TIMEOUT_INF ? &env.timeout : NULL); }
 
             void push_empty_event()
             {
@@ -1549,35 +1589,6 @@ namespace awin
                 LOG_ERROR("Wayland: The platform does not support setting the cursor position");
             }
 
-            static void relative_pointer_handle_motion(void *user_data, zwp_relative_pointer_v1 *, u32 time_hi,
-                                                       u32 time_lo, wl_fixed_t dx, wl_fixed_t dy, wl_fixed_t,
-                                                       wl_fixed_t)
-            {
-                WaylandWindowData *window = static_cast<WaylandWindowData *>(user_data);
-                acul::point2D<i32> delta = {static_cast<i32>(wl_fixed_to_double(dx)),
-                                            static_cast<i32>(wl_fixed_to_double(dy))};
-                dispatch_window_event(event_registry.mouse_move_delta, event_id::mouse_move_delta, window->owner, delta);
-            }
-
-            static const struct zwp_relative_pointer_v1_listener relative_pointer_listener = {
-                .relative_motion = relative_pointer_handle_motion};
-
-            void enable_relative_pointer(WaylandWindowData *window)
-            {
-                if (!ctx.relative_pointer_manager || window->relative_pointer) return;
-
-                window->relative_pointer =
-                    zwp_relative_pointer_manager_v1_get_relative_pointer(ctx.relative_pointer_manager, ctx.pointer);
-                zwp_relative_pointer_v1_add_listener(window->relative_pointer, &relative_pointer_listener, window);
-            }
-
-            void disable_relative_pointer(WaylandWindowData *window)
-            {
-                if (!window->relative_pointer) return;
-                zwp_relative_pointer_v1_destroy(window->relative_pointer);
-                window->relative_pointer = nullptr;
-            }
-
             Cursor::Platform *create_cursor(Cursor::Type type)
             {
                 struct Shape
@@ -1615,16 +1626,6 @@ namespace awin
             static void assign_cursor(WaylandWindowData *window, Cursor::Platform *pd)
             {
                 if (!ctx.pointer) return;
-                if (window->is_cursor_hidden)
-                    enable_relative_pointer(window);
-                else
-                {
-                    // If we're not in the correct window just save the cursor
-                    // the next time the pointer enters the window the cursor will change
-                    if (!window->hovered) return;
-                    disable_relative_pointer(window);
-                }
-
                 if (window->is_cursor_hidden)
                     wl_pointer_set_cursor(ctx.pointer, ctx.pointer_enter_serial, NULL, 0, 0);
                 else if (pd)
@@ -1688,6 +1689,7 @@ namespace awin
                 auto *wl_data = (WaylandWindowData *)window;
                 if (ctx.libdecor.context)
                 {
+                    if (!wl_data->libdecor_frame) return;
                     auto resize_limit = window->resize_limit.x > 0 && window->resize_limit.y > 0
                                             ? wl_data->resize_limit
                                             : acul::point2D<i32>{0, 0};
@@ -1697,7 +1699,7 @@ namespace awin
                     libdecor_frame_commit(wl_data->libdecor_frame, state, NULL);
                     libdecor_state_free(state);
                 }
-                else
+                else if (wl_data->xdg.toplevel)
                     update_xdg_size_limits(wl_data);
             }
 

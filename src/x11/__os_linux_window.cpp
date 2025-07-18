@@ -1014,7 +1014,7 @@ namespace awin
                     return false;
                 }
                 LOG_INFO("Created X11 window: %lu", x11_data->window);
-                xlib.XSaveContext(ctx.display, x11_data->window, ctx.context, (XPointer)&window_data);
+                xlib.XSaveContext(ctx.display, x11_data->window, ctx.context, (XPointer)x11_data);
                 window_data->flags = flags;
                 apply_motif_hints(ctx.display, x11_data->window, flags);
 
@@ -1272,7 +1272,7 @@ namespace awin
 
             void wait_events_timeout()
             {
-                wait_for_any_event(&env.timeout);
+                wait_for_any_event(env.timeout > WINDOW_TIMEOUT_INF ? &env.timeout : NULL);
                 poll_events();
             }
 
@@ -1365,11 +1365,11 @@ namespace awin
                 return cursor;
             }
 
-            void assign_cursor(Window *window_data, Cursor::Platform *cursor)
+            void assign_cursor(Window *window, Cursor::Platform *cursor)
             {
                 auto *x11_cursor = (X11Cursor *)cursor;
                 auto &xlib = ctx.xlib;
-                auto *x11_data = (X11WindowData *)window_data;
+                auto *x11_data = (X11WindowData *)get_window_data(*window);
                 if (x11_cursor->handle)
                     xlib.XDefineCursor(ctx.display, x11_data->window, x11_cursor->handle);
                 else

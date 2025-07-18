@@ -227,10 +227,10 @@ namespace awin
     struct CharInputEvent : public acul::events::event
     {
         awin::Window *window; // Pointer to the associated Window object.
-        u32 charCode;         // Unicode character code.
+        u32 char_code;        // Unicode character code.
 
-        explicit CharInputEvent(awin::Window *window = nullptr, u32 charCode = 0)
-            : event(event_id::char_input), window(window), charCode(charCode)
+        explicit CharInputEvent(awin::Window *window = nullptr, u32 char_code = 0)
+            : event(event_id::char_input), window(window), char_code(char_code)
         {
         }
     };
