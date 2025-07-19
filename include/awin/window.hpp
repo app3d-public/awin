@@ -9,7 +9,6 @@
 #define APP_WINDOW_WINDOW_H
 
 #include <acul/event.hpp>
-#include "acul/pair.hpp"
 #include "types.hpp"
 
 #define WINDOW_BACKEND_UNKNOWN -1
