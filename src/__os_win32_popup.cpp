@@ -4,6 +4,7 @@
 #include <windows.h>
 // Include windows first
 #include <acul/string/utils.hpp>
+#include <awin/native_access.hpp>
 #include <commdlg.h>
 #include <shlobj.h>
 #include <wchar.h>
@@ -21,9 +22,9 @@ namespace awin
         {
             switch (style)
             {
-                case Style::Info:
+                case Style::info:
                     return MB_ICONINFORMATION;
-                case Style::Warning:
+                case Style::warning:
                     return MB_ICONWARNING;
                 case Style::error:
                     return MB_ICONERROR;
@@ -68,7 +69,7 @@ namespace awin
             UINT icon_flag = style_to_icon(style);
             UINT buttons_flag = buttons_to_flags(buttons);
             UINT flags = buttons_flag | icon_flag;
-            HWND hwnd = parent ? platform::native_access::get_hwnd(*parent) : nullptr;
+            HWND hwnd = parent ? native_access::get_hwnd(*parent) : nullptr;
             if (!hwnd) flags |= MB_TOPMOST;
             auto w_message = acul::utf8_to_utf16(message);
             LPCWSTR lp_text = reinterpret_cast<LPCWSTR>(w_message.c_str());
@@ -85,7 +86,7 @@ namespace awin
                 case IDCANCEL:
                     return Buttons::cancel;
                 default:
-                    return Buttons::Error;
+                    return Buttons::error;
             };
         }
 

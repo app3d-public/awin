@@ -1,17 +1,39 @@
 #include <acul/log.hpp>
 #include <acul/string/string.hpp>
+#include <awin/native_access.hpp>
 #include <awin/window.hpp>
 #include <shlobj.h>
 #include <windef.h>
 #include <windowsx.h>
-#include "awin/platform.hpp"
+#include "env.hpp"
 #include "win32_pd.hpp"
 
 namespace awin
 {
+    struct Cursor::Platform
+    {
+        HCURSOR cursor = NULL;
+    };
+
+    bool Cursor::valid() const { return _pd->cursor != NULL; }
+
     namespace platform
     {
         Context ctx;
+
+        struct Win32WindowData final : WindowData
+        {
+            acul::u16string title;
+            DWORD style;
+            DWORD ex_style;
+            HWND hwnd;
+            WCHAR high_surrogate;
+            acul::point2D<i32> saved_cursor_pos{0, 0};
+            bool cursor_tracked{false};
+            bool raw_input{false};
+            LPBYTE raw_input_data{nullptr};
+            UINT raw_input_size{0};
+        };
 
         static bool is_maximized(HWND hwnd)
         {
@@ -25,9 +47,9 @@ namespace awin
         {
             DWORD style = WS_CLIPSIBLINGS | WS_CLIPCHILDREN;
             if (flags & WindowFlagBits::fullscreen) style |= WS_POPUP;
-            if (flags & WindowFlagBits::Snapped) style |= WS_SYSMENU;
-            if (flags & WindowFlagBits::minimizeBox) style |= WS_MINIMIZEBOX;
-            if (flags & WindowFlagBits::MaximizeBox) style |= WS_MAXIMIZEBOX;
+            if (flags & WindowFlagBits::snapped) style |= WS_SYSMENU;
+            if (flags & WindowFlagBits::minimize_box) style |= WS_MINIMIZEBOX;
+            if (flags & WindowFlagBits::maximize_box) style |= WS_MAXIMIZEBOX;
             if (flags & WindowFlagBits::resizable) style |= WS_THICKFRAME;
             if (flags & WindowFlagBits::decorated) style |= WS_CAPTION;
             return style;
@@ -36,12 +58,12 @@ namespace awin
         static io::KeyMode get_key_mods()
         {
             io::KeyMode mods;
-            if (GetKeyState(VK_SHIFT) & 0x8000) mods |= io::KeyModeBits::Shift;
-            if (GetKeyState(VK_CONTROL) & 0x8000) mods |= io::KeyModeBits::Control;
-            if (GetKeyState(VK_MENU) & 0x8000) mods |= io::KeyModeBits::Alt;
-            if ((GetKeyState(VK_LWIN) | GetKeyState(VK_RWIN)) & 0x8000) mods |= io::KeyModeBits::Super;
-            if (GetKeyState(VK_CAPITAL) & 1) mods |= io::KeyModeBits::CapsLock;
-            if (GetKeyState(VK_NUMLOCK) & 1) mods |= io::KeyModeBits::NumLock;
+            if (GetKeyState(VK_SHIFT) & 0x8000) mods |= io::KeyModeBits::shift;
+            if (GetKeyState(VK_CONTROL) & 0x8000) mods |= io::KeyModeBits::control;
+            if (GetKeyState(VK_MENU) & 0x8000) mods |= io::KeyModeBits::alt;
+            if ((GetKeyState(VK_LWIN) | GetKeyState(VK_RWIN)) & 0x8000) mods |= io::KeyModeBits::super;
+            if (GetKeyState(VK_CAPITAL) & 1) mods |= io::KeyModeBits::caps_lock;
+            if (GetKeyState(VK_NUMLOCK) & 1) mods |= io::KeyModeBits::num_lock;
             return mods;
         }
 
@@ -59,7 +81,7 @@ namespace awin
 
         LRESULT CALLBACK wnd_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         {
-            WindowData *window = (WindowData *)GetPropW(hwnd, L"AWIN");
+            auto *window = (Win32WindowData *)GetPropW(hwnd, L"AWIN");
             switch (uMsg)
             {
                     // Handling this event allows us to extend client (paintable) area into the title bar region
@@ -72,7 +94,7 @@ namespace awin
                     //   removing the standard frame.
                 case WM_NCCALCSIZE:
                 {
-                    window = reinterpret_cast<WindowData *>(GetPropW(hwnd, L"AWIN"));
+                    window = reinterpret_cast<Win32WindowData *>(GetPropW(hwnd, L"AWIN"));
                     ctx.dpi = GetDpiForWindow(hwnd);
                     ctx.frame.x = GetSystemMetricsForDpi(SM_CXFRAME, ctx.dpi);
                     ctx.frame.y = GetSystemMetricsForDpi(SM_CYFRAME, ctx.dpi);
@@ -89,7 +111,7 @@ namespace awin
                 case WM_CREATE:
                 {
                     CREATESTRUCT *create_struct = reinterpret_cast<CREATESTRUCT *>(lParam);
-                    window = reinterpret_cast<WindowData *>(create_struct->lpCreateParams);
+                    window = reinterpret_cast<Win32WindowData *>(create_struct->lpCreateParams);
                     if (!window) break;
                     SetPropW(hwnd, L"AWIN", reinterpret_cast<HANDLE>(window));
                     MonitorInfo monitor_info = get_primary_monitor_info();
@@ -148,7 +170,7 @@ namespace awin
                     ScreenToClient(hwnd, &cursor_point);
                     if (cursor_point.y > 0 && cursor_point.y < ctx.frame.y + ctx.padding) return HTTOP;
                     if (!event_registry.nc_hit_test) break;
-                    Win32NativeEvent event(event_id::NCHitTest, window->owner, hwnd, uMsg, wParam, lParam, hit);
+                    Win32NativeEvent event(event_id::nc_hit_test, window->owner, hwnd, uMsg, wParam, lParam, hit);
                     event_registry.nc_hit_test->invoke(event);
                     return event.lResult;
                 }
@@ -160,7 +182,7 @@ namespace awin
                         GetCursorPos(&cursor_point);
                         ScreenToClient(hwnd, &cursor_point);
                         if (cursor_point.y > 0 && cursor_point.y < ctx.frame.y + ctx.padding) break;
-                        Win32NativeEvent event(event_id::NCMouseDown, window->owner, hwnd, uMsg, wParam, lParam);
+                        Win32NativeEvent event(event_id::nc_mouse_down, window->owner, hwnd, uMsg, wParam, lParam);
                         event_registry.ncl_mouse_down->invoke(event);
                         if (event.lResult != -1) return event.lResult;
                     }
@@ -180,27 +202,27 @@ namespace awin
                     switch (uMsg)
                     {
                         case WM_LBUTTONDOWN:
-                            button = io::MouseKey::Left;
+                            button = io::MouseKey::left;
                             action = io::KeyPressState::press;
                             break;
                         case WM_LBUTTONUP:
-                            button = io::MouseKey::Left;
+                            button = io::MouseKey::left;
                             action = io::KeyPressState::release;
                             break;
                         case WM_RBUTTONDOWN:
-                            button = io::MouseKey::Right;
+                            button = io::MouseKey::right;
                             action = io::KeyPressState::press;
                             break;
                         case WM_RBUTTONUP:
-                            button = io::MouseKey::Right;
+                            button = io::MouseKey::right;
                             action = io::KeyPressState::release;
                             break;
                         case WM_MBUTTONDOWN:
-                            button = io::MouseKey::Middle;
+                            button = io::MouseKey::middle;
                             action = io::KeyPressState::press;
                             break;
                         case WM_MBUTTONUP:
-                            button = io::MouseKey::Middle;
+                            button = io::MouseKey::middle;
                             action = io::KeyPressState::release;
                             break;
                         default:
@@ -219,7 +241,7 @@ namespace awin
                     if (!RegisterRawInputDevices(&rid, 1, sizeof(rid)))
                         LOG_ERROR("Failed to register RAWINPUTDEVICE");
                     else
-                        window->backend.raw_input = true;
+                        window->raw_input = true;
                     break;
                 }
                 case WM_KILLFOCUS:
@@ -227,26 +249,25 @@ namespace awin
                     if (!window) break;
                     window->focused = false;
                     dispatch_window_event(event_registry.focus, window->owner, false);
-                    if (!window->backend.raw_input) break;
+                    if (!window->raw_input) break;
                     const RAWINPUTDEVICE rid = {0x01, 0x02, RIDEV_REMOVE, NULL};
                     if (!RegisterRawInputDevices(&rid, 1, sizeof(rid)))
                         LOG_ERROR("Failed to remove raw input device");
                     else
-                        window->backend.raw_input = false;
+                        window->raw_input = false;
                     break;
                 }
                 case WM_CHAR:
                 case WM_SYSCHAR:
                 {
                     if (IS_HIGH_SURROGATE(wParam))
-                        window->backend.high_surrogate = wParam;
+                        window->high_surrogate = wParam;
                     else if (IS_LOW_SURROGATE(wParam))
                     {
-                        if (window->backend.high_surrogate)
+                        if (window->high_surrogate)
                         {
-                            u32 codepoint =
-                                (((window->backend.high_surrogate - 0xD800) << 10) | (wParam - 0xDC00)) + 0x10000;
-                            window->backend.high_surrogate = 0;
+                            u32 codepoint = (((window->high_surrogate - 0xD800) << 10) | (wParam - 0xDC00)) + 0x10000;
+                            window->high_surrogate = 0;
                             dispatch_window_event(event_registry.char_input, window->owner, codepoint);
                         }
                     }
@@ -296,7 +317,7 @@ namespace awin
                     switch (wParam)
                     {
                         case VK_MENU:
-                            key = (HIWORD(lParam) & KF_EXTENDED) ? io::Key::RightAlt : io::Key::LeftAlt;
+                            key = (HIWORD(lParam) & KF_EXTENDED) ? io::Key::ralt : io::Key::lalt;
                             break;
                         case VK_SHIFT:
                         {
@@ -304,17 +325,17 @@ namespace awin
                             {
                                 // HACK: Release both Shift keys on Shift up event, as when both
                                 //       are pressed the first release does not dispatch any event
-                                input_key(window, io::Key::LeftShift, action, mods);
-                                input_key(window, io::Key::RightShift, action, mods);
+                                input_key(window, io::Key::lshift, action, mods);
+                                input_key(window, io::Key::rshift, action, mods);
                             }
                             else
-                                key = (HIWORD(lParam) & KF_EXTENDED) ? io::Key::RightShift : io::Key::LeftShift;
+                                key = (HIWORD(lParam) & KF_EXTENDED) ? io::Key::rshift : io::Key::lshift;
                             break;
                         }
                         case VK_CONTROL:
                         {
                             if (HIWORD(lParam) & KF_EXTENDED)
-                                key = io::Key::RightControl;
+                                key = io::Key::rcontrol;
                             else
                             {
                                 // NOTE: Alt Gr sends Left Ctrl followed by Right Alt
@@ -336,7 +357,7 @@ namespace awin
                                 }
 
                                 // This is a regular Left Ctrl message
-                                key = io::Key::LeftControl;
+                                key = io::Key::lcontrol;
                             }
                             break;
                         }
@@ -364,15 +385,15 @@ namespace awin
                 }
                 case WM_MOUSEMOVE:
                 {
-                    if (!window->backend.cursor_tracked)
+                    if (!window->cursor_tracked)
                     {
                         TRACKMOUSEEVENT tme;
                         ZeroMemory(&tme, sizeof(tme));
                         tme.cbSize = sizeof(tme);
                         tme.dwFlags = TME_LEAVE;
-                        tme.hwndTrack = window->backend.hwnd;
+                        tme.hwndTrack = window->hwnd;
                         TrackMouseEvent(&tme);
-                        window->backend.cursor_tracked = true;
+                        window->cursor_tracked = true;
                         dispatch_window_event(event_registry.mouse_enter, window->owner, true);
                     }
                     dispatch_window_event(event_registry.mouse_move, event_id::mouse_move, window->owner,
@@ -380,7 +401,7 @@ namespace awin
                     return 0;
                 }
                 case WM_MOUSELEAVE:
-                    window->backend.cursor_tracked = false;
+                    window->cursor_tracked = false;
                     dispatch_window_event(event_registry.mouse_enter, window->owner, false);
                     return 0;
                 case WM_MOUSEWHEEL:
@@ -411,7 +432,7 @@ namespace awin
                             }
                             else
                                 window->flags &= ~WindowFlagBits::minimized;
-                            dispatch_window_event(event_registry.minimize, event_id::Minimize, window->owner, want_min);
+                            dispatch_window_event(event_registry.minimize, event_id::minimize, window->owner, want_min);
                         }
                         if ((window->flags & WindowFlagBits::maximized) != want_max)
                         {
@@ -419,18 +440,18 @@ namespace awin
                                 window->flags |= WindowFlagBits::maximized;
                             else
                                 window->flags &= ~WindowFlagBits::maximized;
-                            dispatch_window_event(event_registry.maximize, event_id::Maximize, window->owner, want_max);
+                            dispatch_window_event(event_registry.maximize, event_id::maximize, window->owner, want_max);
                         }
                     }
                     if (dimenstions != window->dimenstions)
                     {
                         window->dimenstions = dimenstions;
-                        dispatch_window_event(event_registry.resize, event_id::Resize, window->owner, dimenstions);
+                        dispatch_window_event(event_registry.resize, event_id::resize, window->owner, dimenstions);
                     }
                     return 0;
                 }
                 case WM_MOVE:
-                    dispatch_window_event(event_registry.move, event_id::Move, window->owner,
+                    dispatch_window_event(event_registry.move, event_id::move, window->owner,
                                           acul::point2D(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)));
                     break;
                 case WM_GETMINMAXINFO:
@@ -462,27 +483,28 @@ namespace awin
                 }
                 case WM_INPUT:
                 {
-                    if (!window->backend.raw_input) break;
+                    if (!window->raw_input) break;
                     UINT dw_size;
                     GetRawInputData((HRAWINPUT)lParam, RID_INPUT, NULL, &dw_size, sizeof(RAWINPUTHEADER));
-                    if (dw_size > window->backend.raw_input_size)
+                    if (dw_size > window->raw_input_size)
                     {
-                        acul::release(window->backend.raw_input_data);
-                        window->backend.raw_input_data = acul::alloc_n<BYTE>(dw_size);
-                        window->backend.raw_input_size = dw_size;
+                        acul::release(window->raw_input_data);
+                        window->raw_input_data = acul::alloc_n<BYTE>(dw_size);
+                        window->raw_input_size = dw_size;
                     }
-                    if (GetRawInputData((HRAWINPUT)lParam, RID_INPUT, window->backend.raw_input_data, &dw_size,
+                    if (GetRawInputData((HRAWINPUT)lParam, RID_INPUT, window->raw_input_data, &dw_size,
                                         sizeof(RAWINPUTHEADER)) != dw_size)
                     {
                         LOG_ERROR("GetRawInputData does not return correct size");
                         break;
                     }
-                    RAWINPUT *raw = (RAWINPUT *)window->backend.raw_input_data;
+                    RAWINPUT *raw = (RAWINPUT *)window->raw_input_data;
 
                     if (raw->header.dwType == RIM_TYPEMOUSE)
                     {
                         acul::point2D<i32> delta{raw->data.mouse.lLastX, raw->data.mouse.lLastY};
-                        dispatch_window_event(event_registry.mouse_move_delta, event_id::mouse_move_delta, window->owner, delta);
+                        dispatch_window_event(event_registry.mouse_move_delta, event_id::mouse_move_delta,
+                                              window->owner, delta);
                     }
                     return 0;
                 }
@@ -557,52 +579,52 @@ namespace awin
             return {};
     }
 
-    Window::Window(const acul::string &title, i32 width, i32 height, WindowFlags flags) : _platform(nullptr)
+    Window::Window(const acul::string &title, i32 width, i32 height, WindowFlags flags)
+        : _data(acul::alloc<platform::Win32WindowData>())
     {
-        _platform.owner = this;
-        _platform.backend.title = acul::utf8_to_utf16(title);
-        _platform.dimenstions = {width == -1 ? CW_USEDEFAULT : width, height == -1 ? CW_USEDEFAULT : height};
-        _platform.flags = flags;
-        _platform.backend.style = platform::get_window_style(flags);
-        _platform.backend.ex_style = WS_EX_APPWINDOW;
-        _platform.backend.hwnd = nullptr;
-        _platform.cursor = &platform::env.default_cursor;
+        auto *wd = (platform::Win32WindowData *)_data;
+        wd->owner = this;
+        wd->title = acul::utf8_to_utf16(title);
+        wd->dimenstions = {width == -1 ? CW_USEDEFAULT : width, height == -1 ? CW_USEDEFAULT : height};
+        wd->flags = flags;
+        wd->style = platform::get_window_style(flags);
+        wd->ex_style = WS_EX_APPWINDOW;
+        wd->hwnd = nullptr;
+        wd->cursor = &platform::env.default_cursor;
+        wd->hwnd = CreateWindowExW(wd->ex_style, platform::ctx.win32_class.lpszClassName, (LPCWSTR)wd->title.c_str(),
+                                   wd->style & ~WS_VISIBLE, CW_USEDEFAULT, CW_USEDEFAULT, wd->dimenstions.x,
+                                   wd->dimenstions.y, nullptr, nullptr, platform::ctx.instance, (LPVOID)wd);
 
-        _platform.backend.hwnd =
-            CreateWindowExW(_platform.backend.ex_style, platform::ctx.win32_class.lpszClassName,
-                            (LPCWSTR)_platform.backend.title.c_str(), _platform.backend.style & ~WS_VISIBLE,
-                            CW_USEDEFAULT, CW_USEDEFAULT, _platform.dimenstions.x, _platform.dimenstions.y, nullptr,
-                            nullptr, platform::ctx.instance, (LPVOID)&_platform);
-
-        if (!_platform.backend.hwnd) throw acul::runtime_error("Failed to create window");
+        if (!wd->hwnd) throw acul::runtime_error("Failed to create window");
         if (!(flags & WindowFlagBits::hidden))
         {
             if (flags & WindowFlagBits::minimized)
-                ShowWindow(_platform.backend.hwnd, SW_MINIMIZE);
+                ShowWindow(wd->hwnd, SW_MINIMIZE);
             else if (flags & WindowFlagBits::maximized)
-                ShowWindow(_platform.backend.hwnd, SW_MAXIMIZE);
+                ShowWindow(wd->hwnd, SW_MAXIMIZE);
             else
-                ShowWindow(_platform.backend.hwnd, SW_SHOWNORMAL);
+                ShowWindow(wd->hwnd, SW_SHOWNORMAL);
         }
-        LOG_INFO("Created Window descriptor: %p", _platform.backend.hwnd);
+        LOG_INFO("Created Window descriptor: %p", wd->hwnd);
     }
 
     void Window::destroy()
     {
-        if (_platform.backend.raw_input_data)
+        auto *wd = (platform::Win32WindowData *)_data;
+        if (wd->raw_input_data)
         {
-            acul::release(_platform.backend.raw_input_data);
-            _platform.backend.raw_input_data = nullptr;
-            _platform.backend.raw_input_size = 0;
+            acul::release(wd->raw_input_data);
+            wd->raw_input_data = nullptr;
+            wd->raw_input_size = 0;
         }
 
-        if (_platform.backend.hwnd)
+        if (wd->hwnd)
         {
-            RemovePropW(_platform.backend.hwnd, L"AWIN");
-            LOG_INFO("Destroying Window descriptor: %p", _platform.backend.hwnd);
-            HWND hwnd = _platform.backend.hwnd;
+            RemovePropW(wd->hwnd, L"AWIN");
+            LOG_INFO("Destroying Window descriptor: %p", wd->hwnd);
+            HWND hwnd = wd->hwnd;
             DestroyWindow(hwnd);
-            _platform.backend.hwnd = nullptr;
+            wd->hwnd = nullptr;
         }
 
         CoUninitialize();
@@ -612,41 +634,48 @@ namespace awin
     {
         if (!hidden()) return;
         WINDOWPLACEMENT placement = {sizeof(WINDOWPLACEMENT)};
-        GetWindowPlacement(_platform.backend.hwnd, &placement);
-        placement.showCmd = _platform.flags & WindowFlagBits::maximized ? SW_SHOWMAXIMIZED : SW_NORMAL;
-        SetWindowPlacement(_platform.backend.hwnd, &placement);
-        _platform.flags &= ~WindowFlagBits::hidden;
+        auto *wd = (platform::Win32WindowData *)_data;
+        GetWindowPlacement(wd->hwnd, &placement);
+        placement.showCmd = wd->flags & WindowFlagBits::maximized ? SW_SHOWMAXIMIZED : SW_NORMAL;
+        SetWindowPlacement(wd->hwnd, &placement);
+        wd->flags &= ~WindowFlagBits::hidden;
     }
 
     void Window::hide_window()
     {
         if (hidden()) return;
-        ShowWindow(_platform.backend.hwnd, SW_HIDE);
-        _platform.flags |= WindowFlagBits::hidden;
+        auto *wd = (platform::Win32WindowData *)_data;
+        ShowWindow(wd->hwnd, SW_HIDE);
+        wd->flags |= WindowFlagBits::hidden;
     }
 
-    acul::string Window::title() const { return acul::utf16_to_utf8(_platform.backend.title); }
+    acul::string Window::title() const
+    {
+        auto *wd = (platform::Win32WindowData *)_data;
+        return acul::utf16_to_utf8(wd->title);
+    }
 
     void Window::title(const acul::string &title)
     {
-        _platform.backend.title = acul::utf8_to_utf16(title);
-        SetWindowTextW(_platform.backend.hwnd, (LPCWSTR)_platform.backend.title.c_str());
+        auto *wd = (platform::Win32WindowData *)_data;
+        wd->title = acul::utf8_to_utf16(title);
+        SetWindowTextW(wd->hwnd, (LPCWSTR)wd->title.c_str());
     }
 
     void Window::enable_fullscreen()
     {
-        _platform.flags |= WindowFlagBits::fullscreen;
-        SetWindowLongPtr(_platform.backend.hwnd, GWL_STYLE, WS_VISIBLE | WS_POPUP);
-        SetWindowPos(_platform.backend.hwnd, HWND_TOPMOST, 0, 0, platform::ctx.screen.x, platform::ctx.screen.y,
-                     SWP_SHOWWINDOW);
+        auto *wd = (platform::Win32WindowData *)_data;
+        wd->flags |= WindowFlagBits::fullscreen;
+        SetWindowLongPtr(wd->hwnd, GWL_STYLE, WS_VISIBLE | WS_POPUP);
+        SetWindowPos(wd->hwnd, HWND_TOPMOST, 0, 0, platform::ctx.screen.x, platform::ctx.screen.y, SWP_SHOWWINDOW);
     }
 
     void Window::disable_fullscreen()
     {
-        _platform.flags &= ~WindowFlagBits::fullscreen;
-        SetWindowLongPtr(_platform.backend.hwnd, GWL_STYLE, _platform.backend.style);
-        SetWindowPos(_platform.backend.hwnd, HWND_NOTOPMOST, 0, 0, _platform.dimenstions.x, _platform.dimenstions.y,
-                     SWP_SHOWWINDOW);
+        auto *wd = (platform::Win32WindowData *)_data;
+        wd->flags &= ~WindowFlagBits::fullscreen;
+        SetWindowLongPtr(wd->hwnd, GWL_STYLE, wd->style);
+        SetWindowPos(wd->hwnd, HWND_NOTOPMOST, 0, 0, wd->dimenstions.x, wd->dimenstions.y, SWP_SHOWWINDOW);
     }
 
     acul::point2D<i32> Window::cursor_position() const
@@ -654,7 +683,8 @@ namespace awin
         POINT pos;
         if (GetCursorPos(&pos))
         {
-            ScreenToClient(_platform.backend.hwnd, &pos);
+            auto *wd = (platform::Win32WindowData *)_data;
+            ScreenToClient(wd->hwnd, &pos);
             return {pos.x, pos.y};
         }
         return {};
@@ -662,35 +692,38 @@ namespace awin
 
     void Window::cursor_position(acul::point2D<i32> position)
     {
-
+        auto *wd = (platform::Win32WindowData *)_data;
         POINT pos = {position.x, position.y};
-        ClientToScreen(_platform.backend.hwnd, &pos);
+        ClientToScreen(wd->hwnd, &pos);
         SetCursorPos(pos.x, pos.y);
     }
 
     void Window::show_cursor()
     {
-        if (!_platform.is_cursor_hidden) return;
-        cursor_position(_platform.backend.saved_cursor_pos);
+        auto *wd = (platform::Win32WindowData *)_data;
+        if (!wd->is_cursor_hidden) return;
+        cursor_position(wd->saved_cursor_pos);
         ReleaseCapture();
         ShowCursor(TRUE);
-        _platform.is_cursor_hidden = false;
+        wd->is_cursor_hidden = false;
     }
 
     void Window::hide_cursor()
     {
-        if (_platform.is_cursor_hidden) return;
-        _platform.backend.saved_cursor_pos = cursor_position();
-        SetCapture(_platform.backend.hwnd);
+        auto *wd = (platform::Win32WindowData *)_data;
+        if (wd->is_cursor_hidden) return;
+        wd->saved_cursor_pos = cursor_position();
+        SetCapture(wd->hwnd);
         ShowCursor(FALSE);
         ClipCursor(NULL);
-        _platform.is_cursor_hidden = true;
+        wd->is_cursor_hidden = true;
     }
 
     acul::point2D<i32> Window::position() const
     {
         RECT rect;
-        if (GetWindowRect(_platform.backend.hwnd, &rect))
+        auto *wd = (platform::Win32WindowData *)_data;
+        if (GetWindowRect(wd->hwnd, &rect))
             return {rect.left, rect.top};
         else
             return {0, 0};
@@ -699,16 +732,16 @@ namespace awin
     void Window::position(acul::point2D<i32> position)
     {
         WINDOWPLACEMENT wp = {sizeof(WINDOWPLACEMENT)};
-        GetWindowPlacement(_platform.backend.hwnd, &wp);
+        auto *wd = (platform::Win32WindowData *)_data;
+        GetWindowPlacement(wd->hwnd, &wp);
 
-        acul::point2D<i32> dimensions = _platform.flags & WindowFlagBits::decorated
-                                            ? get_window_size(*this)
-                                            : platform::native_access::get_full_client_size(*this);
+        acul::point2D<i32> dimensions =
+            wd->flags & WindowFlagBits::decorated ? get_window_size(*this) : native_access::get_full_client_size(*this);
         wp.rcNormalPosition.left = position.x;
         wp.rcNormalPosition.top = position.y;
         wp.rcNormalPosition.right = position.x + dimensions.x;
         wp.rcNormalPosition.bottom = position.y + dimensions.y;
-        SetWindowPlacement(_platform.backend.hwnd, &wp);
+        SetWindowPlacement(wd->hwnd, &wp);
     }
 
     void Window::center_window()
@@ -717,22 +750,30 @@ namespace awin
         SystemParametersInfo(SPI_GETWORKAREA, 0, &work_area, 0);
 
         RECT window_rect;
-        GetWindowRect(_platform.backend.hwnd, &window_rect);
+        auto *wd = (platform::Win32WindowData *)_data;
+        GetWindowRect(wd->hwnd, &window_rect);
         acul::point2D<int> dimenstions{window_rect.right - window_rect.left, window_rect.bottom - window_rect.top};
         acul::point2D<int> screen{work_area.right - work_area.left, work_area.bottom - work_area.top};
         acul::point2D<int> center{work_area.left + (screen.x - dimenstions.x) / 2,
                                   work_area.top + (screen.y - dimenstions.y) / 2};
 
         if (center.y < work_area.top) center.y = work_area.top;
-        SetWindowPos(_platform.backend.hwnd, NULL, center.x, center.y, dimenstions.x, dimenstions.y,
-                     SWP_NOZORDER | SWP_NOACTIVATE);
+        SetWindowPos(wd->hwnd, NULL, center.x, center.y, dimenstions.x, dimenstions.y, SWP_NOZORDER | SWP_NOACTIVATE);
     }
 
     void Window::update_resize_limit() {}; // No need
 
-    void Window::minimize() { ShowWindow(_platform.backend.hwnd, SW_MINIMIZE); }
+    void Window::minimize()
+    {
+        auto *wd = (platform::Win32WindowData *)_data;
+        ShowWindow(wd->hwnd, SW_MINIMIZE);
+    }
 
-    void Window::maximize() { ShowWindow(_platform.backend.hwnd, maximized() ? SW_RESTORE : SW_MAXIMIZE); }
+    void Window::maximize()
+    {
+        auto *wd = (platform::Win32WindowData *)_data;
+        ShowWindow(wd->hwnd, maximized() ? SW_RESTORE : SW_MAXIMIZE);
+    }
 
     void wait_events()
     {
@@ -751,10 +792,10 @@ namespace awin
             DispatchMessageW(&msg);
         }
 
-        platform::WindowData *window = (platform::WindowData *)GetPropW(hwnd, L"AWIN");
+        auto *window = (platform::Win32WindowData *)GetPropW(hwnd, L"AWIN");
         if (!window) return;
 
-        if (window->is_cursor_hidden && window->owner->cursor_position() != window->backend.saved_cursor_pos)
+        if (window->is_cursor_hidden && window->owner->cursor_position() != window->saved_cursor_pos)
         {
             acul::point2D<i32> pos = window->dimenstions / 2.0f;
             window->owner->cursor_position(pos);
@@ -775,12 +816,12 @@ namespace awin
 
     void push_empty_event() { PostThreadMessageW(platform::ctx.thread_id, WM_NULL, 0, 0); }
 
-    f32 get_dpi() { return static_cast<f32>(platform::ctx.dpi) / 96.0f; }
+    f32 get_dpi(const Window &) { return static_cast<f32>(platform::ctx.dpi) / 96.0f; }
 
     acul::point2D<i32> get_window_size(const Window &window)
     {
         RECT area;
-        GetClientRect(platform::native_access::get_hwnd(window), &area);
+        GetClientRect(native_access::get_hwnd(window), &area);
         return {area.right, area.bottom};
     }
 
@@ -791,7 +832,7 @@ namespace awin
 
         // NOTE: Retry clipboard opening a few times as some other application may have it
         //       open and also the Windows Clipboard History reads it after each update
-        HWND hwnd = platform::native_access::get_hwnd(window);
+        HWND hwnd = native_access::get_hwnd(window);
         while (!OpenClipboard(hwnd))
         {
             Sleep(1);
@@ -849,7 +890,7 @@ namespace awin
 
         // NOTE: Retry clipboard opening a few times as some other application may have it
         //       open and also the Windows Clipboard History reads it after each update
-        HWND hwnd = platform::native_access::get_hwnd(window);
+        HWND hwnd = native_access::get_hwnd(window);
         while (!OpenClipboard(hwnd))
         {
             Sleep(1);
@@ -870,38 +911,38 @@ namespace awin
 
     Cursor Cursor::create(Cursor::Type type)
     {
-        platform::CursorPlatform *pd;
+        Cursor::Platform *pd;
         switch (type)
         {
-            case Type::Arrow:
-                pd = acul::alloc<platform::CursorPlatform>(LoadCursor(NULL, IDC_ARROW));
+            case Type::arrow:
+                pd = acul::alloc<Cursor::Platform>(LoadCursor(NULL, IDC_ARROW));
                 break;
-            case Type::Ibeam:
-                pd = acul::alloc<platform::CursorPlatform>(LoadCursor(NULL, IDC_IBEAM));
+            case Type::ibeam:
+                pd = acul::alloc<Cursor::Platform>(LoadCursor(NULL, IDC_IBEAM));
                 break;
-            case Type::Crosshair:
-                pd = acul::alloc<platform::CursorPlatform>(LoadCursor(NULL, IDC_CROSS));
+            case Type::crosshair:
+                pd = acul::alloc<Cursor::Platform>(LoadCursor(NULL, IDC_CROSS));
                 break;
-            case Type::Hand:
-                pd = acul::alloc<platform::CursorPlatform>(LoadCursor(NULL, IDC_HAND));
+            case Type::hand:
+                pd = acul::alloc<Cursor::Platform>(LoadCursor(NULL, IDC_HAND));
                 break;
-            case Type::ResizeEW:
-                pd = acul::alloc<platform::CursorPlatform>(LoadCursor(NULL, IDC_SIZEWE));
+            case Type::resize_ew:
+                pd = acul::alloc<Cursor::Platform>(LoadCursor(NULL, IDC_SIZEWE));
                 break;
-            case Type::ResizeNS:
-                pd = acul::alloc<platform::CursorPlatform>(LoadCursor(NULL, IDC_SIZENS));
+            case Type::resize_ns:
+                pd = acul::alloc<Cursor::Platform>(LoadCursor(NULL, IDC_SIZENS));
                 break;
-            case Type::ResizeNESW:
-                pd = acul::alloc<platform::CursorPlatform>(LoadCursor(NULL, IDC_SIZENESW));
+            case Type::resize_nesw:
+                pd = acul::alloc<Cursor::Platform>(LoadCursor(NULL, IDC_SIZENESW));
                 break;
-            case Type::ResizeNWSE:
-                pd = acul::alloc<platform::CursorPlatform>(LoadCursor(NULL, IDC_SIZENWSE));
+            case Type::resize_nwse:
+                pd = acul::alloc<Cursor::Platform>(LoadCursor(NULL, IDC_SIZENWSE));
                 break;
-            case Type::ResizeAll:
-                pd = acul::alloc<platform::CursorPlatform>(LoadCursor(NULL, IDC_SIZEALL));
+            case Type::resize_all:
+                pd = acul::alloc<Cursor::Platform>(LoadCursor(NULL, IDC_SIZEALL));
                 break;
-            case Type::NotAllowed:
-                pd = acul::alloc<platform::CursorPlatform>(LoadCursor(NULL, IDC_NO));
+            case Type::not_allowed:
+                pd = acul::alloc<Cursor::Platform>(LoadCursor(NULL, IDC_NO));
                 break;
             default:
                 pd = NULL;
@@ -912,13 +953,18 @@ namespace awin
 
     void Cursor::assign(Window *window) { SetCursor(_pd->cursor); }
 
-    HWND platform::native_access::get_hwnd(const Window &window) { return window._platform.backend.hwnd; }
+    HWND native_access::get_hwnd(const Window &window)
+    {
+        auto *wd = (platform::Win32WindowData *)get_window_data(window);
+        return wd->hwnd;
+    }
 
-    acul::point2D<i32> platform::native_access::get_full_client_size(const Window &window)
+    acul::point2D<i32> native_access::get_full_client_size(const Window &window)
     {
         RECT clent_rect;
-        GetClientRect(window._platform.backend.hwnd, &clent_rect);
-        platform::add_frame_to_client_area(&clent_rect, window._platform.flags & WindowFlagBits::maximized, 1);
+        auto *wd = (platform::Win32WindowData *)get_window_data(window);
+        GetClientRect(wd->hwnd, &clent_rect);
+        platform::add_frame_to_client_area(&clent_rect, wd->flags & WindowFlagBits::maximized, 1);
         return {clent_rect.right - clent_rect.left, clent_rect.bottom - clent_rect.top};
     }
 

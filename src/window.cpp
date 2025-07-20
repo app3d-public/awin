@@ -40,10 +40,10 @@ namespace awin
         assert(platform::env.ed);
 #ifdef _WIN32
         auto nc_mouse_down = platform::env.ed->get_listeners<Win32NativeEvent>(event_id::nc_mouse_down);
-        if (!nc_mouse_down.empty()) event_registry.ncl_mouse_down = NCLMouseDownList[0];
+        if (!nc_mouse_down.empty()) platform::event_registry.ncl_mouse_down = nc_mouse_down.front();
 
         auto nc_hit_test = platform::env.ed->get_listeners<Win32NativeEvent>(event_id::nc_hit_test);
-        if (!nc_hit_test.empty()) event_registry.nc_hit_test = NCHitTestList[0];
+        if (!nc_hit_test.empty()) platform::event_registry.nc_hit_test = nc_hit_test.front();
 #endif
         platform::event_registry.focus = platform::env.ed->get_listeners<FocusEvent>(event_id::focus);
         platform::event_registry.scroll = platform::env.ed->get_listeners<ScrollEvent>(event_id::scroll);

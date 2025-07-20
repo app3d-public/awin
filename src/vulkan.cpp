@@ -75,7 +75,7 @@ namespace awin
             {
 #ifdef _WIN32
                 vk::Win32SurfaceCreateInfoKHR info;
-                info.setHinstance(platform::ctx.instance).setHwnd(platform::native_access::get_hwnd(_window));
+                info.setHinstance(platform::ctx.instance).setHwnd(native_access::get_hwnd(_window));
                 surface = instance.createWin32SurfaceKHR(info, nullptr, loader);
                 return vk::Result::eSuccess;
 #else
