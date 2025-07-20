@@ -79,6 +79,19 @@ namespace awin
             if (is_maximized) area->top -= border_y;
         }
 
+        void on_focus_kill(Win32WindowData *wd)
+        {
+            if (!wd) return;
+            wd->focused = false;
+            dispatch_window_event(event_registry.focus, wd->owner, false);
+            if (!wd->raw_input) return;
+            const RAWINPUTDEVICE rid = {0x01, 0x02, RIDEV_REMOVE, NULL};
+            if (!RegisterRawInputDevices(&rid, 1, sizeof(rid)))
+                LOG_ERROR("Failed to remove raw input device");
+            else
+                wd->raw_input = false;
+        }
+
         LRESULT CALLBACK wnd_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         {
             auto *window = (Win32WindowData *)GetPropW(hwnd, L"AWIN");
@@ -233,6 +246,12 @@ namespace awin
                     dispatch_window_event(event_registry.mouse_click, window->owner, button, action);
                     break;
                 }
+                case WM_WINDOWPOSCHANGED:
+                {
+                    auto *wp = reinterpret_cast<WINDOWPOS *>(lParam);
+                    if ((wp->flags & 0x8000) && IsIconic(window->hwnd)) on_focus_kill(window);
+                    break;
+                }
                 case WM_SETFOCUS:
                 {
                     window->focused = true;
@@ -245,18 +264,8 @@ namespace awin
                     break;
                 }
                 case WM_KILLFOCUS:
-                {
-                    if (!window) break;
-                    window->focused = false;
-                    dispatch_window_event(event_registry.focus, window->owner, false);
-                    if (!window->raw_input) break;
-                    const RAWINPUTDEVICE rid = {0x01, 0x02, RIDEV_REMOVE, NULL};
-                    if (!RegisterRawInputDevices(&rid, 1, sizeof(rid)))
-                        LOG_ERROR("Failed to remove raw input device");
-                    else
-                        window->raw_input = false;
+                    on_focus_kill(window);
                     break;
-                }
                 case WM_CHAR:
                 case WM_SYSCHAR:
                 {
@@ -794,12 +803,6 @@ namespace awin
 
         auto *window = (platform::Win32WindowData *)GetPropW(hwnd, L"AWIN");
         if (!window) return;
-
-        if (window->is_cursor_hidden && window->owner->cursor_position() != window->saved_cursor_pos)
-        {
-            acul::point2D<i32> pos = window->dimenstions / 2.0f;
-            window->owner->cursor_position(pos);
-        }
     }
 
     void wait_events_timeout()
