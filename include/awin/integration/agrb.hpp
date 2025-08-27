@@ -1,15 +1,14 @@
 #ifndef APP_WINDOW_VULKAN_H
 #define APP_WINDOW_VULKAN_H
 
-#include <acul/api.hpp>
-#include <acul/gpu/device.hpp>
-#include "window.hpp"
+#include <agrb/device.hpp>
+#include "../window.hpp"
 
 namespace awin
 {
-    namespace vulkan
+    namespace integration
     {
-        class APPLIB_API CreateCtx final : public acul::gpu::device_present_ctx
+        class APPLIB_API CreateCtx final : public agrb::device_present_ctx
         {
         public:
             CreateCtx(Window &window) : _window(window) {}
@@ -23,7 +22,7 @@ namespace awin
         private:
             Window &_window;
         };
-    } // namespace vulkan
+    } // namespace integration
 } // namespace awin
 
 #endif

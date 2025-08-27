@@ -49,7 +49,8 @@ namespace awin
                 {
                     wl_data->hovered = true;
                     if (wl_data->cursor) assign_cursor(wl_data, get_cursor_pd(wl_data->cursor));
-                    dispatch_window_event(event_registry.mouse_enter, wl_data->owner, true);
+                    acul::events::dispatch_event_group<MouseEnterEvent>(event_registry.mouse_enter, wl_data->owner,
+                                                                        true);
                 }
                 else if (wl_data->fallback.decorations)
                     wl_data->fallback.focus = surface;
@@ -70,7 +71,8 @@ namespace awin
                 if (wl_data->hovered)
                 {
                     wl_data->hovered = false;
-                    dispatch_window_event(event_registry.mouse_enter, wl_data->owner, false);
+                    acul::events::dispatch_event_group<MouseEnterEvent>(event_registry.mouse_enter, wl_data->owner,
+                                                                        false);
                 }
                 else if (wl_data->fallback.decorations)
                     wl_data->fallback.focus = NULL;
@@ -89,7 +91,8 @@ namespace awin
                 if (wl_data->hovered)
                 {
                     ctx.cursor_previous_name = NULL;
-                    dispatch_window_event(event_registry.mouse_move, event_id::mouse_move, wl_data->owner, cursor_pos);
+                    acul::events::dispatch_event_group<PosEvent>(event_registry.mouse_move, event_id::mouse_move,
+                                                                 wl_data->owner, cursor_pos);
                     return;
                 }
 
@@ -163,10 +166,10 @@ namespace awin
                 if (wl_data->hovered)
                 {
                     ctx.serial = serial;
-                    dispatch_window_event(event_registry.mouse_click, wl_data->owner,
-                                          static_cast<io::MouseKey>(button - BTN_LEFT),
-                                          state == WL_POINTER_BUTTON_STATE_PRESSED ? io::KeyPressState::press
-                                                                                   : io::KeyPressState::release);
+                    acul::events::dispatch_event_group<MouseClickEvent>(
+                        event_registry.mouse_click, wl_data->owner, static_cast<io::MouseKey>(button - BTN_LEFT),
+                        state == WL_POINTER_BUTTON_STATE_PRESSED ? io::KeyPressState::press
+                                                                 : io::KeyPressState::release);
                     return;
                 }
 
@@ -214,11 +217,11 @@ namespace awin
 
                 // NOTE: 10 units of motion per mouse wheel step seems to be a common ratio
                 if (axis == WL_POINTER_AXIS_HORIZONTAL_SCROLL)
-                    dispatch_window_event(event_registry.scroll, window_data->owner, -wl_fixed_to_double(value) / 10.0,
-                                          0.0);
+                    acul::events::dispatch_event_group<ScrollEvent>(event_registry.scroll, window_data->owner,
+                                                                    -wl_fixed_to_double(value) / 10.0, 0.0);
                 else if (axis == WL_POINTER_AXIS_VERTICAL_SCROLL)
-                    dispatch_window_event(event_registry.scroll, window_data->owner, 0.0,
-                                          -wl_fixed_to_double(value) / 10.0);
+                    acul::events::dispatch_event_group<ScrollEvent>(event_registry.scroll, window_data->owner, 0.0,
+                                                                    -wl_fixed_to_double(value) / 10.0);
             }
 
             static const struct wl_pointer_listener pointer_listener = {
@@ -308,8 +311,8 @@ namespace awin
                 WaylandWindowData *window = static_cast<WaylandWindowData *>(user_data);
                 acul::point2D<i32> delta = {static_cast<i32>(wl_fixed_to_double(dx)),
                                             static_cast<i32>(wl_fixed_to_double(dy))};
-                dispatch_window_event(event_registry.mouse_move_delta, event_id::mouse_move_delta, window->owner,
-                                      delta);
+                acul::events::dispatch_event_group<PosEvent>(event_registry.mouse_move_delta,
+                                                             event_id::mouse_move_delta, window->owner, delta);
             }
 
             static const struct zwp_relative_pointer_v1_listener relative_pointer_listener = {
@@ -325,7 +328,7 @@ namespace awin
             inline void mark_focus_window(WaylandWindowData *window)
             {
                 window->focused = true;
-                dispatch_window_event(event_registry.focus, window->owner, true);
+                acul::events::dispatch_event_group<FocusEvent>(event_registry.focus, window->owner, true);
                 if (!ctx.relative_pointer_manager || window->relative_pointer) return;
                 window->relative_pointer =
                     zwp_relative_pointer_manager_v1_get_relative_pointer(ctx.relative_pointer_manager, ctx.pointer);
@@ -335,7 +338,7 @@ namespace awin
             inline void unmark_focus_window(WaylandWindowData *window)
             {
                 window->focused = false;
-                dispatch_window_event(event_registry.focus, window->owner, false);
+                acul::events::dispatch_event_group<FocusEvent>(event_registry.focus, window->owner, false);
                 if (!window->relative_pointer) return;
                 zwp_relative_pointer_v1_destroy(window->relative_pointer);
                 window->relative_pointer = nullptr;
@@ -394,7 +397,9 @@ namespace awin
                 {
                     const xkb_keysym_t keysym = compose_symbol(keysyms[0]);
                     const u32 codepoint = xkb_keysym_to_utf32(keysym);
-                    if (codepoint != 0) dispatch_window_event(event_registry.char_input, window_data->owner, codepoint);
+                    if (codepoint != 0)
+                        acul::events::dispatch_event_group<CharInputEvent>(event_registry.char_input,
+                                                                           window_data->owner, codepoint);
                 }
             }
 
@@ -427,10 +432,10 @@ namespace awin
                 }
 
                 timerfd_settime(ctx.key_repeat_timer_fd, 0, &timer, NULL);
-                auto it = ctx.keymap.find(scancode);
+                const auto key = ctx.keymap.find(scancode);
                 io::KeyMode mods = ctx.xkb.modifiers;
-                if (it != ctx.keymap.end()) sync_mods_by_key(it->second, mods);
-                input_key(window_data, it != ctx.keymap.end() ? it->second : io::Key::unknown, action, mods);
+                if (key != io::Key::unknown) sync_mods_by_key(it->second, mods);
+                input_key(window_data, key, action, mods);
 
                 if (action == io::KeyPressState::press) input_text(window_data, scancode);
             }
@@ -587,7 +592,8 @@ namespace awin
 
                 window->scaling_numerator = numerator;
                 const f32 dpi = numerator / 120.f;
-                dispatch_window_event(event_registry.dpi_changed, window->owner, dpi, dpi);
+                acul::events::dispatch_event_group<DpiChangedEvent>(event_registry.dpi_changed, window->owner, dpi,
+                                                                    dpi);
             }
 
             const struct wp_fractional_scale_v1_listener fractional_scale_listener = {
@@ -697,16 +703,16 @@ namespace awin
                 {
                     window->flags = is_pending_maximized ? (window->flags | WindowFlagBits::maximized)
                                                          : (window->flags & ~WindowFlagBits::maximized);
-                    dispatch_window_event(event_registry.maximize, event_id::maximize, window->owner,
-                                          is_pending_maximized);
+                    acul::events::dispatch_event_group<StateEvent>(event_registry.maximize, event_id::maximize,
+                                                                   window->owner, is_pending_maximized);
                 }
                 const bool is_pending_fullscreen = window->pending.flags & WindowFlagBits::fullscreen;
                 window->flags = is_pending_fullscreen ? (window->flags | WindowFlagBits::fullscreen)
                                                       : (window->flags & ~WindowFlagBits::fullscreen);
 
                 if (resize_window(window, window->pending.dimensions))
-                    dispatch_window_event(event_registry.resize, event_id::resize, window->owner,
-                                          window->pending.dimensions);
+                    acul::events::dispatch_event_group<PosEvent>(event_registry.resize, event_id::resize, window->owner,
+                                                                 window->pending.dimensions);
             }
 
             static const struct xdg_surface_listener xdg_surface_listener = {xdg_surface_handle_configure};
@@ -745,7 +751,8 @@ namespace awin
                 {
                     window->flags = maximized ? (window->flags | WindowFlagBits::maximized)
                                               : (window->flags & ~WindowFlagBits::maximized);
-                    dispatch_window_event(event_registry.maximize, event_id::maximize, window->owner, maximized);
+                    acul::events::dispatch_event_group<StateEvent>(event_registry.maximize, event_id::maximize,
+                                                                   window->owner, maximized);
                 }
 
                 window->flags = fullscreen ? (window->flags | WindowFlagBits::fullscreen)
@@ -754,7 +761,8 @@ namespace awin
                 if (!(window->flags & WindowFlagBits::hidden)) window->flags &= ~WindowFlagBits::hidden;
 
                 if (resize_window(window, size))
-                    dispatch_window_event(event_registry.resize, event_id::resize, window->owner, window->dimenstions);
+                    acul::events::dispatch_event_group<PosEvent>(event_registry.resize, event_id::resize, window->owner,
+                                                                 window->dimenstions);
                 wl_surface_commit(window->surface);
             }
 
@@ -1335,12 +1343,10 @@ namespace awin
                         {
                             if (ctx.keyboard_focus)
                             {
-                                auto it = ctx.keymap.find(ctx.key_repeat_scancode);
+                                const auto key = ctx.keymap.find(ctx.key_repeat_scancode);
                                 for (u64 i = 0; i < repeats; i++)
                                 {
-                                    input_key(ctx.keyboard_focus,
-                                              it != ctx.keymap.end() ? it->second : io::Key::unknown,
-                                              io::KeyPressState::press, ctx.xkb.modifiers);
+                                    input_key(ctx.keyboard_focus, key, io::KeyPressState::press, ctx.xkb.modifiers);
                                     input_text(ctx.keyboard_focus, ctx.key_repeat_scancode);
                                 }
 

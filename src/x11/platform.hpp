@@ -1,7 +1,7 @@
 #pragma once
 
 #include <acul/log.hpp>
-#include <acul/map.hpp>
+#include <acul/lut_table.hpp>
 #include <acul/pair.hpp>
 #include <acul/string/string.hpp>
 #include "../linux_pd.hpp"
@@ -108,6 +108,136 @@ namespace awin
                 ::Cursor handle = 0;
             };
 
+            struct KeyTraits
+            {
+                using value_type = uint16_t;
+                using enum_type = io::Key;
+
+                static constexpr enum_type unknown = io::Key::unknown;
+
+                static consteval void fill_lut_table(std::array<enum_type, 256> &a)
+                {
+                    a[X11_KEY_SPACE] = io::Key::space;
+                    a[X11_KEY_APOSTROPHE] = io::Key::apostroph;
+                    a[X11_KEY_COMMA] = io::Key::comma;
+                    a[X11_KEY_MINUS] = io::Key::minus;
+                    a[X11_KEY_PERIOD] = io::Key::period;
+                    a[X11_KEY_SLASH] = io::Key::slash;
+                    a[X11_KEY_0] = io::Key::d0;
+                    a[X11_KEY_1] = io::Key::d1;
+                    a[X11_KEY_2] = io::Key::d2;
+                    a[X11_KEY_3] = io::Key::d3;
+                    a[X11_KEY_4] = io::Key::d4;
+                    a[X11_KEY_5] = io::Key::d5;
+                    a[X11_KEY_6] = io::Key::d6;
+                    a[X11_KEY_7] = io::Key::d7;
+                    a[X11_KEY_8] = io::Key::d8;
+                    a[X11_KEY_9] = io::Key::d9;
+                    a[X11_KEY_SEMICOLON] = io::Key::semicolon;
+                    a[X11_KEY_EQUAL] = io::Key::equal;
+                    a[X11_KEY_A] = io::Key::a;
+                    a[X11_KEY_B] = io::Key::b;
+                    a[X11_KEY_C] = io::Key::c;
+                    a[X11_KEY_D] = io::Key::d;
+                    a[X11_KEY_E] = io::Key::e;
+                    a[X11_KEY_F] = io::Key::f;
+                    a[X11_KEY_G] = io::Key::g;
+                    a[X11_KEY_H] = io::Key::h;
+                    a[X11_KEY_I] = io::Key::i;
+                    a[X11_KEY_J] = io::Key::j;
+                    a[X11_KEY_K] = io::Key::k;
+                    a[X11_KEY_L] = io::Key::l;
+                    a[X11_KEY_M] = io::Key::m;
+                    a[X11_KEY_N] = io::Key::n;
+                    a[X11_KEY_O] = io::Key::o;
+                    a[X11_KEY_P] = io::Key::p;
+                    a[X11_KEY_Q] = io::Key::q;
+                    a[X11_KEY_R] = io::Key::r;
+                    a[X11_KEY_S] = io::Key::s;
+                    a[X11_KEY_T] = io::Key::t;
+                    a[X11_KEY_U] = io::Key::u;
+                    a[X11_KEY_V] = io::Key::v;
+                    a[X11_KEY_W] = io::Key::w;
+                    a[X11_KEY_X] = io::Key::x;
+                    a[X11_KEY_Y] = io::Key::y;
+                    a[X11_KEY_Z] = io::Key::z;
+                    a[X11_KEY_BRACKETLEFT] = io::Key::lbrace;
+                    a[X11_KEY_BACKSLASH] = io::Key::backslash;
+                    a[X11_KEY_BRACKETRIGHT] = io::Key::rbrace;
+                    a[X11_KEY_GRAVE] = io::Key::grave_accent;
+                    a[X11_KEY_ESCAPE] = io::Key::escape;
+                    a[X11_KEY_RETURN] = io::Key::enter;
+                    a[X11_KEY_TAB] = io::Key::tab;
+                    a[X11_KEY_BACKSPACE] = io::Key::backspace;
+                    a[X11_KEY_INSERT] = io::Key::insert;
+                    a[X11_KEY_DELETE] = io::Key::del;
+                    a[X11_KEY_RIGHT] = io::Key::right;
+                    a[X11_KEY_LEFT] = io::Key::left;
+                    a[X11_KEY_DOWN] = io::Key::down;
+                    a[X11_KEY_UP] = io::Key::up;
+                    a[X11_KEY_PRIOR] = io::Key::page_up;
+                    a[X11_KEY_NEXT] = io::Key::page_down;
+                    a[X11_KEY_HOME] = io::Key::home;
+                    a[X11_KEY_END] = io::Key::end;
+                    a[X11_KEY_CAPS_LOCK] = io::Key::caps_lock;
+                    a[X11_KEY_SCROLL_LOCK] = io::Key::scroll_lock;
+                    a[X11_KEY_NUM_LOCK] = io::Key::num_lock;
+                    a[X11_KEY_PRINT] = io::Key::print_screen;
+                    a[X11_KEY_PRINT2] = io::Key::print_screen;
+                    a[X11_KEY_PAUSE] = io::Key::pause;
+                    a[X11_KEY_F1] = io::Key::f1;
+                    a[X11_KEY_F2] = io::Key::f2;
+                    a[X11_KEY_F3] = io::Key::f3;
+                    a[X11_KEY_F4] = io::Key::f4;
+                    a[X11_KEY_F5] = io::Key::f5;
+                    a[X11_KEY_F6] = io::Key::f6;
+                    a[X11_KEY_F7] = io::Key::f7;
+                    a[X11_KEY_F8] = io::Key::f8;
+                    a[X11_KEY_F9] = io::Key::f9;
+                    a[X11_KEY_F10] = io::Key::f10;
+                    a[X11_KEY_F11] = io::Key::f11;
+                    a[X11_KEY_F12] = io::Key::f12;
+                    a[X11_KEY_XF86TOOLS2] = io::Key::f13;
+                    a[X11_KEY_XF86LAUNCH5] = io::Key::f14;
+                    a[X11_KEY_XF86LAUNCH6] = io::Key::f15;
+                    a[X11_KEY_XF86LAUNCH7] = io::Key::f16;
+                    a[X11_KEY_XF86LAUNCH8] = io::Key::f17;
+                    a[X11_KEY_XF86LAUNCH9] = io::Key::f18;
+                    a[X11_KEY_F19] = io::Key::f19;
+                    a[X11_KEY_XF86AUDIOMICMUTE] = io::Key::f20;
+                    a[X11_KEY_XF86TOUCHPADTOGGLE] = io::Key::f21;
+                    a[X11_KEY_XF86TOUCHPADON] = io::Key::f22;
+                    a[X11_KEY_XF86TOUCHPADOFF] = io::Key::f23;
+                    a[X11_KEY_PROG3] = io::Key::f24;
+                    a[X11_KEY_KP_INSERT] = io::Key::kp_0;
+                    a[X11_KEY_KP_DELETE] = io::Key::kp_1;
+                    a[X11_KEY_KP_DOWN] = io::Key::kp_2;
+                    a[X11_KEY_KP_NEXT] = io::Key::kp_3;
+                    a[X11_KEY_KP_LEFT] = io::Key::kp_4;
+                    a[X11_KEY_KP_BEGIN] = io::Key::kp_5;
+                    a[X11_KEY_KP_RIGHT] = io::Key::kp_6;
+                    a[X11_KEY_KP_HOME] = io::Key::kp_7;
+                    a[X11_KEY_KP_UP] = io::Key::kp_8;
+                    a[X11_KEY_KP_PRIOR] = io::Key::kp_9;
+                    a[X11_KEY_KP_DECIMAL] = io::Key::kp_decimal;
+                    a[X11_KEY_KP_DIVIDE] = io::Key::kp_divide;
+                    a[X11_KEY_KP_MULTIPLY] = io::Key::kp_multiply;
+                    a[X11_KEY_KP_SUBTRACT] = io::Key::kp_subtract;
+                    a[X11_KEY_KP_ADD] = io::Key::kp_add;
+                    a[X11_KEY_KP_ENTER] = io::Key::kp_enter;
+                    a[X11_KEY_KP_EQUAL] = io::Key::kp_equal;
+                    a[X11_KEY_SHIFT_L] = io::Key::lshift;
+                    a[X11_KEY_CONTROL_L] = io::Key::lcontrol;
+                    a[X11_KEY_ALT_L] = io::Key::lalt;
+                    a[X11_KEY_SUPER_L] = io::Key::lsuper;
+                    a[X11_KEY_SHIFT_R] = io::Key::rshift;
+                    a[X11_KEY_CONTROL_R] = io::Key::rcontrol;
+                    a[X11_KEY_ALT_R] = io::Key::ralt;
+                    a[X11_KEY_SUPER_R] = io::Key::rsuper;
+                    a[X11_KEY_MENU] = io::Key::menu;
+                }
+            };
+
             extern APPLIB_API struct Context
             {
                 XlibData xlib;
@@ -125,125 +255,7 @@ namespace awin
                 XErrorHandler error_handler = NULL;
                 acul::string primary_selection_string;
                 WindowData *focused_window = nullptr;
-                acul::map<i16, io::Key> keymap{{X11_KEY_SPACE, io::Key::space},
-                                               {X11_KEY_APOSTROPHE, io::Key::apostroph},
-                                               {X11_KEY_COMMA, io::Key::comma},
-                                               {X11_KEY_MINUS, io::Key::minus},
-                                               {X11_KEY_PERIOD, io::Key::period},
-                                               {X11_KEY_SLASH, io::Key::slash},
-                                               {X11_KEY_0, io::Key::d0},
-                                               {X11_KEY_1, io::Key::d1},
-                                               {X11_KEY_2, io::Key::d2},
-                                               {X11_KEY_3, io::Key::d3},
-                                               {X11_KEY_4, io::Key::d4},
-                                               {X11_KEY_5, io::Key::d5},
-                                               {X11_KEY_6, io::Key::d6},
-                                               {X11_KEY_7, io::Key::d7},
-                                               {X11_KEY_8, io::Key::d8},
-                                               {X11_KEY_9, io::Key::d9},
-                                               {X11_KEY_SEMICOLON, io::Key::semicolon},
-                                               {X11_KEY_EQUAL, io::Key::equal},
-                                               {X11_KEY_A, io::Key::a},
-                                               {X11_KEY_B, io::Key::b},
-                                               {X11_KEY_C, io::Key::c},
-                                               {X11_KEY_D, io::Key::d},
-                                               {X11_KEY_E, io::Key::e},
-                                               {X11_KEY_F, io::Key::f},
-                                               {X11_KEY_G, io::Key::g},
-                                               {X11_KEY_H, io::Key::h},
-                                               {X11_KEY_I, io::Key::i},
-                                               {X11_KEY_J, io::Key::j},
-                                               {X11_KEY_K, io::Key::k},
-                                               {X11_KEY_L, io::Key::l},
-                                               {X11_KEY_M, io::Key::m},
-                                               {X11_KEY_N, io::Key::n},
-                                               {X11_KEY_O, io::Key::o},
-                                               {X11_KEY_P, io::Key::p},
-                                               {X11_KEY_Q, io::Key::q},
-                                               {X11_KEY_R, io::Key::r},
-                                               {X11_KEY_S, io::Key::s},
-                                               {X11_KEY_T, io::Key::t},
-                                               {X11_KEY_U, io::Key::u},
-                                               {X11_KEY_V, io::Key::v},
-                                               {X11_KEY_W, io::Key::w},
-                                               {X11_KEY_X, io::Key::x},
-                                               {X11_KEY_Y, io::Key::y},
-                                               {X11_KEY_Z, io::Key::z},
-                                               {X11_KEY_BRACKETLEFT, io::Key::lbrace},
-                                               {X11_KEY_BACKSLASH, io::Key::backslash},
-                                               {X11_KEY_BRACKETRIGHT, io::Key::rbrace},
-                                               {X11_KEY_GRAVE, io::Key::grave_accent},
-                                               {X11_KEY_ESCAPE, io::Key::escape},
-                                               {X11_KEY_RETURN, io::Key::enter},
-                                               {X11_KEY_TAB, io::Key::tab},
-                                               {X11_KEY_BACKSPACE, io::Key::backspace},
-                                               {X11_KEY_INSERT, io::Key::insert},
-                                               {X11_KEY_DELETE, io::Key::del},
-                                               {X11_KEY_RIGHT, io::Key::right},
-                                               {X11_KEY_LEFT, io::Key::left},
-                                               {X11_KEY_DOWN, io::Key::down},
-                                               {X11_KEY_UP, io::Key::up},
-                                               {X11_KEY_PRIOR, io::Key::page_up},
-                                               {X11_KEY_NEXT, io::Key::page_down},
-                                               {X11_KEY_HOME, io::Key::home},
-                                               {X11_KEY_END, io::Key::end},
-                                               {X11_KEY_CAPS_LOCK, io::Key::caps_lock},
-                                               {X11_KEY_SCROLL_LOCK, io::Key::scroll_lock},
-                                               {X11_KEY_NUM_LOCK, io::Key::num_lock},
-                                               {X11_KEY_PRINT, io::Key::print_screen},
-                                               {X11_KEY_PRINT2, io::Key::print_screen},
-                                               {X11_KEY_PAUSE, io::Key::pause},
-                                               {X11_KEY_F1, io::Key::f1},
-                                               {X11_KEY_F2, io::Key::f2},
-                                               {X11_KEY_F3, io::Key::f3},
-                                               {X11_KEY_F4, io::Key::f4},
-                                               {X11_KEY_F5, io::Key::f5},
-                                               {X11_KEY_F6, io::Key::f6},
-                                               {X11_KEY_F7, io::Key::f7},
-                                               {X11_KEY_F8, io::Key::f8},
-                                               {X11_KEY_F9, io::Key::f9},
-                                               {X11_KEY_F10, io::Key::f10},
-                                               {X11_KEY_F11, io::Key::f11},
-                                               {X11_KEY_F12, io::Key::f12},
-                                               {X11_KEY_XF86TOOLS2, io::Key::f13},
-                                               {X11_KEY_XF86LAUNCH5, io::Key::f14},
-                                               {X11_KEY_XF86LAUNCH6, io::Key::f15},
-                                               {X11_KEY_XF86LAUNCH7, io::Key::f16},
-                                               {X11_KEY_XF86LAUNCH8, io::Key::f17},
-                                               {X11_KEY_XF86LAUNCH9, io::Key::f18},
-                                               {X11_KEY_F19, io::Key::f19},
-                                               {X11_KEY_XF86AUDIOMICMUTE, io::Key::f20},
-                                               {X11_KEY_XF86TOUCHPADTOGGLE, io::Key::f21},
-                                               {X11_KEY_XF86TOUCHPADON, io::Key::f22},
-                                               {X11_KEY_XF86TOUCHPADOFF, io::Key::f23},
-                                               {X11_KEY_PROG3, io::Key::f24},
-                                               {X11_KEY_KP_INSERT, io::Key::kp_0},
-                                               {X11_KEY_KP_DELETE, io::Key::kp_1},
-                                               {X11_KEY_KP_DOWN, io::Key::kp_2},
-                                               {X11_KEY_KP_NEXT, io::Key::kp_3},
-                                               {X11_KEY_KP_LEFT, io::Key::kp_4},
-                                               {X11_KEY_KP_BEGIN, io::Key::kp_5},
-                                               {X11_KEY_KP_RIGHT, io::Key::kp_6},
-                                               {X11_KEY_KP_HOME, io::Key::kp_7},
-                                               {X11_KEY_KP_UP, io::Key::kp_8},
-                                               {X11_KEY_KP_PRIOR, io::Key::kp_9},
-                                               {X11_KEY_KP_DECIMAL, io::Key::kp_decimal},
-                                               {X11_KEY_KP_DIVIDE, io::Key::kp_divide},
-                                               {X11_KEY_KP_MULTIPLY, io::Key::kp_multiply},
-                                               {X11_KEY_KP_SUBTRACT, io::Key::kp_subtract},
-                                               {X11_KEY_KP_ADD, io::Key::kp_add},
-                                               {X11_KEY_KP_ENTER, io::Key::kp_enter},
-                                               {X11_KEY_KP_EQUAL, io::Key::kp_equal},
-                                               {X11_KEY_SHIFT_L, io::Key::lshift},
-                                               {X11_KEY_CONTROL_L, io::Key::lcontrol},
-                                               {X11_KEY_ALT_L, io::Key::lalt},
-                                               {X11_KEY_SUPER_L, io::Key::lsuper},
-                                               {X11_KEY_SHIFT_R, io::Key::rshift},
-                                               {X11_KEY_CONTROL_R, io::Key::rcontrol},
-                                               {X11_KEY_ALT_R, io::Key::ralt},
-                                               {X11_KEY_SUPER_R, io::Key::rsuper},
-                                               {X11_KEY_MENU, io::Key::menu}};
-
+                acul::lut_table<256, KeyTraits> keymap;
                 WMAtoms wm;                  // Window manager atoms
                 SelectionAtoms select_atoms; // Selection (clipboard) atoms
 

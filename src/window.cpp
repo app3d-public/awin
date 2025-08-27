@@ -19,7 +19,8 @@ namespace awin
                 data->keys[+key] = action;
                 if (repeated) action = io::KeyPressState::repeat;
             }
-            dispatch_window_event(event_registry.key_input, data->owner, key, action, mods);
+            
+            acul::events::dispatch_event_group<KeyInputEvent>(event_registry.key_input, data->owner, key, action, mods);
         }
     } // namespace platform
 
@@ -37,28 +38,26 @@ namespace awin
 
     void update_events()
     {
-        assert(platform::env.ed);
-#ifdef _WIN32
-        auto nc_mouse_down = platform::env.ed->get_listeners<Win32NativeEvent>(event_id::nc_mouse_down);
-        if (!nc_mouse_down.empty()) platform::event_registry.ncl_mouse_down = nc_mouse_down.front();
+        using namespace platform;
 
-        auto nc_hit_test = platform::env.ed->get_listeners<Win32NativeEvent>(event_id::nc_hit_test);
-        if (!nc_hit_test.empty()) platform::event_registry.nc_hit_test = nc_hit_test.front();
+        assert(env.ed);
+#ifdef _WIN32
+        acul::events::cache_event_group(event_id::nc_mouse_down, event_registry.ncl_mouse_down, env.ed);
+        acul::events::cache_event_group(event_id::nc_hit_test, event_registry.nc_hit_test, env.ed);
 #endif
-        platform::event_registry.focus = platform::env.ed->get_listeners<FocusEvent>(event_id::focus);
-        platform::event_registry.scroll = platform::env.ed->get_listeners<ScrollEvent>(event_id::scroll);
-        platform::event_registry.minimize = platform::env.ed->get_listeners<StateEvent>(event_id::minimize);
-        platform::event_registry.maximize = platform::env.ed->get_listeners<StateEvent>(event_id::maximize);
-        platform::event_registry.resize = platform::env.ed->get_listeners<PosEvent>(event_id::resize);
-        platform::event_registry.move = platform::env.ed->get_listeners<PosEvent>(event_id::move);
-        platform::event_registry.char_input = platform::env.ed->get_listeners<CharInputEvent>(event_id::char_input);
-        platform::event_registry.key_input = platform::env.ed->get_listeners<KeyInputEvent>(event_id::key_input);
-        platform::event_registry.mouse_click = platform::env.ed->get_listeners<MouseClickEvent>(event_id::mouse_click);
-        platform::event_registry.mouse_enter = platform::env.ed->get_listeners<MouseEnterEvent>(event_id::mouse_enter);
-        platform::event_registry.mouse_move_delta =
-            platform::env.ed->get_listeners<PosEvent>(event_id::mouse_move_delta);
-        platform::event_registry.mouse_move = platform::env.ed->get_listeners<PosEvent>(event_id::mouse_move);
-        platform::event_registry.dpi_changed = platform::env.ed->get_listeners<DpiChangedEvent>(event_id::dpi_changed);
+        acul::events::cache_event_group(event_id::focus, event_registry.focus, env.ed);
+        acul::events::cache_event_group(event_id::scroll, event_registry.scroll, env.ed);
+        acul::events::cache_event_group(event_id::minimize, event_registry.minimize, env.ed);
+        acul::events::cache_event_group(event_id::maximize, event_registry.maximize, env.ed);
+        acul::events::cache_event_group(event_id::resize, event_registry.resize, env.ed);
+        acul::events::cache_event_group(event_id::move, event_registry.move, env.ed);
+        acul::events::cache_event_group(event_id::char_input, event_registry.char_input, env.ed);
+        acul::events::cache_event_group(event_id::key_input, event_registry.key_input, env.ed);
+        acul::events::cache_event_group(event_id::mouse_click, event_registry.mouse_click, env.ed);
+        acul::events::cache_event_group(event_id::mouse_enter, event_registry.mouse_enter, env.ed);
+        acul::events::cache_event_group(event_id::mouse_move_delta, event_registry.mouse_move_delta, env.ed);
+        acul::events::cache_event_group(event_id::mouse_move, event_registry.mouse_move, env.ed);
+        acul::events::cache_event_group(event_id::dpi_changed, event_registry.dpi_changed, env.ed);
     }
 
     void init_library(acul::events::dispatcher *ed)

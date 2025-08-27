@@ -78,7 +78,8 @@ namespace awin
                 {
                     window->buffer_scale = max_scale;
                     wl_surface_set_buffer_scale(window->surface, max_scale);
-                    dispatch_window_event(event_registry.dpi_changed, window->owner, max_scale, max_scale);
+                    acul::events::dispatch_event_group<DpiChangedEvent>(event_registry.dpi_changed, window->owner,
+                                                                        max_scale, max_scale);
                 }
             }
 

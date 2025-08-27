@@ -3,7 +3,7 @@
 
 #include <acul/api.hpp>
 #include <acul/enum.hpp>
-#include <acul/memory.hpp>
+#include <acul/memory/alloc.hpp>
 #include <acul/pair.hpp>
 #include <acul/scalars.hpp>
 

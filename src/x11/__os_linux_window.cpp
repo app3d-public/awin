@@ -685,8 +685,9 @@ namespace awin
                     if (XIMaskIsSet(raw->valuators.mask, 0)) delta.x = raw->raw_values[idx++];
                     if (XIMaskIsSet(raw->valuators.mask, 1)) delta.y = raw->raw_values[idx++];
                     if (ctx.focused_window)
-                        dispatch_window_event(event_registry.mouse_move_delta, event_id::mouse_move_delta,
-                                              ctx.focused_window->owner, delta);
+                        acul::events::dispatch_event_group<PosEvent>(event_registry.mouse_move_delta,
+                                                                     event_id::mouse_move_delta,
+                                                                     ctx.focused_window->owner, delta);
                     xlib.XFreeEventData(ctx.display, &event->xcookie);
                     return;
                 }
@@ -736,7 +737,8 @@ namespace awin
                         return;
                     case EnterNotify:
                     {
-                        dispatch_window_event(event_registry.mouse_enter, window_data->owner, true);
+                        acul::events::dispatch_event_group<MouseEnterEvent>(event_registry.mouse_enter,
+                                                                            window_data->owner, true);
 
                         if (!window_data->is_cursor_hidden)
                         {
@@ -746,18 +748,21 @@ namespace awin
                                 platform::env.default_cursor.assign(window_data->owner);
                         }
                         acul::point2D dim{event->xcrossing.x, event->xcrossing.y};
-                        dispatch_window_event(event_registry.mouse_move, event_id::mouse_move, window_data->owner, dim);
+                        acul::events::dispatch_event_group<PosEvent>(event_registry.mouse_move, event_id::mouse_move,
+                                                                     window_data->owner, dim);
                         return;
                     }
                     case LeaveNotify:
                     {
-                        dispatch_window_event(event_registry.mouse_enter, window_data->owner, false);
+                        acul::events::dispatch_event_group<MouseEnterEvent>(event_registry.mouse_enter,
+                                                                            window_data->owner, false);
                         return;
                     }
                     case MotionNotify:
                     {
                         acul::point2D pos{event->xmotion.x, event->xmotion.y};
-                        dispatch_window_event(event_registry.mouse_move, event_id::mouse_move, window_data->owner, pos);
+                        acul::events::dispatch_event_group<PosEvent>(event_registry.mouse_move, event_id::mouse_move,
+                                                                     window_data->owner, pos);
                         return;
                     }
                     case ConfigureNotify:
@@ -766,8 +771,8 @@ namespace awin
                         if (dimenstions != window_data->dimenstions)
                         {
                             window_data->dimenstions = dimenstions;
-                            dispatch_window_event(event_registry.resize, event_id::resize, window_data->owner,
-                                                  window_data->dimenstions);
+                            acul::events::dispatch_event_group<PosEvent>(event_registry.resize, event_id::resize,
+                                                                         window_data->owner, window_data->dimenstions);
                         }
                         acul::point2D<i32> pos(event->xconfigure.x, event->xconfigure.y);
 
@@ -789,7 +794,8 @@ namespace awin
                         if (window_data->window_pos != pos)
                         {
                             window_data->window_pos = pos;
-                            dispatch_window_event(event_registry.move, event_id::move, window_data->owner, pos);
+                            acul::events::dispatch_event_group<PosEvent>(event_registry.move, event_id::move,
+                                                                         window_data->owner, pos);
                         }
                         return;
                     }
@@ -809,7 +815,7 @@ namespace awin
                         if (window_data->ic) xlib.XSetICFocus(window_data->ic);
 
                         window_data->focused = true;
-                        dispatch_window_event(event_registry.focus, window_data->owner, true);
+                        acul::events::dispatch_event_group<FocusEvent>(event_registry.focus, window_data->owner, true);
                         toogle_rid(true);
                         ctx.focused_window = window_data;
                         return;
@@ -826,7 +832,7 @@ namespace awin
                         if (window_data->ic) xlib.XUnsetICFocus(window_data->ic);
 
                         window_data->focused = false;
-                        dispatch_window_event(event_registry.focus, window_data->owner, false);
+                        acul::events::dispatch_event_group<FocusEvent>(event_registry.focus, window_data->owner, false);
                         toogle_rid(false);
                         return;
                     }
@@ -849,8 +855,8 @@ namespace awin
                                 else
                                     window_data->flags &= ~WindowFlagBits::minimized;
 
-                                dispatch_window_event(event_registry.minimize, event_id::minimize, window_data->owner,
-                                                      iconified);
+                                acul::events::dispatch_event_group<StateEvent>(
+                                    event_registry.minimize, event_id::minimize, window_data->owner, iconified);
                             }
                         }
                         else if (event->xproperty.atom == ctx.wm.NET_WM_STATE)
@@ -865,8 +871,8 @@ namespace awin
                                 else
                                     window_data->flags &= ~WindowFlagBits::maximized;
 
-                                dispatch_window_event(event_registry.maximize, event_id::maximize, window_data->owner,
-                                                      maximized);
+                                acul::events::dispatch_event_group<StateEvent>(
+                                    event_registry.maximize, event_id::maximize, window_data->owner, maximized);
                             }
                         }
 

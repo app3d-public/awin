@@ -1,15 +1,16 @@
+#include <awin/integration/agrb.hpp>
 #include <awin/native_access.hpp>
-#include <awin/vulkan.hpp>
+
 #ifdef _WIN32
-    #include "win32_pd.hpp"
+    #include "../win32_pd.hpp"
 #else
-    #include "wayland/platform.hpp"
-    #include "x11/platform.hpp"
+    #include "../wayland/platform.hpp"
+    #include "../x11/platform.hpp"
 #endif
 
 namespace awin
 {
-    namespace vulkan
+    namespace integration
     {
         void CreateCtx::assign_instance_extensions(const acul::set<acul::string> &ext, acul::vector<const char *> &dst)
         {
@@ -114,5 +115,5 @@ namespace awin
                 return vk::Result::eErrorInitializationFailed;
             }
         }
-    } // namespace vulkan
+    } // namespace integration
 } // namespace awin

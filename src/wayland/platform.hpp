@@ -2,7 +2,7 @@
 
 #include <acul/api.hpp>
 #include <acul/list.hpp>
-#include <acul/map.hpp>
+#include <acul/lut_table.hpp>
 #include <linux/input-event-codes.h>
 #include "../linux_pd.hpp"
 #include "loaders.hpp"
@@ -169,6 +169,135 @@ namespace awin
                 i32 factor;
             };
 
+            struct KeyTraits
+            {
+                using value_type = uint16_t;
+                using enum_type = io::Key;
+
+                static constexpr enum_type unknown = io::Key::unknown;
+
+                static consteval void fill_lut_table(std::array<enum_type, 256> &a)
+                {
+                    a[KEY_SPACE] = io::Key::space;
+                    a[KEY_APOSTROPHE] = io::Key::apostroph;
+                    a[KEY_COMMA] = io::Key::comma;
+                    a[KEY_MINUS] = io::Key::minus;
+                    a[KEY_DOT] = io::Key::period;
+                    a[KEY_SLASH] = io::Key::slash;
+                    a[KEY_0] = io::Key::d0;
+                    a[KEY_1] = io::Key::d1;
+                    a[KEY_2] = io::Key::d2;
+                    a[KEY_3] = io::Key::d3;
+                    a[KEY_4] = io::Key::d4;
+                    a[KEY_5] = io::Key::d5;
+                    a[KEY_6] = io::Key::d6;
+                    a[KEY_7] = io::Key::d7;
+                    a[KEY_8] = io::Key::d8;
+                    a[KEY_9] = io::Key::d9;
+                    a[KEY_SEMICOLON] = io::Key::semicolon;
+                    a[KEY_EQUAL] = io::Key::equal;
+                    a[KEY_A] = io::Key::a;
+                    a[KEY_B] = io::Key::b;
+                    a[KEY_C] = io::Key::c;
+                    a[KEY_D] = io::Key::d;
+                    a[KEY_E] = io::Key::e;
+                    a[KEY_F] = io::Key::f;
+                    a[KEY_G] = io::Key::g;
+                    a[KEY_H] = io::Key::h;
+                    a[KEY_I] = io::Key::i;
+                    a[KEY_J] = io::Key::j;
+                    a[KEY_K] = io::Key::k;
+                    a[KEY_L] = io::Key::l;
+                    a[KEY_M] = io::Key::m;
+                    a[KEY_N] = io::Key::n;
+                    a[KEY_O] = io::Key::o;
+                    a[KEY_P] = io::Key::p;
+                    a[KEY_Q] = io::Key::q;
+                    a[KEY_R] = io::Key::r;
+                    a[KEY_S] = io::Key::s;
+                    a[KEY_T] = io::Key::t;
+                    a[KEY_U] = io::Key::u;
+                    a[KEY_V] = io::Key::v;
+                    a[KEY_W] = io::Key::w;
+                    a[KEY_X] = io::Key::x;
+                    a[KEY_Y] = io::Key::y;
+                    a[KEY_Z] = io::Key::z;
+                    a[KEY_LEFTBRACE] = io::Key::lbrace;
+                    a[KEY_BACKSLASH] = io::Key::backslash;
+                    a[KEY_RIGHTBRACE] = io::Key::rcontrol;
+                    a[KEY_GRAVE] = io::Key::grave_accent;
+                    a[KEY_ESC] = io::Key::escape;
+                    a[KEY_ENTER] = io::Key::enter;
+                    a[KEY_TAB] = io::Key::tab;
+                    a[KEY_BACKSPACE] = io::Key::backspace;
+                    a[KEY_INSERT] = io::Key::insert;
+                    a[KEY_DELETE] = io::Key::del;
+                    a[KEY_RIGHT] = io::Key::right;
+                    a[KEY_LEFT] = io::Key::left;
+                    a[KEY_DOWN] = io::Key::down;
+                    a[KEY_UP] = io::Key::up;
+                    a[KEY_PAGEUP] = io::Key::page_up;
+                    a[KEY_PAGEDOWN] = io::Key::page_down;
+                    a[KEY_HOME] = io::Key::home;
+                    a[KEY_END] = io::Key::end;
+                    a[KEY_CAPSLOCK] = io::Key::caps_lock;
+                    a[KEY_SCROLLLOCK] = io::Key::scroll_lock;
+                    a[KEY_NUMLOCK] = io::Key::num_lock;
+                    a[KEY_PRINT] = io::Key::print_screen;
+                    a[KEY_PAUSE] = io::Key::pause;
+                    a[KEY_F1] = io::Key::f1;
+                    a[KEY_F2] = io::Key::f2;
+                    a[KEY_F3] = io::Key::f3;
+                    a[KEY_F4] = io::Key::f4;
+                    a[KEY_F5] = io::Key::f5;
+                    a[KEY_F6] = io::Key::f6;
+                    a[KEY_F7] = io::Key::f7;
+                    a[KEY_F8] = io::Key::f8;
+                    a[KEY_F9] = io::Key::f9;
+                    a[KEY_F10] = io::Key::f10;
+                    a[KEY_F11] = io::Key::f11;
+                    a[KEY_F12] = io::Key::f12;
+                    a[KEY_F13] = io::Key::f13;
+                    a[KEY_F14] = io::Key::f14;
+                    a[KEY_F15] = io::Key::f15;
+                    a[KEY_F16] = io::Key::f16;
+                    a[KEY_F17] = io::Key::f17;
+                    a[KEY_F18] = io::Key::f18;
+                    a[KEY_F19] = io::Key::f19;
+                    a[KEY_F20] = io::Key::f20;
+                    a[KEY_F21] = io::Key::f21;
+                    a[KEY_F22] = io::Key::f22;
+                    a[KEY_F23] = io::Key::f23;
+                    a[KEY_F24] = io::Key::f24;
+                    a[KEY_KP0] = io::Key::kp_0;
+                    a[KEY_KP1] = io::Key::kp_1;
+                    a[KEY_KP2] = io::Key::kp_2;
+                    a[KEY_KP3] = io::Key::kp_3;
+                    a[KEY_KP4] = io::Key::kp_4;
+                    a[KEY_KP5] = io::Key::kp_5;
+                    a[KEY_KP6] = io::Key::kp_6;
+                    a[KEY_KP7] = io::Key::kp_7;
+                    a[KEY_KP8] = io::Key::kp_8;
+                    a[KEY_KP9] = io::Key::kp_9;
+                    a[KEY_KPDOT] = io::Key::kp_decimal;
+                    a[KEY_KPSLASH] = io::Key::kp_divide;
+                    a[KEY_KPASTERISK] = io::Key::kp_multiply;
+                    a[KEY_KPMINUS] = io::Key::kp_subtract;
+                    a[KEY_KPPLUS] = io::Key::kp_add;
+                    a[KEY_KPENTER] = io::Key::kp_enter;
+                    a[KEY_KPEQUAL] = io::Key::kp_equal;
+                    a[KEY_LEFTSHIFT] = io::Key::lshift;
+                    a[KEY_LEFTCTRL] = io::Key::lcontrol;
+                    a[KEY_LEFTALT] = io::Key::lalt;
+                    a[KEY_LEFTMETA] = io::Key::lsuper;
+                    a[KEY_RIGHTSHIFT] = io::Key::rshift;
+                    a[KEY_RIGHTCTRL] = io::Key::rcontrol;
+                    a[KEY_RIGHTALT] = io::Key::ralt;
+                    a[KEY_RIGHTMETA] = io::Key::rsuper;
+                    a[KEY_MENU] = io::Key::menu;
+                }
+            };
+
             extern APPLIB_API struct Context
             {
                 WaylandLoader wl;
@@ -229,124 +358,7 @@ namespace awin
                     wl_callback *callback;
                     bool ready;
                 } libdecor;
-
-                acul::map<i16, io::Key> keymap{{KEY_SPACE, io::Key::space},
-                                               {KEY_APOSTROPHE, io::Key::apostroph},
-                                               {KEY_COMMA, io::Key::comma},
-                                               {KEY_MINUS, io::Key::minus},
-                                               {KEY_DOT, io::Key::period},
-                                               {KEY_SLASH, io::Key::slash},
-                                               {KEY_0, io::Key::d0},
-                                               {KEY_1, io::Key::d1},
-                                               {KEY_2, io::Key::d2},
-                                               {KEY_3, io::Key::d3},
-                                               {KEY_4, io::Key::d4},
-                                               {KEY_5, io::Key::d5},
-                                               {KEY_6, io::Key::d6},
-                                               {KEY_7, io::Key::d7},
-                                               {KEY_8, io::Key::d8},
-                                               {KEY_9, io::Key::d9},
-                                               {KEY_SEMICOLON, io::Key::semicolon},
-                                               {KEY_EQUAL, io::Key::equal},
-                                               {KEY_A, io::Key::a},
-                                               {KEY_B, io::Key::b},
-                                               {KEY_C, io::Key::c},
-                                               {KEY_D, io::Key::d},
-                                               {KEY_E, io::Key::e},
-                                               {KEY_F, io::Key::f},
-                                               {KEY_G, io::Key::g},
-                                               {KEY_H, io::Key::h},
-                                               {KEY_I, io::Key::i},
-                                               {KEY_J, io::Key::j},
-                                               {KEY_K, io::Key::k},
-                                               {KEY_L, io::Key::l},
-                                               {KEY_M, io::Key::m},
-                                               {KEY_N, io::Key::n},
-                                               {KEY_O, io::Key::o},
-                                               {KEY_P, io::Key::p},
-                                               {KEY_Q, io::Key::q},
-                                               {KEY_R, io::Key::r},
-                                               {KEY_S, io::Key::s},
-                                               {KEY_T, io::Key::t},
-                                               {KEY_U, io::Key::u},
-                                               {KEY_V, io::Key::v},
-                                               {KEY_W, io::Key::w},
-                                               {KEY_X, io::Key::x},
-                                               {KEY_Y, io::Key::y},
-                                               {KEY_Z, io::Key::z},
-                                               {KEY_LEFTBRACE, io::Key::lbrace},
-                                               {KEY_BACKSLASH, io::Key::backslash},
-                                               {KEY_RIGHTBRACE, io::Key::rcontrol},
-                                               {KEY_GRAVE, io::Key::grave_accent},
-                                               {KEY_ESC, io::Key::escape},
-                                               {KEY_ENTER, io::Key::enter},
-                                               {KEY_TAB, io::Key::tab},
-                                               {KEY_BACKSPACE, io::Key::backspace},
-                                               {KEY_INSERT, io::Key::insert},
-                                               {KEY_DELETE, io::Key::del},
-                                               {KEY_RIGHT, io::Key::right},
-                                               {KEY_LEFT, io::Key::left},
-                                               {KEY_DOWN, io::Key::down},
-                                               {KEY_UP, io::Key::up},
-                                               {KEY_PAGEUP, io::Key::page_up},
-                                               {KEY_PAGEDOWN, io::Key::page_down},
-                                               {KEY_HOME, io::Key::home},
-                                               {KEY_END, io::Key::end},
-                                               {KEY_CAPSLOCK, io::Key::caps_lock},
-                                               {KEY_SCROLLLOCK, io::Key::scroll_lock},
-                                               {KEY_NUMLOCK, io::Key::num_lock},
-                                               {KEY_PRINT, io::Key::print_screen},
-                                               {KEY_PAUSE, io::Key::pause},
-                                               {KEY_F1, io::Key::f1},
-                                               {KEY_F2, io::Key::f2},
-                                               {KEY_F3, io::Key::f3},
-                                               {KEY_F4, io::Key::f4},
-                                               {KEY_F5, io::Key::f5},
-                                               {KEY_F6, io::Key::f6},
-                                               {KEY_F7, io::Key::f7},
-                                               {KEY_F8, io::Key::f8},
-                                               {KEY_F9, io::Key::f9},
-                                               {KEY_F10, io::Key::f10},
-                                               {KEY_F11, io::Key::f11},
-                                               {KEY_F12, io::Key::f12},
-                                               {KEY_F13, io::Key::f13},
-                                               {KEY_F14, io::Key::f14},
-                                               {KEY_F15, io::Key::f15},
-                                               {KEY_F16, io::Key::f16},
-                                               {KEY_F17, io::Key::f17},
-                                               {KEY_F18, io::Key::f18},
-                                               {KEY_F19, io::Key::f19},
-                                               {KEY_F20, io::Key::f20},
-                                               {KEY_F21, io::Key::f21},
-                                               {KEY_F22, io::Key::f22},
-                                               {KEY_F23, io::Key::f23},
-                                               {KEY_F24, io::Key::f24},
-                                               {KEY_KP0, io::Key::kp_0},
-                                               {KEY_KP1, io::Key::kp_1},
-                                               {KEY_KP2, io::Key::kp_2},
-                                               {KEY_KP3, io::Key::kp_3},
-                                               {KEY_KP4, io::Key::kp_4},
-                                               {KEY_KP5, io::Key::kp_5},
-                                               {KEY_KP6, io::Key::kp_6},
-                                               {KEY_KP7, io::Key::kp_7},
-                                               {KEY_KP8, io::Key::kp_8},
-                                               {KEY_KP9, io::Key::kp_9},
-                                               {KEY_KPDOT, io::Key::kp_decimal},
-                                               {KEY_KPSLASH, io::Key::kp_divide},
-                                               {KEY_KPASTERISK, io::Key::kp_multiply},
-                                               {KEY_KPMINUS, io::Key::kp_subtract},
-                                               {KEY_KPPLUS, io::Key::kp_add},
-                                               {KEY_KPENTER, io::Key::kp_enter},
-                                               {KEY_KPEQUAL, io::Key::kp_equal},
-                                               {KEY_LEFTSHIFT, io::Key::lshift},
-                                               {KEY_LEFTCTRL, io::Key::lcontrol},
-                                               {KEY_LEFTALT, io::Key::lalt},
-                                               {KEY_LEFTMETA, io::Key::lsuper},
-                                               {KEY_RIGHTSHIFT, io::Key::rshift},
-                                               {KEY_RIGHTCTRL, io::Key::rcontrol},
-                                               {KEY_RIGHTALT, io::Key::ralt},
-                                               {KEY_RIGHTMETA, io::Key::rsuper},
-                                               {KEY_MENU, io::Key::menu}};
+                acul::lut_table<256, KeyTraits> keymap;
 #ifdef AWIN_TEST_BUILD
                 bool is_surface_placeholder_enabled = false;
 #endif
