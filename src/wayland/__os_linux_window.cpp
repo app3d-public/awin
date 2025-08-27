@@ -434,7 +434,7 @@ namespace awin
                 timerfd_settime(ctx.key_repeat_timer_fd, 0, &timer, NULL);
                 const auto key = ctx.keymap.find(scancode);
                 io::KeyMode mods = ctx.xkb.modifiers;
-                if (key != io::Key::unknown) sync_mods_by_key(it->second, mods);
+                if (key != io::Key::unknown) sync_mods_by_key(key, mods);
                 input_key(window_data, key, action, mods);
 
                 if (action == io::KeyPressState::press) input_text(window_data, scancode);
