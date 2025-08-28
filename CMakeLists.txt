@@ -15,12 +15,12 @@ endif()
 
 option(ENABLE_AGRB "Enable AGRB Integration" ON)
 
-if(PROJECT_IS_TOP_LEVEL)
+if(NOT TARGET acul)
     add_subdirectory(modules/acul)
+endif()
 
-    if(ENABLE_AGRB)
-        add_subdirectory(modules/agrb)
-    endif()
+if (ENABLE_AGRB AND NOT TARGET agrb)
+    add_subdirectory(modules/agrb)
 endif()
 
 add_files(${PROJECT_NAME} RECURSE "${CMAKE_CURRENT_SOURCE_DIR}/src")
@@ -44,7 +44,7 @@ if(USE_ASAN)
 endif(USE_ASAN)
 
 if(WIN32)
-    gen_manifest_lib(${PROJECT_NAME} ${PROJECT_VERSION})
+    gen_manifest_lib(lib${PROJECT_NAME} ${PROJECT_VERSION})
 elseif(UNIX AND NOT APPLE) # Generate by wayland-scanner
     add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/src/wayland/generators")
 endif()
