@@ -26,10 +26,10 @@ endif()
 add_files(${PROJECT_NAME} RECURSE "${CMAKE_CURRENT_SOURCE_DIR}/src")
 
 if(NOT ENABLE_AGRB)
-    list(REMOVE_ITEM SOURCE_FILES "${CMAKE_CURRENT_SOURCE_DIR}/src/integration/agrb.cpp")
+    list(REMOVE_ITEM AWIN_SRC "${CMAKE_CURRENT_SOURCE_DIR}/src/integration/agrb.cpp")
 endif()
 
-add_library(${PROJECT_NAME} SHARED ${SOURCE_FILES})
+add_library(${PROJECT_NAME} SHARED ${AWIN_SRC})
 set_target_properties(${PROJECT_NAME} PROPERTIES CXX_VISIBILITY_PRESET hidden)
 target_compile_definitions(${PROJECT_NAME} PRIVATE -DAPPLIB_BUILD)
 target_include_directories(${PROJECT_NAME} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include/")

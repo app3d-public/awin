@@ -159,7 +159,7 @@ namespace awin
                 {
                     acul::u16string full = dir + u'\\' + ptr;
                     result.emplace_back(acul::utf16_to_utf8(full));
-                    ptr += null_terminated_length(ptr) + 1;
+                    ptr += acul::null_terminated_length(ptr) + 1;
                 }
             }
             return result;
