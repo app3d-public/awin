@@ -35,6 +35,10 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE -DAPPLIB_BUILD)
 target_include_directories(${PROJECT_NAME} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include/")
 target_link_libraries(${PROJECT_NAME} PRIVATE acul)
 
+if(WIN32)
+    target_compile_definitions(${PROJECT_NAME} PUBLIC -DWIN32_LEAN_AND_MEAN -DNOMINMAX -DWINVER=0x0A00)
+endif()
+
 if(ENABLE_AGRB)
     target_link_libraries(${PROJECT_NAME} PUBLIC agrb)
 endif()

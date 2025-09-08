@@ -26,9 +26,9 @@ Awin is designed exclusively for Vulkan — no other graphics APIs are supported
 ### Bundled submodules
 The following dependencies are included as git submodules and must be checked out when cloning:
 
-- [acbt](https://git.homedatasrv.ru/app3d/acbt)
-- [acul](https://git.homedatasrv.ru/app3d/acul)
-- [agrb](https://git.homedatasrv.ru/app3d/agrb) - Optional
+- [acbt](https://github.com/app3d-public/acbt)
+- [acul](https://github.com/app3d-public/acul)
+- [agrb](https://github.com/app3d-public/agrb) - Optional
 
 ### Supported OS:
 - Linux
