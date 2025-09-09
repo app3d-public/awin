@@ -16,7 +16,7 @@ namespace awin
 
             static constexpr enum_type unknown = io::Key::unknown;
 
-            static consteval void fill_lut_table(std::array<enum_type, 256> &a)
+            static ACUL_CONSTEVAL void fill_lut_table(std::array<enum_type, 256> &a)
             {
                 a[VK_SPACE] = io::Key::space;
                 a[VK_OEM_7] = io::Key::apostroph;
