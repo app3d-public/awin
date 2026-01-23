@@ -9,7 +9,7 @@ namespace awin
     {
         bool check_app_exists(const char *app)
         {
-            const char *path_env = std::getenv("PATH");
+            const char *path_env = getenv("PATH");
             if (!path_env || !*app) return false;
 
             acul::string_view path(path_env);
