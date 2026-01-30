@@ -1,4 +1,3 @@
-#include <acul/log.hpp>
 #include <acul/string/string.hpp>
 #include <awin/native_access.hpp>
 #include <awin/window.hpp>
@@ -87,7 +86,7 @@ namespace awin
             if (!wd->raw_input) return;
             const RAWINPUTDEVICE rid = {0x01, 0x02, RIDEV_REMOVE, NULL};
             if (!RegisterRawInputDevices(&rid, 1, sizeof(rid)))
-                LOG_ERROR("Failed to remove raw input device");
+                AWIN_LOG_ERROR("[Win32] Failed to remove raw input device. Error code: %lu", GetLastError());
             else
                 wd->raw_input = false;
         }
@@ -267,7 +266,7 @@ namespace awin
                     acul::events::dispatch_event_group<FocusEvent>(event_registry.focus, window->owner, true);
                     const RAWINPUTDEVICE rid = {0x01, 0x02, RIDEV_INPUTSINK, hwnd};
                     if (!RegisterRawInputDevices(&rid, 1, sizeof(rid)))
-                        LOG_ERROR("Failed to register RAWINPUTDEVICE");
+                        AWIN_LOG_ERROR("[Win32] Failed to register raw input device. Error code: %lu", GetLastError());
                     else
                         window->raw_input = true;
                     break;
@@ -523,7 +522,7 @@ namespace awin
                     if (GetRawInputData((HRAWINPUT)lParam, RID_INPUT, window->raw_input_data, &dw_size,
                                         sizeof(RAWINPUTHEADER)) != dw_size)
                     {
-                        LOG_ERROR("GetRawInputData does not return correct size");
+                        AWIN_LOG_ERROR("[Win32] GetRawInputData does not return correct size");
                         break;
                     }
                     RAWINPUT *raw = (RAWINPUT *)window->raw_input_data;
@@ -550,6 +549,7 @@ namespace awin
 
         void destroy_platform()
         {
+            AWIN_LOG_INFO("[Win32] Destroying platform");
             if (ctx.instance)
             {
                 if (ctx.win32_class.hIcon) DestroyIcon(ctx.win32_class.hIcon);
@@ -571,7 +571,7 @@ namespace awin
         bool init_platform()
         {
             if (!SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2))
-                LOG_WARN("Failed to set process dpi awareness context");
+                AWIN_LOG_WARN("[Win32] Failed to set process dpi awareness context");
             ctx.instance = GetModuleHandleW(nullptr);
             ctx.thread_id = GetCurrentThreadId();
             ctx.win32_class = {sizeof(ctx.win32_class)};
@@ -583,7 +583,7 @@ namespace awin
             ctx.win32_class.hIcon = LoadIconW(ctx.instance, L"APP_ICON");
             if (!ctx.win32_class.hIcon)
             {
-                LOG_WARN("Failed to load window icon");
+                AWIN_LOG_WARN("[Win32] Failed to load window icon");
                 ctx.win32_class.hIcon = LoadIcon(NULL, IDI_APPLICATION);
             }
             if (!RegisterClassExW(&ctx.win32_class)) return false;
@@ -633,7 +633,7 @@ namespace awin
             else
                 ShowWindow(wd->hwnd, SW_SHOWNORMAL);
         }
-        LOG_INFO("Created Window descriptor: %p", wd->hwnd);
+        AWIN_LOG_INFO("[Win32] Created Window descriptor: %p", wd->hwnd);
     }
 
     void Window::destroy()
@@ -649,7 +649,7 @@ namespace awin
         if (wd->hwnd)
         {
             RemovePropW(wd->hwnd, L"AWIN");
-            LOG_INFO("Destroying Window descriptor: %p", wd->hwnd);
+            AWIN_LOG_INFO("[Win32] Destroying Window descriptor: %p", wd->hwnd);
             HWND hwnd = wd->hwnd;
             DestroyWindow(hwnd);
             wd->hwnd = nullptr;
@@ -862,7 +862,7 @@ namespace awin
 
             if (tries == 3)
             {
-                LOG_ERROR("Failed to open clipboard");
+                AWIN_LOG_ERROR("[Win32] Failed to open clipboard");
                 return "";
             }
         }
@@ -870,7 +870,7 @@ namespace awin
         object = GetClipboardData(CF_UNICODETEXT);
         if (!object)
         {
-            LOG_ERROR("Failed to get clipboard data");
+            AWIN_LOG_ERROR("[Win32] Failed to get clipboard data");
             CloseClipboard();
             return "";
         }
@@ -878,7 +878,7 @@ namespace awin
         c16 *buffer = (c16 *)GlobalLock(object);
         if (!buffer)
         {
-            LOG_ERROR("Failed to lock clipboard data");
+            AWIN_LOG_ERROR("[Win32] Failed to lock clipboard data. Error code: %lu", GetLastError());
             CloseClipboard();
             return "";
         }
@@ -896,14 +896,14 @@ namespace awin
         HANDLE object = GlobalAlloc(GMEM_MOVEABLE, character_count * sizeof(WCHAR));
         if (!object)
         {
-            LOG_ERROR("Failed to allocate global handle for clipboard");
+            AWIN_LOG_ERROR("[Win32] Failed to allocate global handle for clipboard. Error code: %lu", GetLastError());
             return;
         }
 
         WCHAR *buffer = (WCHAR *)GlobalLock(object);
         if (!buffer)
         {
-            LOG_ERROR("Failed to lock global handle");
+            AWIN_LOG_ERROR("[Win32] Failed to lock global handle. Error code: %lu", GetLastError());
             GlobalFree(object);
             return;
         }
@@ -920,7 +920,7 @@ namespace awin
 
             if (tries == 3)
             {
-                LOG_ERROR("Failed to open clipboard");
+                AWIN_LOG_ERROR("[Win32] Failed to open clipboard");
                 GlobalFree(object);
                 return;
             }

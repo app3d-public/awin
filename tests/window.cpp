@@ -1,20 +1,13 @@
-#include <acul/log.hpp>
 #include <awin/native_access.hpp>
 #include <awin/window.hpp>
 
 void test_window()
 {
     acul::events::dispatcher ed;
-    acul::task::service_dispatch sd;
-    sd.run();
-    auto log_service = acul::alloc<acul::log::log_service>();
-    sd.register_service(log_service);
-    log_service->level = acul::log::level::trace;
-    auto *app_logger = log_service->add_logger<acul::log::console_logger>("app");
-    app_logger->set_pattern("%(message)\n");
-    log_service->default_logger = app_logger;
+    awin::InitConfig config;
+    config.events_dispatcher = &ed;
 
-    awin::init_library(&ed);
+    awin::init_library(config);
 #ifdef __unix__
     int backend_type = awin::native_access::get_backend_type();
     if (backend_type == WINDOW_BACKEND_WAYLAND) awin::native_access::enable_wayland_surface_placeholder();

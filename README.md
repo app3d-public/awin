@@ -36,7 +36,6 @@ The following dependencies are included as git submodules and must be checked ou
 
 ### Cmake options:
 - `ENABLE_AGRB`: Enable `agrb` integration
-- `USE_ASAN`: Enable address sanitizer
 - `BUILD_TESTS`: Enable testing
 - `ENABLE_COVERAGE`: Enable code coverage
 

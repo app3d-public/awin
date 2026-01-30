@@ -9,6 +9,7 @@
 #define APP_WINDOW_WINDOW_H
 
 #include <acul/event.hpp>
+#include <acul/log.hpp>
 #include "types.hpp"
 
 #define WINDOW_BACKEND_UNKNOWN -1
@@ -378,8 +379,15 @@ namespace awin
     // Set text string in the clipboard buffer
     APPLIB_API void set_clipboard_string(const Window &window, const acul::string &text);
 
+    struct InitConfig
+    {
+        acul::events::dispatcher* events_dispatcher = nullptr;
+        acul::log::log_service* log_service = nullptr;
+        acul::log::logger_base* logger = nullptr;
+    };
+
     // Initialize the library.
-    APPLIB_API void init_library(acul::events::dispatcher *ed);
+    APPLIB_API void init_library(const InitConfig &config);
 
     // Destroy the library and release associated resources.
     APPLIB_API void destroy_library();

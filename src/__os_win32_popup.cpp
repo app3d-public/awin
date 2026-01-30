@@ -1,5 +1,4 @@
-#include <acul/io/path.hpp>
-#include <acul/string/string.hpp>
+#include <acul/io/fs/path.hpp>
 #include <awin/popup.hpp>
 #include <windows.h>
 // Include windows first
@@ -231,7 +230,7 @@ namespace awin
             if (!path || strlen(path) <= 0) return;
             auto w_default_path = acul::utf8_to_utf16(path);
 
-            acul::io::path fs_path(path);
+            acul::path fs_path(path);
             auto parent_path = fs_path.parent_path().str();
             if (!parent_path.empty())
             {
@@ -290,7 +289,7 @@ namespace awin
             file_dlg->SetFileTypeIndex(1);
 
             if (pattern.empty() || pattern[0].extensions.empty()) return;
-            acul::string default_extension = acul::io::get_extension(pattern[0].extensions[0]);
+            acul::string default_extension = acul::fs::get_extension(pattern[0].extensions[0]);
             if (!default_extension.empty() && default_extension[0] == '.')
                 default_extension = default_extension.substr(1);
             if (!default_extension.empty())

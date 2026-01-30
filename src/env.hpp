@@ -20,6 +20,8 @@ namespace awin
             } timer;                          // Timer information for time tracking.
             f64 timeout = WINDOW_TIMEOUT_INF; // Global timeout for waking up the main loop.
             acul::events::dispatcher *ed = nullptr;
+            acul::log::log_service *log_service = nullptr;
+            acul::log::logger_base *logger = nullptr;
             Cursor default_cursor;
         } env;
 
@@ -48,3 +50,12 @@ namespace awin
 
     inline WindowData *get_window_data(const Window &window) { return window._data; }
 } // namespace awin
+
+#define AWIN_LOG_DEFAULT(level, ...) \
+    acul::log::write(platform::env.log_service, platform::env.logger, level, __VA_ARGS__)
+#define AWIN_LOG_INFO(...)  AWIN_LOG_DEFAULT(acul::log::level::info, __VA_ARGS__)
+#define AWIN_LOG_DEBUG(...) AWIN_LOG_DEFAULT(acul::log::level::debug, __VA_ARGS__)
+#define AWIN_LOG_TRACE(...) AWIN_LOG_DEFAULT(acul::log::level::trace, __VA_ARGS__)
+#define AWIN_LOG_WARN(...)  AWIN_LOG_DEFAULT(acul::log::level::warn, __VA_ARGS__)
+#define AWIN_LOG_ERROR(...) AWIN_LOG_DEFAULT(acul::log::level::error, __VA_ARGS__)
+#define AWIN_LOG_FATAL(...) AWIN_LOG_DEFAULT(acul::log::level::fatal, __VA_ARGS__)

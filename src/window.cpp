@@ -19,7 +19,7 @@ namespace awin
                 data->keys[+key] = action;
                 if (repeated) action = io::KeyPressState::repeat;
             }
-            
+
             acul::events::dispatch_event_group<KeyInputEvent>(event_registry.key_input, data->owner, key, action, mods);
         }
     } // namespace platform
@@ -60,18 +60,20 @@ namespace awin
         acul::events::cache_event_group(event_id::dpi_changed, event_registry.dpi_changed, env.ed);
     }
 
-    void init_library(acul::events::dispatcher *ed)
+    void init_library(const InitConfig &config)
     {
+        platform::env.log_service = config.log_service;
+        platform::env.logger = config.logger;
         if (!platform::init_platform()) throw acul::runtime_error("Failed to initialize Window platform");
         platform::init_timer();
         set_time(0.0);
-        platform::env.ed = ed;
+        platform::env.ed = config.events_dispatcher;
         platform::env.default_cursor = Cursor::create(Cursor::Type::arrow);
     }
 
     void destroy_library()
     {
-        LOG_INFO("Destroying Window platform");
+        AWIN_LOG_INFO("Destroying Window library");
         platform::env.default_cursor.reset();
         platform::destroy_platform();
     }
@@ -86,7 +88,7 @@ namespace awin
     {
         if (std::isnan(time) || time < 0.0 || time > 18446744073.0)
         {
-            LOG_ERROR("Invalid time value: %f", time);
+            AWIN_LOG_ERROR("Invalid time value: %f", time);
             return;
         }
         platform::env.timer.offset =
