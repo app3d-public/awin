@@ -362,7 +362,7 @@ namespace awin
 #ifdef AWIN_TEST_BUILD
                 bool is_surface_placeholder_enabled = false;
 #endif
-            } ctx;
+            } g_ctx;
 
             struct WaylandCursor : Cursor::Platform
             {

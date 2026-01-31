@@ -266,7 +266,7 @@ namespace awin
                     unload(xlib.xcursor.handle);
                     unload(xlib.handle);
                 }
-            } ctx;
+            } g_ctx;
 
             bool init_platform();
 

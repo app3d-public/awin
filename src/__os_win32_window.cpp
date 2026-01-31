@@ -82,7 +82,7 @@ namespace awin
         {
             if (!wd) return;
             wd->focused = false;
-            acul::events::dispatch_event_group<FocusEvent>(event_registry.focus, wd->owner, false);
+            acul::events::dispatch_event_group<FocusEvent>(g_env->events.focus, wd->owner, false);
             if (!wd->raw_input) return;
             const RAWINPUTDEVICE rid = {0x01, 0x02, RIDEV_REMOVE, NULL};
             if (!RegisterRawInputDevices(&rid, 1, sizeof(rid)))
@@ -94,6 +94,7 @@ namespace awin
         LRESULT CALLBACK wnd_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         {
             auto *window = (Win32WindowData *)GetPropW(hwnd, L"AWIN");
+            auto &events = g_env->events;
             switch (uMsg)
             {
                     // Handling this event allows us to extend client (paintable) area into the title bar region
@@ -181,9 +182,9 @@ namespace awin
                     cursor_point.y = HIWORD(lParam);
                     ScreenToClient(hwnd, &cursor_point);
                     if (cursor_point.y > 0 && cursor_point.y < ctx.frame.y + ctx.padding) return HTTOP;
-                    if (!event_registry.nc_hit_test) break;
+                    if (!events.nc_hit_test) break;
                     Win32NativeEvent event(event_id::nc_hit_test, window->owner, hwnd, uMsg, wParam, lParam, hit);
-                    for (const auto &node : *event_registry.nc_hit_test)
+                    for (const auto &node : *events.nc_hit_test)
                     {
                         node.call(node.ctx, event);
                         if (event.lResult != -1) return event.lResult;
@@ -192,14 +193,14 @@ namespace awin
                 }
                 case WM_NCLBUTTONDOWN:
                 {
-                    if (event_registry.ncl_mouse_down)
+                    if (events.ncl_mouse_down)
                     {
                         POINT cursor_point;
                         GetCursorPos(&cursor_point);
                         ScreenToClient(hwnd, &cursor_point);
                         if (cursor_point.y > 0 && cursor_point.y < ctx.frame.y + ctx.padding) break;
                         Win32NativeEvent event(event_id::nc_mouse_down, window->owner, hwnd, uMsg, wParam, lParam);
-                        for (const auto &node : *event_registry.ncl_mouse_down)
+                        for (const auto &node : *events.ncl_mouse_down)
                         {
                             node.call(node.ctx, event);
                             if (event.lResult != -1) return event.lResult;
@@ -250,8 +251,8 @@ namespace awin
                             action = io::KeyPressState::release;
                             break;
                     };
-                    acul::events::dispatch_event_group<awin::MouseClickEvent>(event_registry.mouse_click, window->owner,
-                                                                              button, action);
+                    acul::events::dispatch_event_group<awin::MouseClickEvent>(events.mouse_click, window->owner, button,
+                                                                              action);
                     break;
                 }
                 case WM_WINDOWPOSCHANGED:
@@ -263,7 +264,7 @@ namespace awin
                 case WM_SETFOCUS:
                 {
                     window->focused = true;
-                    acul::events::dispatch_event_group<FocusEvent>(event_registry.focus, window->owner, true);
+                    acul::events::dispatch_event_group<FocusEvent>(events.focus, window->owner, true);
                     const RAWINPUTDEVICE rid = {0x01, 0x02, RIDEV_INPUTSINK, hwnd};
                     if (!RegisterRawInputDevices(&rid, 1, sizeof(rid)))
                         AWIN_LOG_ERROR("[Win32] Failed to register raw input device. Error code: %lu", GetLastError());
@@ -285,13 +286,12 @@ namespace awin
                         {
                             u32 codepoint = (((window->high_surrogate - 0xD800) << 10) | (wParam - 0xDC00)) + 0x10000;
                             window->high_surrogate = 0;
-                            acul::events::dispatch_event_group<CharInputEvent>(event_registry.char_input, window->owner,
+                            acul::events::dispatch_event_group<CharInputEvent>(events.char_input, window->owner,
                                                                                codepoint);
                         }
                     }
                     else
-                        acul::events::dispatch_event_group<CharInputEvent>(event_registry.char_input, window->owner,
-                                                                           wParam);
+                        acul::events::dispatch_event_group<CharInputEvent>(events.char_input, window->owner, wParam);
 
                     if (uMsg == WM_SYSCHAR) break;
                     return 0;
@@ -306,8 +306,7 @@ namespace awin
                         // Returning TRUE here announces support for this message
                         return TRUE;
                     }
-                    acul::events::dispatch_event_group<CharInputEvent>(event_registry.char_input, window->owner,
-                                                                       wParam);
+                    acul::events::dispatch_event_group<CharInputEvent>(events.char_input, window->owner, wParam);
                     return 0;
                 }
                 case WM_SYSCOMMAND:
@@ -413,28 +412,26 @@ namespace awin
                         tme.hwndTrack = window->hwnd;
                         TrackMouseEvent(&tme);
                         window->cursor_tracked = true;
-                        acul::events::dispatch_event_group<MouseEnterEvent>(event_registry.mouse_enter, window->owner,
-                                                                            true);
+                        acul::events::dispatch_event_group<MouseEnterEvent>(events.mouse_enter, window->owner, true);
                     }
                     acul::events::dispatch_event_group<PosEvent>(
-                        event_registry.mouse_move, event_id::mouse_move, window->owner,
+                        events.mouse_move, event_id::mouse_move, window->owner,
                         acul::point2D(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)));
                     return 0;
                 }
                 case WM_MOUSELEAVE:
                     window->cursor_tracked = false;
-                    acul::events::dispatch_event_group<MouseEnterEvent>(event_registry.mouse_enter, window->owner,
-                                                                        false);
+                    acul::events::dispatch_event_group<MouseEnterEvent>(events.mouse_enter, window->owner, false);
                     return 0;
                 case WM_MOUSEWHEEL:
-                    acul::events::dispatch_event_group<ScrollEvent>(event_registry.scroll, window->owner, 0,
+                    acul::events::dispatch_event_group<ScrollEvent>(events.scroll, window->owner, 0,
                                                                     (SHORT)HIWORD(wParam) / (f64)WHEEL_DELTA);
                     return 0;
                 case WM_MOUSEHWHEEL:
                 {
                     // This message is only sent on Windows Vista and later
                     // NOTE: The X-axis is inverted for consistency with macOS and X11
-                    acul::events::dispatch_event_group<ScrollEvent>(event_registry.scroll, window->owner,
+                    acul::events::dispatch_event_group<ScrollEvent>(events.scroll, window->owner,
                                                                     -((SHORT)HIWORD(wParam) / (f64)WHEEL_DELTA), 0);
                     return 0;
                 }
@@ -454,7 +451,7 @@ namespace awin
                             }
                             else
                                 window->flags &= ~WindowFlagBits::minimized;
-                            acul::events::dispatch_event_group<StateEvent>(event_registry.minimize, event_id::minimize,
+                            acul::events::dispatch_event_group<StateEvent>(events.minimize, event_id::minimize,
                                                                            window->owner, want_min);
                         }
                         if ((window->flags & WindowFlagBits::maximized) != want_max)
@@ -463,21 +460,21 @@ namespace awin
                                 window->flags |= WindowFlagBits::maximized;
                             else
                                 window->flags &= ~WindowFlagBits::maximized;
-                            acul::events::dispatch_event_group<StateEvent>(event_registry.maximize, event_id::maximize,
+                            acul::events::dispatch_event_group<StateEvent>(events.maximize, event_id::maximize,
                                                                            window->owner, want_max);
                         }
                     }
                     if (dimenstions != window->dimenstions)
                     {
                         window->dimenstions = dimenstions;
-                        acul::events::dispatch_event_group<PosEvent>(event_registry.resize, event_id::resize,
-                                                                     window->owner, dimenstions);
+                        acul::events::dispatch_event_group<PosEvent>(events.resize, event_id::resize, window->owner,
+                                                                     dimenstions);
                     }
                     return 0;
                 }
                 case WM_MOVE:
                     acul::events::dispatch_event_group<PosEvent>(
-                        event_registry.move, event_id::move, window->owner,
+                        events.move, event_id::move, window->owner,
                         acul::point2D(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)));
                     break;
                 case WM_GETMINMAXINFO:
@@ -492,8 +489,8 @@ namespace awin
                 {
                     const float xscale = HIWORD(wParam) / 96.0f;
                     const float yscale = LOWORD(wParam) / 96.0f;
-                    acul::events::dispatch_event_group<DpiChangedEvent>(event_registry.dpi_changed, window->owner,
-                                                                        xscale, yscale);
+                    acul::events::dispatch_event_group<DpiChangedEvent>(events.dpi_changed, window->owner, xscale,
+                                                                        yscale);
                     break;
                 }
                 case WM_SETCURSOR:
@@ -530,7 +527,7 @@ namespace awin
                     if (raw->header.dwType == RIM_TYPEMOUSE)
                     {
                         acul::point2D<i32> delta{raw->data.mouse.lLastX, raw->data.mouse.lLastY};
-                        acul::events::dispatch_event_group<PosEvent>(event_registry.mouse_move_delta,
+                        acul::events::dispatch_event_group<PosEvent>(events.mouse_move_delta,
                                                                      event_id::mouse_move_delta, window->owner, delta);
                     }
                     return 0;
@@ -557,7 +554,7 @@ namespace awin
             }
         }
 
-        void init_timer() { QueryPerformanceFrequency((LARGE_INTEGER *)&env.timer.frequency); }
+        void init_timer() { QueryPerformanceFrequency((LARGE_INTEGER *)&g_env->timer.frequency); }
 
         u64 get_time_value()
         {
@@ -566,7 +563,7 @@ namespace awin
             return value;
         }
 
-        u64 get_time_frequency() { return env.timer.frequency; }
+        u64 get_time_frequency() { return g_env->timer.frequency; }
 
         bool init_platform()
         {
@@ -618,7 +615,7 @@ namespace awin
         wd->style = platform::get_window_style(flags);
         wd->ex_style = WS_EX_APPWINDOW;
         wd->hwnd = nullptr;
-        wd->cursor = &platform::env.default_cursor;
+        wd->cursor = &platform::g_env->default_cursor;
         wd->hwnd = CreateWindowExW(wd->ex_style, platform::ctx.win32_class.lpszClassName, (LPCWSTR)wd->title.c_str(),
                                    wd->style & ~WS_VISIBLE, CW_USEDEFAULT, CW_USEDEFAULT, wd->dimenstions.x,
                                    wd->dimenstions.y, nullptr, nullptr, platform::ctx.instance, (LPVOID)wd);
@@ -826,10 +823,10 @@ namespace awin
 
     void wait_events_timeout()
     {
-        if (platform::env.timeout > WINDOW_TIMEOUT_INF)
+        if (platform::g_env->timeout > WINDOW_TIMEOUT_INF)
         {
-            MsgWaitForMultipleObjects(0, NULL, FALSE, platform::env.timeout * 1e3, QS_ALLINPUT);
-            platform::env.timeout = WINDOW_TIMEOUT_INF;
+            MsgWaitForMultipleObjects(0, NULL, FALSE, platform::g_env->timeout * 1e3, QS_ALLINPUT);
+            platform::g_env->timeout = WINDOW_TIMEOUT_INF;
         }
         else
             WaitMessage();
@@ -882,10 +879,10 @@ namespace awin
             CloseClipboard();
             return "";
         }
-        platform::env.clipboard_data = acul::utf16_to_utf8(buffer);
+        platform::g_env->clipboard_data = acul::utf16_to_utf8(buffer);
         GlobalUnlock(object);
         CloseClipboard();
-        return platform::env.clipboard_data;
+        return platform::g_env->clipboard_data;
     }
 
     void set_clipboard_string(const Window &window, const acul::string &text)

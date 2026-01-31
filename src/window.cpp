@@ -6,8 +6,7 @@ namespace awin
 {
     namespace platform
     {
-        EventRegistry event_registry;
-        WindowEnvironment env;
+        WindowEnvironment *g_env{nullptr};
 
         void input_key(WindowData *data, io::Key key, io::KeyPressState action, io::KeyMode mods)
         {
@@ -20,7 +19,7 @@ namespace awin
                 if (repeated) action = io::KeyPressState::repeat;
             }
 
-            acul::events::dispatch_event_group<KeyInputEvent>(event_registry.key_input, data->owner, key, action, mods);
+            acul::events::dispatch_event_group<KeyInputEvent>(g_env->events.key_input, data->owner, key, action, mods);
         }
     } // namespace platform
 
@@ -40,47 +39,52 @@ namespace awin
     {
         using namespace platform;
 
-        assert(env.ed);
+        assert(g_env && g_env->ed);
+        auto *ed = g_env->ed;
+        auto &events = g_env->events;
 #ifdef _WIN32
-        acul::events::cache_event_group(event_id::nc_mouse_down, event_registry.ncl_mouse_down, env.ed);
-        acul::events::cache_event_group(event_id::nc_hit_test, event_registry.nc_hit_test, env.ed);
+        acul::events::cache_event_group(event_id::nc_mouse_down, events.ncl_mouse_down, ed);
+        acul::events::cache_event_group(event_id::nc_hit_test, events.nc_hit_test, ed);
 #endif
-        acul::events::cache_event_group(event_id::focus, event_registry.focus, env.ed);
-        acul::events::cache_event_group(event_id::scroll, event_registry.scroll, env.ed);
-        acul::events::cache_event_group(event_id::minimize, event_registry.minimize, env.ed);
-        acul::events::cache_event_group(event_id::maximize, event_registry.maximize, env.ed);
-        acul::events::cache_event_group(event_id::resize, event_registry.resize, env.ed);
-        acul::events::cache_event_group(event_id::move, event_registry.move, env.ed);
-        acul::events::cache_event_group(event_id::char_input, event_registry.char_input, env.ed);
-        acul::events::cache_event_group(event_id::key_input, event_registry.key_input, env.ed);
-        acul::events::cache_event_group(event_id::mouse_click, event_registry.mouse_click, env.ed);
-        acul::events::cache_event_group(event_id::mouse_enter, event_registry.mouse_enter, env.ed);
-        acul::events::cache_event_group(event_id::mouse_move_delta, event_registry.mouse_move_delta, env.ed);
-        acul::events::cache_event_group(event_id::mouse_move, event_registry.mouse_move, env.ed);
-        acul::events::cache_event_group(event_id::dpi_changed, event_registry.dpi_changed, env.ed);
+        acul::events::cache_event_group(event_id::focus, events.focus, ed);
+        acul::events::cache_event_group(event_id::scroll, events.scroll, ed);
+        acul::events::cache_event_group(event_id::minimize, events.minimize, ed);
+        acul::events::cache_event_group(event_id::maximize, events.maximize, ed);
+        acul::events::cache_event_group(event_id::resize, events.resize, ed);
+        acul::events::cache_event_group(event_id::move, events.move, ed);
+        acul::events::cache_event_group(event_id::char_input, events.char_input, ed);
+        acul::events::cache_event_group(event_id::key_input, events.key_input, ed);
+        acul::events::cache_event_group(event_id::mouse_click, events.mouse_click, ed);
+        acul::events::cache_event_group(event_id::mouse_enter, events.mouse_enter, ed);
+        acul::events::cache_event_group(event_id::mouse_move_delta, events.mouse_move_delta, ed);
+        acul::events::cache_event_group(event_id::mouse_move, events.mouse_move, ed);
+        acul::events::cache_event_group(event_id::dpi_changed, events.dpi_changed, ed);
     }
 
     void init_library(const InitConfig &config)
     {
-        platform::env.log_service = config.log_service;
-        platform::env.logger = config.logger;
+        platform::g_env = acul::alloc<platform::WindowEnvironment>();
+        platform::g_env->log_service = config.log_service;
+        platform::g_env->logger = config.logger;
         if (!platform::init_platform()) throw acul::runtime_error("Failed to initialize Window platform");
         platform::init_timer();
         set_time(0.0);
-        platform::env.ed = config.events_dispatcher;
-        platform::env.default_cursor = Cursor::create(Cursor::Type::arrow);
+        platform::g_env->ed = config.events_dispatcher;
+        platform::g_env->default_cursor = Cursor::create(Cursor::Type::arrow);
     }
 
     void destroy_library()
     {
+        assert(platform::g_env);
         AWIN_LOG_INFO("Destroying Window library");
-        platform::env.default_cursor.reset();
+        platform::g_env->default_cursor.reset();
         platform::destroy_platform();
+        acul::release(platform::g_env);
     }
 
     f64 get_time()
     {
-        return static_cast<f64>(platform::get_time_value() - platform::env.timer.offset) /
+        return static_cast<f64>(platform::get_time_value() - platform::g_env->timer.offset) /
                platform::get_time_frequency();
     }
 
@@ -91,7 +95,7 @@ namespace awin
             AWIN_LOG_ERROR("Invalid time value: %f", time);
             return;
         }
-        platform::env.timer.offset =
+        platform::g_env->timer.offset =
             platform::get_time_value() - static_cast<u64>(time * platform::get_time_frequency());
     }
 } // namespace awin
