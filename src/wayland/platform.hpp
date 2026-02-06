@@ -7,55 +7,55 @@
 #include "../linux_pd.hpp"
 #include "loaders.hpp"
 // Client
-#define wl_display_connect           awin::platform::wayland::ctx.wl.client.wl_display_connect
-#define wl_display_flush             awin::platform::wayland::ctx.wl.client.wl_display_flush
-#define wl_display_cancel_read       awin::platform::wayland::ctx.wl.client.wl_display_cancel_read
-#define wl_display_dispatch_pending  awin::platform::wayland::ctx.wl.client.wl_display_dispatch_pending
-#define wl_display_read_events       awin::platform::wayland::ctx.wl.client.wl_display_read_events
-#define wl_display_disconnect        awin::platform::wayland::ctx.wl.client.wl_display_disconnect
-#define wl_display_roundtrip         awin::platform::wayland::ctx.wl.client.wl_display_roundtrip
-#define wl_display_get_fd            awin::platform::wayland::ctx.wl.client.wl_display_get_fd
-#define wl_display_prepare_read      awin::platform::wayland::ctx.wl.client.wl_display_prepare_read
-#define wl_proxy_marshal             awin::platform::wayland::ctx.wl.client.wl_proxy_marshal
-#define wl_proxy_add_listener        awin::platform::wayland::ctx.wl.client.wl_proxy_add_listener
-#define wl_proxy_destroy             awin::platform::wayland::ctx.wl.client.wl_proxy_destroy
-#define wl_proxy_marshal_constructor awin::platform::wayland::ctx.wl.client.wl_proxy_marshal_constructor
+#define wl_display_connect           awin::platform::wayland::g_ctx->wl.client.wl_display_connect
+#define wl_display_flush             awin::platform::wayland::g_ctx->wl.client.wl_display_flush
+#define wl_display_cancel_read       awin::platform::wayland::g_ctx->wl.client.wl_display_cancel_read
+#define wl_display_dispatch_pending  awin::platform::wayland::g_ctx->wl.client.wl_display_dispatch_pending
+#define wl_display_read_events       awin::platform::wayland::g_ctx->wl.client.wl_display_read_events
+#define wl_display_disconnect        awin::platform::wayland::g_ctx->wl.client.wl_display_disconnect
+#define wl_display_roundtrip         awin::platform::wayland::g_ctx->wl.client.wl_display_roundtrip
+#define wl_display_get_fd            awin::platform::wayland::g_ctx->wl.client.wl_display_get_fd
+#define wl_display_prepare_read      awin::platform::wayland::g_ctx->wl.client.wl_display_prepare_read
+#define wl_proxy_marshal             awin::platform::wayland::g_ctx->wl.client.wl_proxy_marshal
+#define wl_proxy_add_listener        awin::platform::wayland::g_ctx->wl.client.wl_proxy_add_listener
+#define wl_proxy_destroy             awin::platform::wayland::g_ctx->wl.client.wl_proxy_destroy
+#define wl_proxy_marshal_constructor awin::platform::wayland::g_ctx->wl.client.wl_proxy_marshal_constructor
 #define wl_proxy_marshal_constructor_versioned \
-    awin::platform::wayland::ctx.wl.client.wl_proxy_marshal_constructor_versioned
-#define wl_proxy_get_user_data awin::platform::wayland::ctx.wl.client.wl_proxy_get_user_data
-#define wl_proxy_set_user_data awin::platform::wayland::ctx.wl.client.wl_proxy_set_user_data
-#define wl_proxy_get_tag       awin::platform::wayland::ctx.wl.client.wl_proxy_get_tag
-#define wl_proxy_set_tag       awin::platform::wayland::ctx.wl.client.wl_proxy_set_tag
-#define wl_proxy_get_version   awin::platform::wayland::ctx.wl.client.wl_proxy_get_version
-#define wl_proxy_marshal_flags awin::platform::wayland::ctx.wl.client.wl_proxy_marshal_flags
+    awin::platform::wayland::g_ctx->wl.client.wl_proxy_marshal_constructor_versioned
+#define wl_proxy_get_user_data awin::platform::wayland::g_ctx->wl.client.wl_proxy_get_user_data
+#define wl_proxy_set_user_data awin::platform::wayland::g_ctx->wl.client.wl_proxy_set_user_data
+#define wl_proxy_get_tag       awin::platform::wayland::g_ctx->wl.client.wl_proxy_get_tag
+#define wl_proxy_set_tag       awin::platform::wayland::g_ctx->wl.client.wl_proxy_set_tag
+#define wl_proxy_get_version   awin::platform::wayland::g_ctx->wl.client.wl_proxy_get_version
+#define wl_proxy_marshal_flags awin::platform::wayland::g_ctx->wl.client.wl_proxy_marshal_flags
 // wayland-cursor
-#define wl_cursor_theme_load       awin::platform::wayland::ctx.wl.cursor.wl_cursor_theme_load
-#define wl_cursor_theme_destroy    awin::platform::wayland::ctx.wl.cursor.wl_cursor_theme_destroy
-#define wl_cursor_theme_get_cursor awin::platform::wayland::ctx.wl.cursor.wl_cursor_theme_get_cursor
-#define wl_cursor_image_get_buffer awin::platform::wayland::ctx.wl.cursor.wl_cursor_image_get_buffer
+#define wl_cursor_theme_load       awin::platform::wayland::g_ctx->wl.cursor.wl_cursor_theme_load
+#define wl_cursor_theme_destroy    awin::platform::wayland::g_ctx->wl.cursor.wl_cursor_theme_destroy
+#define wl_cursor_theme_get_cursor awin::platform::wayland::g_ctx->wl.cursor.wl_cursor_theme_get_cursor
+#define wl_cursor_image_get_buffer awin::platform::wayland::g_ctx->wl.cursor.wl_cursor_image_get_buffer
 // XKB
-#define xkb_compose_table_new_from_locale awin::platform::wayland::ctx.wl.xkb.xkb_compose_table_new_from_locale
-#define xkb_compose_table_unref           awin::platform::wayland::ctx.wl.xkb.xkb_compose_table_unref
-#define xkb_compose_state_new             awin::platform::wayland::ctx.wl.xkb.xkb_compose_state_new
-#define xkb_compose_state_unref           awin::platform::wayland::ctx.wl.xkb.xkb_compose_state_unref
-#define xkb_compose_state_feed            awin::platform::wayland::ctx.wl.xkb.xkb_compose_state_feed
-#define xkb_compose_state_get_status      awin::platform::wayland::ctx.wl.xkb.xkb_compose_state_get_status
-#define xkb_compose_state_get_one_sym     awin::platform::wayland::ctx.wl.xkb.xkb_compose_state_get_one_sym
-#define xkb_context_new                   awin::platform::wayland::ctx.wl.xkb.xkb_context_new
-#define xkb_context_unref                 awin::platform::wayland::ctx.wl.xkb.xkb_context_unref
-#define xkb_keymap_new_from_string        awin::platform::wayland::ctx.wl.xkb.xkb_keymap_new_from_string
-#define xkb_keymap_unref                  awin::platform::wayland::ctx.wl.xkb.xkb_keymap_unref
-#define xkb_keymap_mod_get_index          awin::platform::wayland::ctx.wl.xkb.xkb_keymap_mod_get_index
-#define xkb_keymap_key_repeats            awin::platform::wayland::ctx.wl.xkb.xkb_keymap_key_repeats
-#define xkb_keymap_key_get_syms_by_level  awin::platform::wayland::ctx.wl.xkb.xkb_keymap_key_get_syms_by_level
-#define xkb_state_new                     awin::platform::wayland::ctx.wl.xkb.xkb_state_new
-#define xkb_state_unref                   awin::platform::wayland::ctx.wl.xkb.xkb_state_unref
-#define xkb_state_key_get_syms            awin::platform::wayland::ctx.wl.xkb.xkb_state_key_get_syms
-#define xkb_state_update_mask             awin::platform::wayland::ctx.wl.xkb.xkb_state_update_mask
-#define xkb_state_key_get_layout          awin::platform::wayland::ctx.wl.xkb.xkb_state_key_get_layout
-#define xkb_state_mod_index_is_active     awin::platform::wayland::ctx.wl.xkb.xkb_state_mod_index_is_active
-#define xkb_keysym_to_utf32               awin::platform::wayland::ctx.wl.xkb.xkb_keysym_to_utf32
-#define xkb_keysym_to_utf8                awin::platform::wayland::ctx.wl.xkb.xkb_keysym_to_utf8
+#define xkb_compose_table_new_from_locale awin::platform::wayland::g_ctx->wl.xkb.xkb_compose_table_new_from_locale
+#define xkb_compose_table_unref           awin::platform::wayland::g_ctx->wl.xkb.xkb_compose_table_unref
+#define xkb_compose_state_new             awin::platform::wayland::g_ctx->wl.xkb.xkb_compose_state_new
+#define xkb_compose_state_unref           awin::platform::wayland::g_ctx->wl.xkb.xkb_compose_state_unref
+#define xkb_compose_state_feed            awin::platform::wayland::g_ctx->wl.xkb.xkb_compose_state_feed
+#define xkb_compose_state_get_status      awin::platform::wayland::g_ctx->wl.xkb.xkb_compose_state_get_status
+#define xkb_compose_state_get_one_sym     awin::platform::wayland::g_ctx->wl.xkb.xkb_compose_state_get_one_sym
+#define xkb_context_new                   awin::platform::wayland::g_ctx->wl.xkb.xkb_context_new
+#define xkb_context_unref                 awin::platform::wayland::g_ctx->wl.xkb.xkb_context_unref
+#define xkb_keymap_new_from_string        awin::platform::wayland::g_ctx->wl.xkb.xkb_keymap_new_from_string
+#define xkb_keymap_unref                  awin::platform::wayland::g_ctx->wl.xkb.xkb_keymap_unref
+#define xkb_keymap_mod_get_index          awin::platform::wayland::g_ctx->wl.xkb.xkb_keymap_mod_get_index
+#define xkb_keymap_key_repeats            awin::platform::wayland::g_ctx->wl.xkb.xkb_keymap_key_repeats
+#define xkb_keymap_key_get_syms_by_level  awin::platform::wayland::g_ctx->wl.xkb.xkb_keymap_key_get_syms_by_level
+#define xkb_state_new                     awin::platform::wayland::g_ctx->wl.xkb.xkb_state_new
+#define xkb_state_unref                   awin::platform::wayland::g_ctx->wl.xkb.xkb_state_unref
+#define xkb_state_key_get_syms            awin::platform::wayland::g_ctx->wl.xkb.xkb_state_key_get_syms
+#define xkb_state_update_mask             awin::platform::wayland::g_ctx->wl.xkb.xkb_state_update_mask
+#define xkb_state_key_get_layout          awin::platform::wayland::g_ctx->wl.xkb.xkb_state_key_get_layout
+#define xkb_state_mod_index_is_active     awin::platform::wayland::g_ctx->wl.xkb.xkb_state_mod_index_is_active
+#define xkb_keysym_to_utf32               awin::platform::wayland::g_ctx->wl.xkb.xkb_keysym_to_utf32
+#define xkb_keysym_to_utf8                awin::platform::wayland::g_ctx->wl.xkb.xkb_keysym_to_utf8
 
 struct wl_display;
 struct wl_registry;
@@ -103,287 +103,282 @@ struct wl_cursor
     char *name;
 };
 
-#define libdecor_new                        awin::platform::wayland::ctx.wl.libdecor.libdecor_new
-#define libdecor_unref                      awin::platform::wayland::ctx.wl.libdecor.libdecor_unref
-#define libdecor_get_fd                     awin::platform::wayland::ctx.wl.libdecor.libdecor_get_fd
-#define libdecor_dispatch                   awin::platform::wayland::ctx.wl.libdecor.libdecor_dispatch
-#define libdecor_decorate                   awin::platform::wayland::ctx.wl.libdecor.libdecor_decorate
-#define libdecor_frame_unref                awin::platform::wayland::ctx.wl.libdecor.libdecor_frame_unref
-#define libdecor_frame_set_app_id           awin::platform::wayland::ctx.wl.libdecor.libdecor_frame_set_app_id
-#define libdecor_frame_set_title            awin::platform::wayland::ctx.wl.libdecor.libdecor_frame_set_title
-#define libdecor_frame_set_minimized        awin::platform::wayland::ctx.wl.libdecor.libdecor_frame_set_minimized
-#define libdecor_frame_set_fullscreen       awin::platform::wayland::ctx.wl.libdecor.libdecor_frame_set_fullscreen
-#define libdecor_frame_unset_fullscreen     awin::platform::wayland::ctx.wl.libdecor.libdecor_frame_unset_fullscreen
-#define libdecor_frame_map                  awin::platform::wayland::ctx.wl.libdecor.libdecor_frame_map
-#define libdecor_frame_commit               awin::platform::wayland::ctx.wl.libdecor.libdecor_frame_commit
-#define libdecor_frame_set_min_content_size awin::platform::wayland::ctx.wl.libdecor.libdecor_frame_set_min_content_size
-#define libdecor_frame_set_max_content_size awin::platform::wayland::ctx.wl.libdecor.libdecor_frame_set_max_content_size
-#define libdecor_frame_set_maximized        awin::platform::wayland::ctx.wl.libdecor.libdecor_frame_set_maximized
-#define libdecor_frame_unset_maximized      awin::platform::wayland::ctx.wl.libdecor.libdecor_frame_unset_maximized
-#define libdecor_frame_set_capabilities     awin::platform::wayland::ctx.wl.libdecor.libdecor_frame_set_capabilities
-#define libdecor_frame_unset_capabilities   awin::platform::wayland::ctx.wl.libdecor.libdecor_frame_unset_capabilities
-#define libdecor_frame_set_visibility       awin::platform::wayland::ctx.wl.libdecor.libdecor_frame_set_visibility
-#define libdecor_frame_get_xdg_toplevel     awin::platform::wayland::ctx.wl.libdecor.libdecor_frame_get_xdg_toplevel
+#define libdecor_new                    awin::platform::wayland::g_ctx->wl.libdecor.libdecor_new
+#define libdecor_unref                  awin::platform::wayland::g_ctx->wl.libdecor.libdecor_unref
+#define libdecor_get_fd                 awin::platform::wayland::g_ctx->wl.libdecor.libdecor_get_fd
+#define libdecor_dispatch               awin::platform::wayland::g_ctx->wl.libdecor.libdecor_dispatch
+#define libdecor_decorate               awin::platform::wayland::g_ctx->wl.libdecor.libdecor_decorate
+#define libdecor_frame_unref            awin::platform::wayland::g_ctx->wl.libdecor.libdecor_frame_unref
+#define libdecor_frame_set_app_id       awin::platform::wayland::g_ctx->wl.libdecor.libdecor_frame_set_app_id
+#define libdecor_frame_set_title        awin::platform::wayland::g_ctx->wl.libdecor.libdecor_frame_set_title
+#define libdecor_frame_set_minimized    awin::platform::wayland::g_ctx->wl.libdecor.libdecor_frame_set_minimized
+#define libdecor_frame_set_fullscreen   awin::platform::wayland::g_ctx->wl.libdecor.libdecor_frame_set_fullscreen
+#define libdecor_frame_unset_fullscreen awin::platform::wayland::g_ctx->wl.libdecor.libdecor_frame_unset_fullscreen
+#define libdecor_frame_map              awin::platform::wayland::g_ctx->wl.libdecor.libdecor_frame_map
+#define libdecor_frame_commit           awin::platform::wayland::g_ctx->wl.libdecor.libdecor_frame_commit
+#define libdecor_frame_set_min_content_size \
+    awin::platform::wayland::g_ctx->wl.libdecor.libdecor_frame_set_min_content_size
+#define libdecor_frame_set_max_content_size \
+    awin::platform::wayland::g_ctx->wl.libdecor.libdecor_frame_set_max_content_size
+#define libdecor_frame_set_maximized      awin::platform::wayland::g_ctx->wl.libdecor.libdecor_frame_set_maximized
+#define libdecor_frame_unset_maximized    awin::platform::wayland::g_ctx->wl.libdecor.libdecor_frame_unset_maximized
+#define libdecor_frame_set_capabilities   awin::platform::wayland::g_ctx->wl.libdecor.libdecor_frame_set_capabilities
+#define libdecor_frame_unset_capabilities awin::platform::wayland::g_ctx->wl.libdecor.libdecor_frame_unset_capabilities
+#define libdecor_frame_set_visibility     awin::platform::wayland::g_ctx->wl.libdecor.libdecor_frame_set_visibility
+#define libdecor_frame_get_xdg_toplevel   awin::platform::wayland::g_ctx->wl.libdecor.libdecor_frame_get_xdg_toplevel
 #define libdecor_configuration_get_content_size \
-    awin::platform::wayland::ctx.wl.libdecor.libdecor_configuration_get_content_size
+    awin::platform::wayland::g_ctx->wl.libdecor.libdecor_configuration_get_content_size
 #define libdecor_configuration_get_window_state \
-    awin::platform::wayland::ctx.wl.libdecor.libdecor_configuration_get_window_state
-#define libdecor_state_new  awin::platform::wayland::ctx.wl.libdecor.libdecor_state_new
-#define libdecor_state_free awin::platform::wayland::ctx.wl.libdecor.libdecor_state_free
+    awin::platform::wayland::g_ctx->wl.libdecor.libdecor_configuration_get_window_state
+#define libdecor_state_new  awin::platform::wayland::g_ctx->wl.libdecor.libdecor_state_new
+#define libdecor_state_free awin::platform::wayland::g_ctx->wl.libdecor.libdecor_state_free
 
-namespace awin
+namespace awin::platform::wayland
 {
-    namespace platform
+    struct Offer
     {
-        namespace wayland
+        wl_data_offer *offer;
+        bool text_plain_utf8;
+        bool text_uri_list;
+    };
+
+    struct WaylandLoader
+    {
+        ClientLoader client;
+        XKBLoader xkb;
+        WaylandCursorLoader cursor;
+        LibdecorLoader libdecor;
+    };
+
+    struct Output
+    {
+        acul::string name;
+        u32 name_id;
+        wl_output *handle;
+        acul::point2D<i32> pos, physical_size, dimensions;
+        int current_mode;
+        i32 scale;
+        acul::vector<struct WaylandWindowData *> windows;
+    };
+
+    struct OutputScale
+    {
+        wl_output *output;
+        i32 factor;
+    };
+
+    struct KeyTraits
+    {
+        using value_type = uint16_t;
+        using enum_type = io::Key;
+
+        static constexpr enum_type unknown = io::Key::unknown;
+
+        static consteval void fill_lut_table(std::array<enum_type, 256> &a)
         {
-            struct Offer
-            {
-                wl_data_offer *offer;
-                bool text_plain_utf8;
-                bool text_uri_list;
-            };
+            a[KEY_SPACE] = io::Key::space;
+            a[KEY_APOSTROPHE] = io::Key::apostroph;
+            a[KEY_COMMA] = io::Key::comma;
+            a[KEY_MINUS] = io::Key::minus;
+            a[KEY_DOT] = io::Key::period;
+            a[KEY_SLASH] = io::Key::slash;
+            a[KEY_0] = io::Key::d0;
+            a[KEY_1] = io::Key::d1;
+            a[KEY_2] = io::Key::d2;
+            a[KEY_3] = io::Key::d3;
+            a[KEY_4] = io::Key::d4;
+            a[KEY_5] = io::Key::d5;
+            a[KEY_6] = io::Key::d6;
+            a[KEY_7] = io::Key::d7;
+            a[KEY_8] = io::Key::d8;
+            a[KEY_9] = io::Key::d9;
+            a[KEY_SEMICOLON] = io::Key::semicolon;
+            a[KEY_EQUAL] = io::Key::equal;
+            a[KEY_A] = io::Key::a;
+            a[KEY_B] = io::Key::b;
+            a[KEY_C] = io::Key::c;
+            a[KEY_D] = io::Key::d;
+            a[KEY_E] = io::Key::e;
+            a[KEY_F] = io::Key::f;
+            a[KEY_G] = io::Key::g;
+            a[KEY_H] = io::Key::h;
+            a[KEY_I] = io::Key::i;
+            a[KEY_J] = io::Key::j;
+            a[KEY_K] = io::Key::k;
+            a[KEY_L] = io::Key::l;
+            a[KEY_M] = io::Key::m;
+            a[KEY_N] = io::Key::n;
+            a[KEY_O] = io::Key::o;
+            a[KEY_P] = io::Key::p;
+            a[KEY_Q] = io::Key::q;
+            a[KEY_R] = io::Key::r;
+            a[KEY_S] = io::Key::s;
+            a[KEY_T] = io::Key::t;
+            a[KEY_U] = io::Key::u;
+            a[KEY_V] = io::Key::v;
+            a[KEY_W] = io::Key::w;
+            a[KEY_X] = io::Key::x;
+            a[KEY_Y] = io::Key::y;
+            a[KEY_Z] = io::Key::z;
+            a[KEY_LEFTBRACE] = io::Key::lbrace;
+            a[KEY_BACKSLASH] = io::Key::backslash;
+            a[KEY_RIGHTBRACE] = io::Key::rcontrol;
+            a[KEY_GRAVE] = io::Key::grave_accent;
+            a[KEY_ESC] = io::Key::escape;
+            a[KEY_ENTER] = io::Key::enter;
+            a[KEY_TAB] = io::Key::tab;
+            a[KEY_BACKSPACE] = io::Key::backspace;
+            a[KEY_INSERT] = io::Key::insert;
+            a[KEY_DELETE] = io::Key::del;
+            a[KEY_RIGHT] = io::Key::right;
+            a[KEY_LEFT] = io::Key::left;
+            a[KEY_DOWN] = io::Key::down;
+            a[KEY_UP] = io::Key::up;
+            a[KEY_PAGEUP] = io::Key::page_up;
+            a[KEY_PAGEDOWN] = io::Key::page_down;
+            a[KEY_HOME] = io::Key::home;
+            a[KEY_END] = io::Key::end;
+            a[KEY_CAPSLOCK] = io::Key::caps_lock;
+            a[KEY_SCROLLLOCK] = io::Key::scroll_lock;
+            a[KEY_NUMLOCK] = io::Key::num_lock;
+            a[KEY_PRINT] = io::Key::print_screen;
+            a[KEY_PAUSE] = io::Key::pause;
+            a[KEY_F1] = io::Key::f1;
+            a[KEY_F2] = io::Key::f2;
+            a[KEY_F3] = io::Key::f3;
+            a[KEY_F4] = io::Key::f4;
+            a[KEY_F5] = io::Key::f5;
+            a[KEY_F6] = io::Key::f6;
+            a[KEY_F7] = io::Key::f7;
+            a[KEY_F8] = io::Key::f8;
+            a[KEY_F9] = io::Key::f9;
+            a[KEY_F10] = io::Key::f10;
+            a[KEY_F11] = io::Key::f11;
+            a[KEY_F12] = io::Key::f12;
+            a[KEY_F13] = io::Key::f13;
+            a[KEY_F14] = io::Key::f14;
+            a[KEY_F15] = io::Key::f15;
+            a[KEY_F16] = io::Key::f16;
+            a[KEY_F17] = io::Key::f17;
+            a[KEY_F18] = io::Key::f18;
+            a[KEY_F19] = io::Key::f19;
+            a[KEY_F20] = io::Key::f20;
+            a[KEY_F21] = io::Key::f21;
+            a[KEY_F22] = io::Key::f22;
+            a[KEY_F23] = io::Key::f23;
+            a[KEY_F24] = io::Key::f24;
+            a[KEY_KP0] = io::Key::kp_0;
+            a[KEY_KP1] = io::Key::kp_1;
+            a[KEY_KP2] = io::Key::kp_2;
+            a[KEY_KP3] = io::Key::kp_3;
+            a[KEY_KP4] = io::Key::kp_4;
+            a[KEY_KP5] = io::Key::kp_5;
+            a[KEY_KP6] = io::Key::kp_6;
+            a[KEY_KP7] = io::Key::kp_7;
+            a[KEY_KP8] = io::Key::kp_8;
+            a[KEY_KP9] = io::Key::kp_9;
+            a[KEY_KPDOT] = io::Key::kp_decimal;
+            a[KEY_KPSLASH] = io::Key::kp_divide;
+            a[KEY_KPASTERISK] = io::Key::kp_multiply;
+            a[KEY_KPMINUS] = io::Key::kp_subtract;
+            a[KEY_KPPLUS] = io::Key::kp_add;
+            a[KEY_KPENTER] = io::Key::kp_enter;
+            a[KEY_KPEQUAL] = io::Key::kp_equal;
+            a[KEY_LEFTSHIFT] = io::Key::lshift;
+            a[KEY_LEFTCTRL] = io::Key::lcontrol;
+            a[KEY_LEFTALT] = io::Key::lalt;
+            a[KEY_LEFTMETA] = io::Key::lsuper;
+            a[KEY_RIGHTSHIFT] = io::Key::rshift;
+            a[KEY_RIGHTCTRL] = io::Key::rcontrol;
+            a[KEY_RIGHTALT] = io::Key::ralt;
+            a[KEY_RIGHTMETA] = io::Key::rsuper;
+            a[KEY_MENU] = io::Key::menu;
+        }
+    };
 
-            struct WaylandLoader
-            {
-                ClientLoader client;
-                XKBLoader xkb;
-                WaylandCursorLoader cursor;
-                LibdecorLoader libdecor;
-            };
+    extern APPLIB_API struct Context
+    {
+        WaylandLoader wl;
 
-            struct Output
-            {
-                acul::string name;
-                u32 name_id;
-                wl_output *handle;
-                acul::point2D<i32> pos, physical_size, dimensions;
-                int current_mode;
-                i32 scale;
-                acul::vector<struct WaylandWindowData *> windows;
-            };
+        wl_display *display;
+        wl_registry *registry;
+        wl_compositor *compositor;
+        wl_subcompositor *subcompositor;
+        wl_shm *shm;
+        wl_seat *seat;
+        wl_pointer *pointer;
+        wl_keyboard *keyboard;
+        wl_data_device_manager *data_device_manager;
+        wl_data_device *data_device;
+        xdg_wm_base *wm_base;
+        zxdg_decoration_manager_v1 *decoration_manager;
+        wp_viewporter *viewporter;
+        zwp_relative_pointer_manager_v1 *relative_pointer_manager;
+        zwp_idle_inhibit_manager_v1 *idle_inhibit_manager;
+        wp_fractional_scale_manager_v1 *fractional_scale_manager;
 
-            struct OutputScale
-            {
-                wl_output *output;
-                i32 factor;
-            };
+        int key_repeat_timer_fd, key_repeat_scancode;
+        i32 key_repeat_rate, key_repeat_delay;
+        u32 serial;
+        u32 pointer_enter_serial;
+        struct WaylandWindowData *pointer_focus, *keyboard_focus;
+        const char *cursor_previous_name;
+        const char *tag;
+        wl_cursor_theme *cursor_theme;
+        wl_cursor_theme *cursor_theme_hi_dpi;
+        wl_surface *cursor_surface;
+        int cursor_timer_fd;
+        acul::vector<Output> outputs;
+        acul::vector<Offer> offers;
+        wl_data_offer *selection_offer;
+        wl_data_source *selection_source;
 
-            struct KeyTraits
-            {
-                using value_type = uint16_t;
-                using enum_type = io::Key;
+        struct
+        {
+            xkb_context *context;
+            xkb_keymap *keymap;
+            xkb_state *state;
 
-                static constexpr enum_type unknown = io::Key::unknown;
+            xkb_compose_state *compose_state;
 
-                static consteval void fill_lut_table(std::array<enum_type, 256> &a)
-                {
-                    a[KEY_SPACE] = io::Key::space;
-                    a[KEY_APOSTROPHE] = io::Key::apostroph;
-                    a[KEY_COMMA] = io::Key::comma;
-                    a[KEY_MINUS] = io::Key::minus;
-                    a[KEY_DOT] = io::Key::period;
-                    a[KEY_SLASH] = io::Key::slash;
-                    a[KEY_0] = io::Key::d0;
-                    a[KEY_1] = io::Key::d1;
-                    a[KEY_2] = io::Key::d2;
-                    a[KEY_3] = io::Key::d3;
-                    a[KEY_4] = io::Key::d4;
-                    a[KEY_5] = io::Key::d5;
-                    a[KEY_6] = io::Key::d6;
-                    a[KEY_7] = io::Key::d7;
-                    a[KEY_8] = io::Key::d8;
-                    a[KEY_9] = io::Key::d9;
-                    a[KEY_SEMICOLON] = io::Key::semicolon;
-                    a[KEY_EQUAL] = io::Key::equal;
-                    a[KEY_A] = io::Key::a;
-                    a[KEY_B] = io::Key::b;
-                    a[KEY_C] = io::Key::c;
-                    a[KEY_D] = io::Key::d;
-                    a[KEY_E] = io::Key::e;
-                    a[KEY_F] = io::Key::f;
-                    a[KEY_G] = io::Key::g;
-                    a[KEY_H] = io::Key::h;
-                    a[KEY_I] = io::Key::i;
-                    a[KEY_J] = io::Key::j;
-                    a[KEY_K] = io::Key::k;
-                    a[KEY_L] = io::Key::l;
-                    a[KEY_M] = io::Key::m;
-                    a[KEY_N] = io::Key::n;
-                    a[KEY_O] = io::Key::o;
-                    a[KEY_P] = io::Key::p;
-                    a[KEY_Q] = io::Key::q;
-                    a[KEY_R] = io::Key::r;
-                    a[KEY_S] = io::Key::s;
-                    a[KEY_T] = io::Key::t;
-                    a[KEY_U] = io::Key::u;
-                    a[KEY_V] = io::Key::v;
-                    a[KEY_W] = io::Key::w;
-                    a[KEY_X] = io::Key::x;
-                    a[KEY_Y] = io::Key::y;
-                    a[KEY_Z] = io::Key::z;
-                    a[KEY_LEFTBRACE] = io::Key::lbrace;
-                    a[KEY_BACKSLASH] = io::Key::backslash;
-                    a[KEY_RIGHTBRACE] = io::Key::rcontrol;
-                    a[KEY_GRAVE] = io::Key::grave_accent;
-                    a[KEY_ESC] = io::Key::escape;
-                    a[KEY_ENTER] = io::Key::enter;
-                    a[KEY_TAB] = io::Key::tab;
-                    a[KEY_BACKSPACE] = io::Key::backspace;
-                    a[KEY_INSERT] = io::Key::insert;
-                    a[KEY_DELETE] = io::Key::del;
-                    a[KEY_RIGHT] = io::Key::right;
-                    a[KEY_LEFT] = io::Key::left;
-                    a[KEY_DOWN] = io::Key::down;
-                    a[KEY_UP] = io::Key::up;
-                    a[KEY_PAGEUP] = io::Key::page_up;
-                    a[KEY_PAGEDOWN] = io::Key::page_down;
-                    a[KEY_HOME] = io::Key::home;
-                    a[KEY_END] = io::Key::end;
-                    a[KEY_CAPSLOCK] = io::Key::caps_lock;
-                    a[KEY_SCROLLLOCK] = io::Key::scroll_lock;
-                    a[KEY_NUMLOCK] = io::Key::num_lock;
-                    a[KEY_PRINT] = io::Key::print_screen;
-                    a[KEY_PAUSE] = io::Key::pause;
-                    a[KEY_F1] = io::Key::f1;
-                    a[KEY_F2] = io::Key::f2;
-                    a[KEY_F3] = io::Key::f3;
-                    a[KEY_F4] = io::Key::f4;
-                    a[KEY_F5] = io::Key::f5;
-                    a[KEY_F6] = io::Key::f6;
-                    a[KEY_F7] = io::Key::f7;
-                    a[KEY_F8] = io::Key::f8;
-                    a[KEY_F9] = io::Key::f9;
-                    a[KEY_F10] = io::Key::f10;
-                    a[KEY_F11] = io::Key::f11;
-                    a[KEY_F12] = io::Key::f12;
-                    a[KEY_F13] = io::Key::f13;
-                    a[KEY_F14] = io::Key::f14;
-                    a[KEY_F15] = io::Key::f15;
-                    a[KEY_F16] = io::Key::f16;
-                    a[KEY_F17] = io::Key::f17;
-                    a[KEY_F18] = io::Key::f18;
-                    a[KEY_F19] = io::Key::f19;
-                    a[KEY_F20] = io::Key::f20;
-                    a[KEY_F21] = io::Key::f21;
-                    a[KEY_F22] = io::Key::f22;
-                    a[KEY_F23] = io::Key::f23;
-                    a[KEY_F24] = io::Key::f24;
-                    a[KEY_KP0] = io::Key::kp_0;
-                    a[KEY_KP1] = io::Key::kp_1;
-                    a[KEY_KP2] = io::Key::kp_2;
-                    a[KEY_KP3] = io::Key::kp_3;
-                    a[KEY_KP4] = io::Key::kp_4;
-                    a[KEY_KP5] = io::Key::kp_5;
-                    a[KEY_KP6] = io::Key::kp_6;
-                    a[KEY_KP7] = io::Key::kp_7;
-                    a[KEY_KP8] = io::Key::kp_8;
-                    a[KEY_KP9] = io::Key::kp_9;
-                    a[KEY_KPDOT] = io::Key::kp_decimal;
-                    a[KEY_KPSLASH] = io::Key::kp_divide;
-                    a[KEY_KPASTERISK] = io::Key::kp_multiply;
-                    a[KEY_KPMINUS] = io::Key::kp_subtract;
-                    a[KEY_KPPLUS] = io::Key::kp_add;
-                    a[KEY_KPENTER] = io::Key::kp_enter;
-                    a[KEY_KPEQUAL] = io::Key::kp_equal;
-                    a[KEY_LEFTSHIFT] = io::Key::lshift;
-                    a[KEY_LEFTCTRL] = io::Key::lcontrol;
-                    a[KEY_LEFTALT] = io::Key::lalt;
-                    a[KEY_LEFTMETA] = io::Key::lsuper;
-                    a[KEY_RIGHTSHIFT] = io::Key::rshift;
-                    a[KEY_RIGHTCTRL] = io::Key::rcontrol;
-                    a[KEY_RIGHTALT] = io::Key::ralt;
-                    a[KEY_RIGHTMETA] = io::Key::rsuper;
-                    a[KEY_MENU] = io::Key::menu;
-                }
-            };
+            xkb_mod_index_t control_index;
+            xkb_mod_index_t alt_index;
+            xkb_mod_index_t shift_index;
+            xkb_mod_index_t super_index;
+            xkb_mod_index_t caps_lock_index;
+            xkb_mod_index_t num_lock_index;
+            io::KeyMode modifiers;
+        } xkb;
 
-            extern APPLIB_API struct Context
-            {
-                WaylandLoader wl;
-
-                wl_display *display;
-                wl_registry *registry;
-                wl_compositor *compositor;
-                wl_subcompositor *subcompositor;
-                wl_shm *shm;
-                wl_seat *seat;
-                wl_pointer *pointer;
-                wl_keyboard *keyboard;
-                wl_data_device_manager *data_device_manager;
-                wl_data_device *data_device;
-                xdg_wm_base *wm_base;
-                zxdg_decoration_manager_v1 *decoration_manager;
-                wp_viewporter *viewporter;
-                zwp_relative_pointer_manager_v1 *relative_pointer_manager;
-                zwp_idle_inhibit_manager_v1 *idle_inhibit_manager;
-                wp_fractional_scale_manager_v1 *fractional_scale_manager;
-
-                int key_repeat_timer_fd, key_repeat_scancode;
-                i32 key_repeat_rate, key_repeat_delay;
-                u32 serial;
-                u32 pointer_enter_serial;
-                struct WaylandWindowData *pointer_focus, *keyboard_focus;
-                const char *cursor_previous_name;
-                const char *tag;
-                wl_cursor_theme *cursor_theme;
-                wl_cursor_theme *cursor_theme_hi_dpi;
-                wl_surface *cursor_surface;
-                int cursor_timer_fd;
-                acul::vector<Output> outputs;
-                acul::vector<Offer> offers;
-                wl_data_offer *selection_offer;
-                wl_data_source *selection_source;
-
-                struct
-                {
-                    xkb_context *context;
-                    xkb_keymap *keymap;
-                    xkb_state *state;
-
-                    xkb_compose_state *compose_state;
-
-                    xkb_mod_index_t control_index;
-                    xkb_mod_index_t alt_index;
-                    xkb_mod_index_t shift_index;
-                    xkb_mod_index_t super_index;
-                    xkb_mod_index_t caps_lock_index;
-                    xkb_mod_index_t num_lock_index;
-                    io::KeyMode modifiers;
-                } xkb;
-
-                struct
-                {
-                    ::libdecor *context;
-                    wl_callback *callback;
-                    bool ready;
-                } libdecor;
-                acul::lut_table<256, KeyTraits> keymap;
+        struct
+        {
+            ::libdecor *context;
+            wl_callback *callback;
+            bool ready;
+        } libdecor;
+        acul::lut_table<256, KeyTraits> keymap;
 #ifdef AWIN_TEST_BUILD
-                bool is_surface_placeholder_enabled = false;
+        bool is_surface_placeholder_enabled = false;
 #endif
-            } g_ctx;
+    } *g_ctx;
 
-            struct WaylandCursor : Cursor::Platform
-            {
-                wl_cursor *handle;
-                wl_buffer *buffer;
-                acul::point2D<int> size, hot;
-                int current_image;
-            };
+    struct WaylandCursor : Cursor::Platform
+    {
+        wl_cursor *handle;
+        wl_buffer *buffer;
+        acul::point2D<int> size, hot;
+        int current_image;
+    };
 
-            void add_seat_listener(wl_seat *seat);
-            void add_data_device_listener(wl_data_device *device);
+    void add_seat_listener(wl_seat *seat);
+    void add_data_device_listener(wl_data_device *device);
 
-            void init_pcall_data(LinuxPlatformCaller &caller);
-            void init_wcall_data(LinuxWindowCaller &caller);
-            void init_ccall_data(LinuxCursorCaller &caller);
+    void init_pcall_data(LinuxPlatformCaller &caller);
+    void init_wcall_data(LinuxWindowCaller &caller);
+    void init_ccall_data(LinuxCursorCaller &caller);
 
-            Cursor::Platform *create_cursor(Cursor::Type);
-            void assign_cursor(Window *, Cursor::Platform *);
-            void destroy_cursor(Cursor::Platform *);
-            bool is_cursor_valid(const Cursor::Platform *);
-        } // namespace wayland
-    } // namespace platform
-
-} // namespace awin
+    Cursor::Platform *create_cursor(Cursor::Type);
+    void assign_cursor(Window *, Cursor::Platform *);
+    void destroy_cursor(Cursor::Platform *);
+    bool is_cursor_valid(const Cursor::Platform *);
+} // namespace awin::platform::wayland

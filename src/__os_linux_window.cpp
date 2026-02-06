@@ -1,5 +1,4 @@
 #include <X11/X.h>
-#include <acul/log.hpp>
 #include <acul/pair.hpp>
 #include <awin/native_access.hpp>
 #include "env.hpp"
@@ -20,18 +19,18 @@ namespace awin
 
         void init_timer()
         {
-            env.timer.clock_id = CLOCK_REALTIME;
-            env.timer.frequency = 1000000000;
+            g_env->timer.clock_id = CLOCK_REALTIME;
+            g_env->timer.frequency = 1000000000;
 #if defined(_POSIX_MONOTONIC_CLOCK)
             struct timespec ts;
             if (clock_gettime(CLOCK_MONOTONIC, &ts) == 0)
             {
-                env.timer.clock_id = CLOCK_MONOTONIC;
-                env.timer.offset = (u64)ts.tv_sec * 1'000'000'000 + ts.tv_nsec;
+                g_env->timer.clock_id = CLOCK_MONOTONIC;
+                g_env->timer.offset = (u64)ts.tv_sec * 1'000'000'000 + ts.tv_nsec;
                 return;
             }
 #endif
-            env.timer.offset = 0;
+            g_env->timer.offset = 0;
         };
 
         void destroy_platform()
@@ -64,13 +63,13 @@ namespace awin
             return false;
         }
 
-        u64 get_time_frequency() { return env.timer.frequency; }
+        u64 get_time_frequency() { return g_env->timer.frequency; }
 
         bool init_platform()
         {
             if (!init_platform_caller())
             {
-                LOG_ERROR("Unknown window backend");
+                AWIN_LOG_ERROR("Unknown window backend");
                 return false;
             }
             return pd.pcall.init_platform();
@@ -79,8 +78,8 @@ namespace awin
         u64 get_time_value()
         {
             struct timespec ts;
-            if (clock_gettime(env.timer.clock_id, &ts) == 0)
-                return (u64)ts.tv_sec * env.timer.frequency + (u64)ts.tv_nsec;
+            if (clock_gettime(g_env->timer.clock_id, &ts) == 0)
+                return (u64)ts.tv_sec * g_env->timer.frequency + (u64)ts.tv_nsec;
             return 0;
         }
 

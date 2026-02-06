@@ -1,5 +1,5 @@
-#include <acul/log.hpp>
 #include <awin/window.hpp>
+#include <cmath>
 #include "env.hpp"
 
 namespace awin

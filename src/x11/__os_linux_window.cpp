@@ -2,7 +2,6 @@
 #include <X11/Xlib.h>
 #include <X11/Xmd.h>
 #include <X11/cursorfont.h>
-#include <acul/log.hpp>
 #include <awin/native_access.hpp>
 #include <awin/window.hpp>
 #include "../env.hpp"
@@ -25,1401 +24,1379 @@
 
 namespace awin
 {
-    namespace platform
+    namespace platform::x11
     {
-        namespace x11
+        void input_context_destroy_callback(XIC ic, XPointer clientData, XPointer callData)
         {
-            void input_context_destroy_callback(XIC ic, XPointer clientData, XPointer callData)
+            X11WindowData *window = (X11WindowData *)clientData;
+            window->ic = NULL;
+        }
+
+        void create_input_context(X11WindowData *window_data)
+        {
+            XIMCallback callback;
+            auto &xlib = g_ctx->xlib;
+            callback.callback = (XIMProc)input_context_destroy_callback;
+            callback.client_data = (XPointer)&window_data;
+
+            window_data->ic = xlib.XCreateIC(g_ctx->im, XNInputStyle, XIMPreeditNothing | XIMStatusNothing,
+                                             XNClientWindow, window_data->window, XNFocusWindow, window_data->window,
+                                             XNDestroyCallback, &callback, NULL);
+
+            if (window_data->ic)
             {
-                X11WindowData *window = (X11WindowData *)clientData;
-                window->ic = NULL;
+                XWindowAttributes attribs;
+                xlib.XGetWindowAttributes(g_ctx->display, window_data->window, &attribs);
+
+                unsigned long filter = 0;
+                if (xlib.XGetICValues(window_data->ic, XNFilterEvents, &filter, NULL) == NULL)
+                    xlib.XSelectInput(g_ctx->display, window_data->window, attribs.your_event_mask | filter);
             }
+        }
 
-            void create_input_context(X11WindowData *window_data)
+        // Returns whether the event is a selection event
+        static Bool is_selection_event(Display *display, XEvent *event, XPointer pointer)
+        {
+            if (event->xany.window != g_ctx->helper_window) return False;
+            return event->type == SelectionRequest || event->type == SelectionNotify || event->type == SelectionClear;
+        }
+
+        // Set the specified property to the selection converted to the requested target
+        static Atom write_target_to_property(const XSelectionRequestEvent *request)
+        {
+            auto &xlib = g_ctx->xlib;
+            char *selection_string = NULL;
+            const Atom formats[] = {g_ctx->select_atoms.UTF8_STRING, XA_STRING};
+            const int format_count = sizeof(formats) / sizeof(formats[0]);
+
+            if (request->selection == g_ctx->select_atoms.PRIMARY)
+                selection_string = (char *)g_ctx->primary_selection_string.c_str();
+            else
+                selection_string = (char *)platform::g_env->clipboard_data.c_str();
+
+            if (request->property == None)
             {
-                XIMCallback callback;
-                auto &xlib = ctx.xlib;
-                callback.callback = (XIMProc)input_context_destroy_callback;
-                callback.client_data = (XPointer)&window_data;
-
-                window_data->ic = xlib.XCreateIC(ctx.im, XNInputStyle, XIMPreeditNothing | XIMStatusNothing,
-                                                 XNClientWindow, window_data->window, XNFocusWindow,
-                                                 window_data->window, XNDestroyCallback, &callback, NULL);
-
-                if (window_data->ic)
-                {
-                    XWindowAttributes attribs;
-                    xlib.XGetWindowAttributes(ctx.display, window_data->window, &attribs);
-
-                    unsigned long filter = 0;
-                    if (xlib.XGetICValues(window_data->ic, XNFilterEvents, &filter, NULL) == NULL)
-                        xlib.XSelectInput(ctx.display, window_data->window, attribs.your_event_mask | filter);
-                }
-            }
-
-            // Returns whether the event is a selection event
-            static Bool is_selection_event(Display *display, XEvent *event, XPointer pointer)
-            {
-                if (event->xany.window != ctx.helper_window) return False;
-                return event->type == SelectionRequest || event->type == SelectionNotify ||
-                       event->type == SelectionClear;
-            }
-
-            // Set the specified property to the selection converted to the requested target
-            static Atom write_target_to_property(const XSelectionRequestEvent *request)
-            {
-                auto &xlib = ctx.xlib;
-                char *selection_string = NULL;
-                const Atom formats[] = {ctx.select_atoms.UTF8_STRING, XA_STRING};
-                const int format_count = sizeof(formats) / sizeof(formats[0]);
-
-                if (request->selection == ctx.select_atoms.PRIMARY)
-                    selection_string = (char *)ctx.primary_selection_string.c_str();
-                else
-                    selection_string = (char *)platform::env.clipboard_data.c_str();
-
-                if (request->property == None)
-                {
-                    // The requester is a legacy client (ICCCM section 2.2)
-                    // We don't support legacy clients, so fail here
-                    return None;
-                }
-
-                if (request->target == ctx.select_atoms.TARGETS)
-                {
-                    // The list of supported targets was requested
-
-                    const Atom targets[] = {ctx.select_atoms.TARGETS, ctx.select_atoms.MULTIPLE,
-                                            ctx.select_atoms.UTF8_STRING, XA_STRING};
-
-                    xlib.XChangeProperty(ctx.display, request->requestor, request->property, XA_ATOM, 32,
-                                         PropModeReplace, (unsigned char *)targets,
-                                         sizeof(targets) / sizeof(targets[0]));
-
-                    return request->property;
-                }
-
-                if (request->target == ctx.select_atoms.MULTIPLE)
-                {
-                    // Multiple conversions were requested
-                    Atom *targets;
-                    const unsigned long count = get_window_property(
-                        request->requestor, request->property, ctx.select_atoms.ATOM_PAIR, (unsigned char **)&targets);
-
-                    for (unsigned long i = 0; i < count; i += 2)
-                    {
-                        int j;
-                        for (j = 0; j < format_count; j++)
-                            if (targets[i] == formats[j]) break;
-
-                        if (j < format_count)
-                            xlib.XChangeProperty(ctx.display, request->requestor, targets[i + 1], targets[i], 8,
-                                                 PropModeReplace, (unsigned char *)selection_string,
-                                                 null_terminated_length(selection_string));
-                        else
-                            targets[i + 1] = None;
-                    }
-
-                    xlib.XChangeProperty(ctx.display, request->requestor, request->property, ctx.select_atoms.ATOM_PAIR,
-                                         32, PropModeReplace, (unsigned char *)targets, count);
-                    xlib.XFree(targets);
-
-                    return request->property;
-                }
-
-                if (request->target == ctx.select_atoms.SAVE_TARGETS)
-                {
-                    // The request is a check whether we support SAVE_TARGETS
-                    // It should be handled as a no-op side effect target
-                    xlib.XChangeProperty(ctx.display, request->requestor, request->property, ctx.select_atoms.NULL_, 32,
-                                         PropModeReplace, NULL, 0);
-                    return request->property;
-                }
-
-                // Conversion to a data target was requested
-
-                for (int i = 0; i < format_count; i++)
-                {
-                    if (request->target == formats[i])
-                    {
-                        // The requested target is one we support
-                        xlib.XChangeProperty(ctx.display, request->requestor, request->property, request->target, 8,
-                                             PropModeReplace, (unsigned char *)selection_string,
-                                             null_terminated_length(selection_string));
-
-                        return request->property;
-                    }
-                }
-
-                // The requested target is not supported
+                // The requester is a legacy client (ICCCM section 2.2)
+                // We don't support legacy clients, so fail here
                 return None;
             }
 
-            static void handle_selection_request(XEvent *event)
+            if (request->target == g_ctx->select_atoms.TARGETS)
             {
-                const XSelectionRequestEvent *request = &event->xselectionrequest;
+                // The list of supported targets was requested
 
-                XEvent reply = {SelectionNotify};
-                reply.xselection.property = write_target_to_property(request);
-                reply.xselection.display = request->display;
-                reply.xselection.requestor = request->requestor;
-                reply.xselection.selection = request->selection;
-                reply.xselection.target = request->target;
-                reply.xselection.time = request->time;
+                const Atom targets[] = {g_ctx->select_atoms.TARGETS, g_ctx->select_atoms.MULTIPLE,
+                                        g_ctx->select_atoms.UTF8_STRING, XA_STRING};
 
-                ctx.xlib.XSendEvent(ctx.display, request->requestor, False, 0, &reply);
+                xlib.XChangeProperty(g_ctx->display, request->requestor, request->property, XA_ATOM, 32,
+                                     PropModeReplace, (unsigned char *)targets, sizeof(targets) / sizeof(targets[0]));
+
+                return request->property;
             }
 
-            void push_selection_to_manager_x11()
+            if (request->target == g_ctx->select_atoms.MULTIPLE)
             {
-                auto &xlib = ctx.xlib;
-                xlib.XConvertSelection(ctx.display, ctx.select_atoms.CLIPBOARD_MANAGER, ctx.select_atoms.SAVE_TARGETS,
-                                       None, ctx.helper_window, CurrentTime);
+                // Multiple conversions were requested
+                Atom *targets;
+                const unsigned long count = get_window_property(
+                    request->requestor, request->property, g_ctx->select_atoms.ATOM_PAIR, (unsigned char **)&targets);
 
-                for (;;)
+                for (unsigned long i = 0; i < count; i += 2)
                 {
-                    XEvent event;
+                    int j;
+                    for (j = 0; j < format_count; j++)
+                        if (targets[i] == formats[j]) break;
 
-                    while (xlib.XCheckIfEvent(ctx.display, &event, is_selection_event, NULL))
+                    if (j < format_count)
+                        xlib.XChangeProperty(g_ctx->display, request->requestor, targets[i + 1], targets[i], 8,
+                                             PropModeReplace, (unsigned char *)selection_string,
+                                             acul::null_terminated_length(selection_string));
+                    else
+                        targets[i + 1] = None;
+                }
+
+                xlib.XChangeProperty(g_ctx->display, request->requestor, request->property,
+                                     g_ctx->select_atoms.ATOM_PAIR, 32, PropModeReplace, (unsigned char *)targets,
+                                     count);
+                xlib.XFree(targets);
+
+                return request->property;
+            }
+
+            if (request->target == g_ctx->select_atoms.SAVE_TARGETS)
+            {
+                // The request is a check whether we support SAVE_TARGETS
+                // It should be handled as a no-op side effect target
+                xlib.XChangeProperty(g_ctx->display, request->requestor, request->property, g_ctx->select_atoms.NULL_,
+                                     32, PropModeReplace, NULL, 0);
+                return request->property;
+            }
+
+            // Conversion to a data target was requested
+
+            for (int i = 0; i < format_count; i++)
+            {
+                if (request->target == formats[i])
+                {
+                    // The requested target is one we support
+                    xlib.XChangeProperty(g_ctx->display, request->requestor, request->property, request->target, 8,
+                                         PropModeReplace, (unsigned char *)selection_string,
+                                         acul::null_terminated_length(selection_string));
+
+                    return request->property;
+                }
+            }
+
+            // The requested target is not supported
+            return None;
+        }
+
+        static void handle_selection_request(XEvent *event)
+        {
+            const XSelectionRequestEvent *request = &event->xselectionrequest;
+
+            XEvent reply = {SelectionNotify};
+            reply.xselection.property = write_target_to_property(request);
+            reply.xselection.display = request->display;
+            reply.xselection.requestor = request->requestor;
+            reply.xselection.selection = request->selection;
+            reply.xselection.target = request->target;
+            reply.xselection.time = request->time;
+
+            g_ctx->xlib.XSendEvent(g_ctx->display, request->requestor, False, 0, &reply);
+        }
+
+        void push_selection_to_manager_x11()
+        {
+            auto &xlib = g_ctx->xlib;
+            xlib.XConvertSelection(g_ctx->display, g_ctx->select_atoms.CLIPBOARD_MANAGER,
+                                   g_ctx->select_atoms.SAVE_TARGETS, None, g_ctx->helper_window, CurrentTime);
+
+            for (;;)
+            {
+                XEvent event;
+
+                while (xlib.XCheckIfEvent(g_ctx->display, &event, is_selection_event, NULL))
+                {
+                    switch (event.type)
                     {
-                        switch (event.type)
+                        case SelectionRequest:
+                            handle_selection_request(&event);
+                            break;
+
+                        case SelectionNotify:
                         {
-                            case SelectionRequest:
-                                handle_selection_request(&event);
-                                break;
-
-                            case SelectionNotify:
+                            if (event.xselection.target == g_ctx->select_atoms.SAVE_TARGETS)
                             {
-                                if (event.xselection.target == ctx.select_atoms.SAVE_TARGETS)
-                                {
-                                    // This means one of two things; either the selection
-                                    // was not owned, which means there is no clipboard
-                                    // manager, or the transfer to the clipboard manager has
-                                    // completed
-                                    // In either case, it means we are done here
-                                    return;
-                                }
-
-                                break;
+                                // This means one of two things; either the selection
+                                // was not owned, which means there is no clipboard
+                                // manager, or the transfer to the clipboard manager has
+                                // completed
+                                // In either case, it means we are done here
+                                return;
                             }
+
+                            break;
                         }
                     }
-
-                    wait_for_x11_event(NULL);
-                }
-            }
-
-            // Applies MWM hints: decorations and functions
-            static void apply_motif_hints(Display *dpy, XID window, WindowFlags window_flags)
-            {
-                struct MotifWmHints
-                {
-                    unsigned long flags;
-                    unsigned long functions;
-                    unsigned long decorations;
-                    long input_mode;
-                    unsigned long status;
-                } hints = {0};
-
-                hints.flags = MWM_HINTS_FUNCTIONS | MWM_HINTS_DECORATIONS;
-                // functions
-                hints.functions = MWM_FUNC_MOVE | MWM_FUNC_CLOSE;
-                if (window_flags & WindowFlagBits::resizable) hints.functions |= MWM_FUNC_RESIZE;
-                if (window_flags & WindowFlagBits::minimize_box) hints.functions |= MWM_FUNC_MINIMIZE;
-                if (window_flags & WindowFlagBits::maximize_box) hints.functions |= MWM_FUNC_MAXIMIZE;
-                // decorations
-                hints.decorations = window_flags & WindowFlagBits::decorated ? MWM_DECOR_ALL : 0;
-                ctx.xlib.XChangeProperty(dpy, window, ctx.wm.MOTIF_WM_HINTS, ctx.wm.MOTIF_WM_HINTS, 32, PropModeReplace,
-                                         reinterpret_cast<unsigned char *>(&hints), sizeof(hints) / sizeof(long));
-            }
-
-            acul::string get_window_title(WindowData *window_data)
-            {
-                auto *x11_data = (X11WindowData *)window_data;
-                auto &xlib = ctx.xlib;
-                Atom actual_type;
-                int actual_format;
-                unsigned long nitems, bytes_after;
-                unsigned char *prop = nullptr;
-
-                int status = xlib.XGetWindowProperty(ctx.display, x11_data->window, ctx.wm.NET_WM_NAME, 0, (~0L), False,
-                                                     ctx.select_atoms.UTF8_STRING, &actual_type, &actual_format,
-                                                     &nitems, &bytes_after, &prop);
-
-                if (status == Success && prop && actual_type == ctx.select_atoms.UTF8_STRING)
-                {
-                    acul::string result(reinterpret_cast<const char *>(prop), nitems);
-                    xlib.XFree(prop);
-                    return result;
-                }
-                return {};
-            }
-
-            void set_window_title(WindowData *window_data, const acul::string &title)
-            {
-                auto *x11_data = (X11WindowData *)window_data;
-                auto &xlib = ctx.xlib;
-                const char *pTitle = title.c_str();
-                if (ctx.utf8)
-                    xlib.Xutf8SetWMProperties(ctx.display, x11_data->window, pTitle, pTitle, NULL, 0, NULL, NULL, NULL);
-                xlib.XChangeProperty(ctx.display, x11_data->window, ctx.wm.NET_WM_NAME, ctx.select_atoms.UTF8_STRING, 8,
-                                     PropModeReplace, (unsigned char *)pTitle, title.length());
-                xlib.XChangeProperty(ctx.display, x11_data->window, ctx.wm.NET_WM_ICON_NAME,
-                                     ctx.select_atoms.UTF8_STRING, 8, PropModeReplace, (unsigned char *)pTitle,
-                                     title.length());
-                xlib.XFlush(ctx.display);
-            }
-
-            void enable_fullscreen(WindowData *window_data)
-            {
-                auto *x11 = (X11WindowData *)window_data;
-                if (!ctx.wm.NET_WM_STATE || !ctx.wm.NET_WM_STATE_FULLSCREEN) return;
-
-                XEvent e = {};
-                e.xclient.type = ClientMessage;
-                e.xclient.window = x11->window;
-                e.xclient.message_type = ctx.wm.NET_WM_STATE;
-                e.xclient.format = 32;
-                e.xclient.data.l[0] = 1;
-                e.xclient.data.l[1] = ctx.wm.NET_WM_STATE_FULLSCREEN;
-                e.xclient.data.l[2] = 0;
-                e.xclient.data.l[3] = 1;
-                e.xclient.data.l[4] = 0;
-
-                ctx.xlib.XSendEvent(ctx.display, ctx.root, False, SubstructureNotifyMask | SubstructureRedirectMask,
-                                    &e);
-                ctx.xlib.XFlush(ctx.display);
-            }
-
-            void disable_fullscreen(WindowData *window_data)
-            {
-                auto *x11 = (X11WindowData *)window_data;
-                if (!ctx.wm.NET_WM_STATE || !ctx.wm.NET_WM_STATE_FULLSCREEN) return;
-
-                XEvent e = {};
-                e.xclient.type = ClientMessage;
-                e.xclient.window = x11->window;
-                e.xclient.message_type = ctx.wm.NET_WM_STATE;
-                e.xclient.format = 32;
-                e.xclient.data.l[0] = _NET_WM_STATE_REMOVE;
-                e.xclient.data.l[1] = ctx.wm.NET_WM_STATE_FULLSCREEN;
-                e.xclient.data.l[2] = 0;
-                e.xclient.data.l[3] = 1;
-                e.xclient.data.l[4] = 0;
-
-                ctx.xlib.XSendEvent(ctx.display, ctx.root, False, SubstructureNotifyMask | SubstructureRedirectMask,
-                                    &e);
-                ctx.xlib.XFlush(ctx.display);
-            }
-
-            bool bind_wm_to_window(X11WindowData *window, const acul::string &title, i32 width, i32 height,
-                                   WindowFlags flags)
-            {
-                auto &xlib = ctx.xlib;
-                if (ctx.wm.NET_WM_STATE)
-                {
-                    Atom states[3];
-                    int count = 0;
-
-                    if (flags & WindowFlagBits::maximized && ctx.wm.NET_WM_STATE_MAXIMIZED_VERT &&
-                        ctx.wm.NET_WM_STATE_MAXIMIZED_HORZ)
-                    {
-                        states[count++] = ctx.wm.NET_WM_STATE_MAXIMIZED_VERT;
-                        states[count++] = ctx.wm.NET_WM_STATE_MAXIMIZED_HORZ;
-                    }
-
-                    if (count)
-                        xlib.XChangeProperty(ctx.display, window->window, ctx.wm.NET_WM_STATE, XA_ATOM, 32,
-                                             PropModeReplace, (unsigned char *)states, count);
                 }
 
-                // Declare the WM protocols supported by Window System
-                {
-                    Atom protocols[] = {ctx.wm.WM_DELETE_WINDOW, ctx.wm.NET_WM_PING};
-                    xlib.XSetWMProtocols(ctx.display, window->window, protocols, sizeof(protocols) / sizeof(Atom));
-                }
-
-                // Declare our PID
-                {
-                    const long pid = getpid();
-                    xlib.XChangeProperty(ctx.display, window->window, ctx.wm.NET_WM_PID, XA_CARDINAL, 32,
-                                         PropModeReplace, (unsigned char *)&pid, 1);
-                }
-
-                if (ctx.wm.NET_WM_WINDOW_TYPE && ctx.wm.NET_WM_WINDOW_TYPE_NORMAL)
-                {
-                    Atom type = ctx.wm.NET_WM_WINDOW_TYPE_NORMAL;
-                    xlib.XChangeProperty(ctx.display, window->window, ctx.wm.NET_WM_WINDOW_TYPE, XA_ATOM, 32,
-                                         PropModeReplace, (unsigned char *)&type, 1);
-                }
-
-                // Set ICCCM WM_HINTS property
-                {
-                    XWMHints *hints = xlib.XAllocWMHints();
-                    if (!hints)
-                    {
-                        LOG_ERROR("Failed to allocate WM hints");
-                        return false;
-                    }
-
-                    hints->flags = StateHint;
-                    hints->initial_state = NormalState;
-
-                    xlib.XSetWMHints(ctx.display, window->window, hints);
-                    xlib.XFree(hints);
-                }
-
-                // Set ICCCM WM_NORMAL_HINTS property
-                {
-                    XSizeHints *hints = xlib.XAllocSizeHints();
-                    if (!hints)
-                    {
-                        LOG_ERROR("Failed to allocate size hints");
-                        return false;
-                    }
-
-                    if (!(flags & WindowFlagBits::resizable))
-                    {
-                        hints->flags |= (PMinSize | PMaxSize);
-                        hints->min_width = hints->max_width = width;
-                        hints->min_height = hints->max_height = height;
-                    }
-
-                    hints->flags |= PPosition;
-                    hints->x = 0;
-                    hints->y = 0;
-
-                    hints->flags |= PWinGravity;
-                    hints->win_gravity = StaticGravity;
-
-                    xlib.XSetWMNormalHints(ctx.display, window->window, hints);
-                    xlib.XFree(hints);
-                }
-
-                // Set ICCCM WM_CLASS property
-                {
-                    XClassHint *hint = xlib.XAllocClassHint();
-
-                    const char *resource_name = getenv("RESOURCE_NAME");
-                    if (resource_name && strlen(resource_name))
-                        hint->res_name = (char *)resource_name;
-                    else if (!title.empty())
-                        hint->res_name = (char *)title.c_str();
-                    else
-                        hint->res_name = (char *)"window-application";
-
-                    if (!title.empty())
-                        hint->res_class = (char *)title.c_str();
-                    else
-                        hint->res_class = (char *)"Window-Application";
-
-                    xlib.XSetClassHint(ctx.display, window->window, hint);
-                    xlib.XFree(hint);
-                }
-                return true;
+                wait_for_x11_event(NULL);
             }
+        }
 
-            bool wait_for_x11_event(f64 *timeout)
+        // Applies MWM hints: decorations and functions
+        static void apply_motif_hints(Display *dpy, XID window, WindowFlags window_flags)
+        {
+            struct MotifWmHints
             {
-                struct pollfd fd = {ConnectionNumber(ctx.display), POLLIN};
-                while (!ctx.xlib.XPending(ctx.display))
-                    if (!poll_posix(&fd, 1, timeout)) return false;
-                return true;
-            }
+                unsigned long flags;
+                unsigned long functions;
+                unsigned long decorations;
+                long input_mode;
+                unsigned long status;
+            } hints = {0};
 
-            // Wait for event data to arrive on any event file descriptor
-            // This avoids blocking other threads via the per-display Xlib lock that also
-            // covers GLX functions
-            //
-            static bool wait_for_any_event(f64 *timeout)
+            hints.flags = MWM_HINTS_FUNCTIONS | MWM_HINTS_DECORATIONS;
+            // functions
+            hints.functions = MWM_FUNC_MOVE | MWM_FUNC_CLOSE;
+            if (window_flags & WindowFlagBits::resizable) hints.functions |= MWM_FUNC_RESIZE;
+            if (window_flags & WindowFlagBits::minimize_box) hints.functions |= MWM_FUNC_MINIMIZE;
+            if (window_flags & WindowFlagBits::maximize_box) hints.functions |= MWM_FUNC_MAXIMIZE;
+            // decorations
+            hints.decorations = window_flags & WindowFlagBits::decorated ? MWM_DECOR_ALL : 0;
+            g_ctx->xlib.XChangeProperty(dpy, window, g_ctx->wm.MOTIF_WM_HINTS, g_ctx->wm.MOTIF_WM_HINTS, 32,
+                                        PropModeReplace, reinterpret_cast<unsigned char *>(&hints),
+                                        sizeof(hints) / sizeof(long));
+        }
+
+        acul::string get_window_title(WindowData *window_data)
+        {
+            auto *x11_data = (X11WindowData *)window_data;
+            auto &xlib = g_ctx->xlib;
+            Atom actual_type;
+            int actual_format;
+            unsigned long nitems, bytes_after;
+            unsigned char *prop = nullptr;
+
+            int status = xlib.XGetWindowProperty(g_ctx->display, x11_data->window, g_ctx->wm.NET_WM_NAME, 0, (~0L),
+                                                 False, g_ctx->select_atoms.UTF8_STRING, &actual_type, &actual_format,
+                                                 &nitems, &bytes_after, &prop);
+
+            if (status == Success && prop && actual_type == g_ctx->select_atoms.UTF8_STRING)
             {
-                struct pollfd fds[] = {
-                    {ConnectionNumber(ctx.display), POLLIN}, {ctx.empty_pipe[0], POLLIN}, {-1, POLLIN}};
-
-                while (!ctx.xlib.XPending(ctx.display))
-                {
-                    if (!poll_posix(fds, sizeof(fds) / sizeof(fds[0]), timeout)) return false;
-                    for (size_t i = 1; i < sizeof(fds) / sizeof(fds[0]); i++)
-                        if (fds[i].revents & POLLIN) return true;
-                }
-
-                return true;
-            }
-
-            inline bool wait_for_visibility_notify(X11WindowData *window_data)
-            {
-                XEvent dummy;
-                f64 timeout = 0.1;
-                while (!ctx.xlib.XCheckTypedWindowEvent(ctx.display, window_data->window, VisibilityNotify, &dummy))
-                    if (!wait_for_x11_event(&timeout)) return false;
-                return true;
-            }
-
-            void show_window(WindowData *window_data)
-            {
-                auto *x11 = (X11WindowData *)window_data;
-                ctx.xlib.XMapWindow(ctx.display, x11->window);
-                wait_for_visibility_notify(x11);
-
-                if (window_data->flags & WindowFlagBits::maximized)
-                {
-                    XEvent ev{};
-                    ev.xclient.type = ClientMessage;
-                    ev.xclient.window = x11->window;
-                    ev.xclient.message_type = ctx.wm.NET_WM_STATE;
-                    ev.xclient.format = 32;
-                    ev.xclient.data.l[0] = _NET_WM_STATE_ADD;
-                    ev.xclient.data.l[1] = ctx.wm.NET_WM_STATE_MAXIMIZED_HORZ;
-                    ev.xclient.data.l[2] = ctx.wm.NET_WM_STATE_MAXIMIZED_VERT;
-                    ev.xclient.data.l[3] = 1; // source = application
-                    ctx.xlib.XSendEvent(ctx.display, ctx.root, False, SubstructureRedirectMask | SubstructureNotifyMask,
-                                        &ev);
-                    ctx.xlib.XFlush(ctx.display);
-                }
-            }
-
-            void hide_window(WindowData *window_data)
-            {
-                auto *x11 = (X11WindowData *)window_data;
-                ctx.xlib.XUnmapWindow(ctx.display, x11->window);
-                ctx.xlib.XFlush(ctx.display);
-            }
-
-            // Writes a byte to the empty event pipe
-            static void write_empty_event()
-            {
-                while (true)
-                {
-                    const char byte = 0;
-                    const ssize_t result = write(ctx.empty_pipe[1], &byte, 1);
-                    if (result == 1 || (result == -1 && errno != EINTR)) break;
-                }
-            }
-
-            // Drains available data from the empty event pipe
-            static void drain_empty_events()
-            {
-                while (true)
-                {
-                    char dummy[64];
-                    const ssize_t result = read(ctx.empty_pipe[0], dummy, sizeof(dummy));
-                    if (result == -1 && errno != EINTR) break;
-                }
-            }
-
-            // Returns whether the window is iconified
-            static int get_window_state(X11WindowData *window)
-            {
-                int result = WithdrawnState;
-                struct
-                {
-                    CARD32 state;
-                    Window icon;
-                } *state = NULL;
-
-                if (get_window_property(window->window, ctx.wm.WM_STATE, ctx.wm.WM_STATE, (unsigned char **)&state) >=
-                    2)
-                    result = state->state;
-
-                if (state) ctx.xlib.XFree(state);
-
+                acul::string result(reinterpret_cast<const char *>(prop), nitems);
+                xlib.XFree(prop);
                 return result;
             }
+            return {};
+        }
 
-            // Returns whether it is a _NET_FRAME_EXTENTS event for the specified window
-            static Bool is_frame_extents_event(Display *display, XEvent *event, XPointer pointer)
-            {
-                X11WindowData *window = (X11WindowData *)pointer;
-                return event->type == PropertyNotify && event->xproperty.state == PropertyNewValue &&
-                       event->xproperty.window == window->window && event->xproperty.atom == ctx.wm.NET_FRAME_EXTENTS;
-            }
+        void set_window_title(WindowData *window_data, const acul::string &title)
+        {
+            auto *x11_data = (X11WindowData *)window_data;
+            auto &xlib = g_ctx->xlib;
+            const char *pTitle = title.c_str();
+            if (g_ctx->utf8)
+                xlib.Xutf8SetWMProperties(g_ctx->display, x11_data->window, pTitle, pTitle, NULL, 0, NULL, NULL, NULL);
+            xlib.XChangeProperty(g_ctx->display, x11_data->window, g_ctx->wm.NET_WM_NAME,
+                                 g_ctx->select_atoms.UTF8_STRING, 8, PropModeReplace, (unsigned char *)pTitle,
+                                 title.length());
+            xlib.XChangeProperty(g_ctx->display, x11_data->window, g_ctx->wm.NET_WM_ICON_NAME,
+                                 g_ctx->select_atoms.UTF8_STRING, 8, PropModeReplace, (unsigned char *)pTitle,
+                                 title.length());
+            xlib.XFlush(g_ctx->display);
+        }
 
-            // Sends an EWMH or ICCCM event to the window manager
-            static void send_event_to_wm(X11WindowData *window_data, Atom type, long a, long b, long c, long d, long e)
-            {
-                XEvent event = {ClientMessage};
-                event.xclient.window = window_data->window;
-                event.xclient.format = 32;
-                event.xclient.message_type = type;
-                event.xclient.data.l[0] = a;
-                event.xclient.data.l[1] = b;
-                event.xclient.data.l[2] = c;
-                event.xclient.data.l[3] = d;
-                event.xclient.data.l[4] = e;
-                auto &xlib = ctx.xlib;
-                xlib.XSendEvent(ctx.display, ctx.root, False, SubstructureNotifyMask | SubstructureRedirectMask,
-                                &event);
-            }
+        void enable_fullscreen(WindowData *window_data)
+        {
+            auto *x11 = (X11WindowData *)window_data;
+            if (!g_ctx->wm.NET_WM_STATE || !g_ctx->wm.NET_WM_STATE_FULLSCREEN) return;
 
-            // Grabs the cursor and confines it to the window
-            static void capture_cursor(X11WindowData *window_data)
-            {
-                ctx.xlib.XGrabPointer(ctx.display, window_data->window, True,
-                                      ButtonPressMask | ButtonReleaseMask | PointerMotionMask, GrabModeAsync,
-                                      GrabModeAsync, window_data->window, None, CurrentTime);
-            }
+            XEvent e = {};
+            e.xclient.type = ClientMessage;
+            e.xclient.window = x11->window;
+            e.xclient.message_type = g_ctx->wm.NET_WM_STATE;
+            e.xclient.format = 32;
+            e.xclient.data.l[0] = 1;
+            e.xclient.data.l[1] = g_ctx->wm.NET_WM_STATE_FULLSCREEN;
+            e.xclient.data.l[2] = 0;
+            e.xclient.data.l[3] = 1;
+            e.xclient.data.l[4] = 0;
 
-            // Ungrabs the cursor
-            static void release_cursor() { ctx.xlib.XUngrabPointer(ctx.display, CurrentTime); }
+            g_ctx->xlib.XSendEvent(g_ctx->display, g_ctx->root, False,
+                                   SubstructureNotifyMask | SubstructureRedirectMask, &e);
+            g_ctx->xlib.XFlush(g_ctx->display);
+        }
 
-            acul::point2D<i32> get_cursor_position(WindowData *window_data)
-            {
-                auto *x11_data = (X11WindowData *)window_data;
-                auto &xlib = ctx.xlib;
-                XID root_return, child_return;
-                int root_x, root_y, win_x, win_y;
-                unsigned int mask_return;
+        void disable_fullscreen(WindowData *window_data)
+        {
+            auto *x11 = (X11WindowData *)window_data;
+            if (!g_ctx->wm.NET_WM_STATE || !g_ctx->wm.NET_WM_STATE_FULLSCREEN) return;
 
-                if (xlib.XQueryPointer(ctx.display, x11_data->window, &root_return, &child_return, &root_x, &root_y,
-                                       &win_x, &win_y, &mask_return))
-                    return {win_x, win_y};
-                return {};
-            }
+            XEvent e = {};
+            e.xclient.type = ClientMessage;
+            e.xclient.window = x11->window;
+            e.xclient.message_type = g_ctx->wm.NET_WM_STATE;
+            e.xclient.format = 32;
+            e.xclient.data.l[0] = _NET_WM_STATE_REMOVE;
+            e.xclient.data.l[1] = g_ctx->wm.NET_WM_STATE_FULLSCREEN;
+            e.xclient.data.l[2] = 0;
+            e.xclient.data.l[3] = 1;
+            e.xclient.data.l[4] = 0;
 
-            void set_cursor_position(WindowData *window_data, acul::point2D<i32> position)
-            {
-                acul::point2D<int> abs_pos;
-                auto &xlib = ctx.xlib;
-                auto *xd = reinterpret_cast<X11WindowData *>(window_data);
-                xlib.XTranslateCoordinates(ctx.display, xd->window, ctx.root, position.x, position.y, &abs_pos.x,
-                                           &abs_pos.y, &ctx.helper_window);
-                xlib.XWarpPointer(ctx.display, ctx.root, ctx.root, 0, 0, 0, 0, abs_pos.x, abs_pos.y);
-                xlib.XFlush(ctx.display);
-            }
+            g_ctx->xlib.XSendEvent(g_ctx->display, g_ctx->root, False,
+                                   SubstructureNotifyMask | SubstructureRedirectMask, &e);
+            g_ctx->xlib.XFlush(g_ctx->display);
+        }
 
-            // From __os_linux_keys.cpp
-            void on_key_press(XEvent *, unsigned int, Bool, X11WindowData *);
-            void on_key_release(XEvent *, unsigned int, X11WindowData *);
-            void on_btn_press(XEvent *, X11WindowData *);
-            void on_btn_release(XEvent *, X11WindowData *);
-
-            void on_client_msg(XEvent *event, WindowData *window_data)
-            {
-                auto &xlib = ctx.xlib;
-                if (event->xclient.message_type == ctx.wm.WM_PROTOCOLS)
-                {
-                    const Atom protocol = event->xclient.data.l[0];
-                    if (protocol == None) return;
-                    if (protocol == ctx.wm.WM_DELETE_WINDOW)
-                        window_data->ready_to_close = true;
-                    else if (protocol == ctx.wm.NET_WM_PING)
-                    {
-                        // The window manager is pinging the application to ensure
-                        // it's still responding to events
-                        XEvent reply = *event;
-                        reply.xclient.window = ctx.root;
-                        xlib.XSendEvent(ctx.display, ctx.root, False, SubstructureNotifyMask | SubstructureRedirectMask,
-                                        &reply);
-                    }
-                }
-                // todo: make DnD here
-            }
-
-            bool is_window_maximized(X11WindowData *window_data)
-            {
-                Atom *states;
-                bool maximized = false;
-
-                if (!ctx.wm.NET_WM_STATE || !ctx.wm.NET_WM_STATE_MAXIMIZED_VERT || !ctx.wm.NET_WM_STATE_MAXIMIZED_HORZ)
-                    return maximized;
-
-                const unsigned long count =
-                    get_window_property(window_data->window, ctx.wm.NET_WM_STATE, XA_ATOM, (unsigned char **)&states);
-
-                for (unsigned long i = 0; i < count; i++)
-                {
-                    if (states[i] == ctx.wm.NET_WM_STATE_MAXIMIZED_VERT ||
-                        states[i] == ctx.wm.NET_WM_STATE_MAXIMIZED_HORZ)
-                    {
-                        maximized = true;
-                        break;
-                    }
-                }
-
-                if (states) ctx.xlib.XFree(states);
-                return maximized;
-            }
-
-            void toogle_rid(bool enable)
-            {
-                constexpr int mask_len = XIMaskLen(XI_LASTEVENT);
-                unsigned char mask[mask_len];
-                memset(mask, 0, sizeof(mask));
-
-                if (enable)
-                {
-                    XISetMask(mask, XI_RawMotion);
-                    XISetMask(mask, XI_ButtonPress);
-                    XISetMask(mask, XI_ButtonRelease);
-                }
-
-                XIEventMask em{};
-                em.deviceid = XIAllDevices;
-                em.mask_len = mask_len;
-                em.mask = mask;
-
-                ctx.xlib.xi.XISelectEvents(ctx.display, ctx.root, &em, 1);
-                ctx.xlib.XFlush(ctx.display);
-            }
-
-            inline bool is_raw_event(XEvent *event)
-            {
-                auto &x11 = ctx.xlib;
-                return x11.xi.init && event->xcookie.evtype == XI_RawMotion &&
-                       event->xcookie.extension == x11.xi.major_op_code &&
-                       x11.XGetEventData(ctx.display, &event->xcookie);
-            }
-
-            // Process the specified X event
-            static void process_event(XEvent *event)
-            {
-                auto &xlib = ctx.xlib;
-                unsigned int keycode = 0;
-                Bool filtered = False;
-
-                if (event->type == GenericEvent && is_raw_event(event))
-                {
-                    XIRawEvent *raw = (XIRawEvent *)event->xcookie.data;
-                    acul::point2D<i32> delta{0, 0};
-                    int idx = 0;
-                    if (XIMaskIsSet(raw->valuators.mask, 0)) delta.x = raw->raw_values[idx++];
-                    if (XIMaskIsSet(raw->valuators.mask, 1)) delta.y = raw->raw_values[idx++];
-                    if (ctx.focused_window)
-                        acul::events::dispatch_event_group<PosEvent>(event_registry.mouse_move_delta,
-                                                                     event_id::mouse_move_delta,
-                                                                     ctx.focused_window->owner, delta);
-                    xlib.XFreeEventData(ctx.display, &event->xcookie);
-                    return;
-                }
-
-                // HACK: Save scancode as some IMs clear the field in XFilterEvent
-                if (event->type == KeyPress || event->type == KeyRelease) keycode = event->xkey.keycode;
-                filtered = xlib.XFilterEvent(event, None);
-
-                auto &xkb = xlib.xkb;
-                if (xkb.init)
-                {
-                    if (event->type == xkb.event_base + XkbEventCode)
-                    {
-                        if (((XkbEvent *)event)->any.xkb_type == XkbStateNotify &&
-                            (((XkbEvent *)event)->state.changed & XkbGroupStateMask))
-                            xkb.group = ((XkbEvent *)event)->state.group;
-                        return;
-                    }
-                }
-
-                X11WindowData *window_data = nullptr;
-                if (xlib.XFindContext(ctx.display, event->xany.window, ctx.context, (XPointer *)&window_data) != 0)
-                    return;
-
-                if (event->type == SelectionRequest)
-                {
-                    handle_selection_request(event);
-                    return;
-                }
-
-                switch (event->type)
-                {
-                    case ReparentNotify:
-                        window_data->parent = event->xreparent.parent;
-                        return;
-                    case KeyPress:
-                        on_key_press(event, keycode, filtered, window_data);
-                        return;
-                    case KeyRelease:
-                        on_key_release(event, keycode, window_data);
-                        return;
-                    case ButtonPress:
-                        on_btn_press(event, window_data);
-                        return;
-                    case ButtonRelease:
-                        on_btn_release(event, window_data);
-                        return;
-                    case EnterNotify:
-                    {
-                        acul::events::dispatch_event_group<MouseEnterEvent>(event_registry.mouse_enter,
-                                                                            window_data->owner, true);
-
-                        if (!window_data->is_cursor_hidden)
-                        {
-                            if (window_data->cursor && window_data->cursor->valid())
-                                window_data->cursor->assign(window_data->owner);
-                            else if (platform::env.default_cursor.valid())
-                                platform::env.default_cursor.assign(window_data->owner);
-                        }
-                        acul::point2D dim{event->xcrossing.x, event->xcrossing.y};
-                        acul::events::dispatch_event_group<PosEvent>(event_registry.mouse_move, event_id::mouse_move,
-                                                                     window_data->owner, dim);
-                        return;
-                    }
-                    case LeaveNotify:
-                    {
-                        acul::events::dispatch_event_group<MouseEnterEvent>(event_registry.mouse_enter,
-                                                                            window_data->owner, false);
-                        return;
-                    }
-                    case MotionNotify:
-                    {
-                        acul::point2D pos{event->xmotion.x, event->xmotion.y};
-                        acul::events::dispatch_event_group<PosEvent>(event_registry.mouse_move, event_id::mouse_move,
-                                                                     window_data->owner, pos);
-                        return;
-                    }
-                    case ConfigureNotify:
-                    {
-                        acul::point2D<i32> dimenstions(event->xconfigure.width, event->xconfigure.height);
-                        if (dimenstions != window_data->dimenstions)
-                        {
-                            window_data->dimenstions = dimenstions;
-                            acul::events::dispatch_event_group<PosEvent>(event_registry.resize, event_id::resize,
-                                                                         window_data->owner, window_data->dimenstions);
-                        }
-                        acul::point2D<i32> pos(event->xconfigure.x, event->xconfigure.y);
-
-                        // NOTE: ConfigureNotify events from the server are in local
-                        //       coordinates, so if we are reparented we need to translate
-                        //       the position into root (screen) coordinates
-                        if (!event->xany.send_event && window_data->parent != ctx.root)
-                        {
-                            grab_error_handler();
-
-                            XID dummy;
-                            xlib.XTranslateCoordinates(ctx.display, window_data->parent, ctx.root, pos.x, pos.y, &pos.x,
-                                                       &pos.y, &dummy);
-
-                            release_error_handler();
-                            if (ctx.error_code == BadWindow) return;
-                        }
-
-                        if (window_data->window_pos != pos)
-                        {
-                            window_data->window_pos = pos;
-                            acul::events::dispatch_event_group<PosEvent>(event_registry.move, event_id::move,
-                                                                         window_data->owner, pos);
-                        }
-                        return;
-                    }
-                    case ClientMessage:
-                        if (!filtered && event->xclient.message_type != None) on_client_msg(event, window_data);
-                        return;
-
-                    case FocusIn:
-                    {
-                        if (event->xfocus.mode == NotifyGrab || event->xfocus.mode == NotifyUngrab)
-                        {
-                            // Ignore focus events from popup indicator windows, window menu
-                            // key chords and window dragging
-                            return;
-                        }
-                        if (window_data->is_cursor_hidden) capture_cursor(window_data);
-                        if (window_data->ic) xlib.XSetICFocus(window_data->ic);
-
-                        window_data->focused = true;
-                        acul::events::dispatch_event_group<FocusEvent>(event_registry.focus, window_data->owner, true);
-                        toogle_rid(true);
-                        ctx.focused_window = window_data;
-                        return;
-                    }
-                    case FocusOut:
-                    {
-                        if (event->xfocus.mode == NotifyGrab || event->xfocus.mode == NotifyUngrab)
-                        {
-                            // Ignore focus events from popup indicator windows, window menu
-                            // key chords and window dragging
-                            return;
-                        }
-                        if (window_data->is_cursor_hidden) release_cursor();
-                        if (window_data->ic) xlib.XUnsetICFocus(window_data->ic);
-
-                        window_data->focused = false;
-                        acul::events::dispatch_event_group<FocusEvent>(event_registry.focus, window_data->owner, false);
-                        toogle_rid(false);
-                        return;
-                    }
-                    case PropertyNotify:
-                    {
-                        if (event->xproperty.state != PropertyNewValue) return;
-
-                        if (event->xproperty.atom == ctx.wm.WM_STATE)
-                        {
-                            const int state = get_window_state(window_data);
-                            if (state != IconicState && state != NormalState) return;
-
-                            const bool iconified = (state == IconicState);
-                            const bool already = (window_data->flags & WindowFlagBits::minimized);
-
-                            if (iconified != already)
-                            {
-                                if (iconified)
-                                    window_data->flags |= WindowFlagBits::minimized;
-                                else
-                                    window_data->flags &= ~WindowFlagBits::minimized;
-
-                                acul::events::dispatch_event_group<StateEvent>(
-                                    event_registry.minimize, event_id::minimize, window_data->owner, iconified);
-                            }
-                        }
-                        else if (event->xproperty.atom == ctx.wm.NET_WM_STATE)
-                        {
-                            const bool maximized = is_window_maximized(window_data);
-                            const bool already = (window_data->flags & WindowFlagBits::maximized);
-
-                            if (maximized != already)
-                            {
-                                if (maximized)
-                                    window_data->flags |= WindowFlagBits::maximized;
-                                else
-                                    window_data->flags &= ~WindowFlagBits::maximized;
-
-                                acul::events::dispatch_event_group<StateEvent>(
-                                    event_registry.maximize, event_id::maximize, window_data->owner, maximized);
-                            }
-                        }
-
-                        return;
-                    }
-                    default:
-                        return;
-                }
-            }
-
-            bool prepare_window_wm_hints(X11WindowData *x11_data, WindowFlags flags, acul::point2D<i32> dim,
-                                         const acul::string &title)
-            {
-                auto &xlib = ctx.xlib;
-
-                // ICCCM WM_HINTS: initial state (Normal or Iconic)
-                {
-                    XWMHints *hints = xlib.XAllocWMHints();
-                    hints->flags = StateHint;
-                    hints->initial_state = (flags & WindowFlagBits::minimized) ? IconicState : NormalState;
-                    xlib.XSetWMHints(ctx.display, x11_data->window, hints);
-                    xlib.XFree(hints);
-                }
-
-                // Declare the WM protocols supported by Awin
-                {
-                    Atom protocols[] = {ctx.wm.WM_DELETE_WINDOW, ctx.wm.NET_WM_PING};
-                    xlib.XSetWMProtocols(ctx.display, x11_data->window, protocols, sizeof(protocols) / sizeof(Atom));
-                }
-
-                // Declare our PID
-                {
-                    const long pid = getpid();
-                    xlib.XChangeProperty(ctx.display, x11_data->window, ctx.wm.NET_WM_PID, XA_CARDINAL, 32,
-                                         PropModeReplace, (unsigned char *)&pid, 1);
-                }
-
-                if (ctx.wm.NET_WM_WINDOW_TYPE && ctx.wm.NET_WM_WINDOW_TYPE_NORMAL)
-                {
-                    Atom type = ctx.wm.NET_WM_WINDOW_TYPE_NORMAL;
-                    xlib.XChangeProperty(ctx.display, x11_data->window, ctx.wm.NET_WM_WINDOW_TYPE, XA_ATOM, 32,
-                                         PropModeReplace, (unsigned char *)&type, 1);
-                }
-
-                // Set ICCCM WM_HINTS property
-                {
-                    XWMHints *hints = xlib.XAllocWMHints();
-                    if (!hints)
-                    {
-                        LOG_ERROR("Failed to allocate WM hints");
-                        return false;
-                    }
-
-                    hints->flags = StateHint;
-                    hints->initial_state = NormalState;
-
-                    xlib.XSetWMHints(ctx.display, x11_data->window, hints);
-                    xlib.XFree(hints);
-                }
-
-                // Set ICCCM WM_NORMAL_HINTS property
-                {
-                    XSizeHints *hints = xlib.XAllocSizeHints();
-                    if (!hints)
-                    {
-                        LOG_ERROR("Failed to allocate size hints");
-                        return false;
-                    }
-
-                    if (!(flags & WindowFlagBits::resizable))
-                    {
-                        hints->flags |= (PMinSize | PMaxSize);
-                        hints->min_width = hints->max_width = dim.x;
-                        hints->min_height = hints->max_height = dim.y;
-                    }
-
-                    hints->flags |= PWinGravity;
-                    hints->win_gravity = StaticGravity;
-
-                    xlib.XSetWMNormalHints(ctx.display, x11_data->window, hints);
-                    xlib.XFree(hints);
-                }
-
-                // Set ICCCM WM_CLASS property
-                {
-                    XClassHint *hint = xlib.XAllocClassHint();
-                    const char *resource_name = getenv("RESOURCE_NAME");
-                    bool is_title_valid = !title.empty();
-                    if (resource_name && null_terminated_length(resource_name))
-                        hint->res_name = (char *)resource_name;
-                    else
-                        hint->res_name = is_title_valid ? (char *)title.c_str() : (char *)"awin-application";
-                    hint->res_class = is_title_valid ? (char *)title.c_str() : (char *)"awin-Application";
-                    xlib.XSetClassHint(ctx.display, x11_data->window, hint);
-                    xlib.XFree(hint);
-                }
-                return true;
-            }
-
-            inline void get_window_pos(const X11WindowData *window_data, acul::point2D<i32> &pos)
-            {
-                XID dummy;
-                ctx.xlib.XTranslateCoordinates(ctx.display, window_data->window, ctx.root, 0, 0, &pos.x, &pos.y,
-                                               &dummy);
-            }
-
-            acul::point2D<i32> get_window_size(::Window window)
-            {
-                XWindowAttributes attribs;
-                ctx.xlib.XGetWindowAttributes(ctx.display, window, &attribs);
-                return {attribs.width, attribs.height};
-            }
-
-            acul::point2D<i32> get_window_size(const Window &window)
-            {
-                return get_window_size(native_access::get_x11_window_handle(window));
-            }
-
-            bool create_window(WindowData *window_data, const acul::string &title, i32 width, i32 height,
+        bool bind_wm_to_window(X11WindowData *window, const acul::string &title, i32 width, i32 height,
                                WindowFlags flags)
+        {
+            auto &xlib = g_ctx->xlib;
+            if (g_ctx->wm.NET_WM_STATE)
             {
-                auto &xlib = ctx.xlib;
-                Visual *visual = DefaultVisual(ctx.display, ctx.screen);
-                int depth = DefaultDepth(ctx.display, ctx.screen);
-                // Create a colormap based on the visual used by the current context
-                auto *x11_data = (X11WindowData *)window_data;
-                x11_data->colormap = xlib.XCreateColormap(ctx.display, ctx.root, visual, AllocNone);
+                Atom states[3];
+                int count = 0;
 
-                XSetWindowAttributes wa = {0};
-                wa.colormap = x11_data->colormap;
-                wa.event_mask = StructureNotifyMask | KeyPressMask | KeyReleaseMask | PointerMotionMask |
-                                ButtonPressMask | ButtonReleaseMask | ExposureMask | FocusChangeMask |
-                                VisibilityChangeMask | EnterWindowMask | LeaveWindowMask | PropertyChangeMask;
-                grab_error_handler();
-                x11_data->parent = ctx.root;
-                x11_data->window =
-                    xlib.XCreateWindow(ctx.display, ctx.root, 0, 0, width, height,
-                                       0,     // Border width
-                                       depth, // Color depth
-                                       InputOutput, visual, CWBorderPixel | CWColormap | CWEventMask, &wa);
-                release_error_handler();
-                if (!x11_data->window)
+                if (flags & WindowFlagBits::maximized && g_ctx->wm.NET_WM_STATE_MAXIMIZED_VERT &&
+                    g_ctx->wm.NET_WM_STATE_MAXIMIZED_HORZ)
                 {
-                    LOG_ERROR("Failed to create window");
+                    states[count++] = g_ctx->wm.NET_WM_STATE_MAXIMIZED_VERT;
+                    states[count++] = g_ctx->wm.NET_WM_STATE_MAXIMIZED_HORZ;
+                }
+
+                if (count)
+                    xlib.XChangeProperty(g_ctx->display, window->window, g_ctx->wm.NET_WM_STATE, XA_ATOM, 32,
+                                         PropModeReplace, (unsigned char *)states, count);
+            }
+
+            // Declare the WM protocols supported by Window System
+            {
+                Atom protocols[] = {g_ctx->wm.WM_DELETE_WINDOW, g_ctx->wm.NET_WM_PING};
+                xlib.XSetWMProtocols(g_ctx->display, window->window, protocols, sizeof(protocols) / sizeof(Atom));
+            }
+
+            // Declare our PID
+            {
+                const long pid = getpid();
+                xlib.XChangeProperty(g_ctx->display, window->window, g_ctx->wm.NET_WM_PID, XA_CARDINAL, 32,
+                                     PropModeReplace, (unsigned char *)&pid, 1);
+            }
+
+            if (g_ctx->wm.NET_WM_WINDOW_TYPE && g_ctx->wm.NET_WM_WINDOW_TYPE_NORMAL)
+            {
+                Atom type = g_ctx->wm.NET_WM_WINDOW_TYPE_NORMAL;
+                xlib.XChangeProperty(g_ctx->display, window->window, g_ctx->wm.NET_WM_WINDOW_TYPE, XA_ATOM, 32,
+                                     PropModeReplace, (unsigned char *)&type, 1);
+            }
+
+            // Set ICCCM WM_HINTS property
+            {
+                XWMHints *hints = xlib.XAllocWMHints();
+                if (!hints)
+                {
+                    AWIN_LOG_ERROR("Failed to allocate WM hints");
                     return false;
                 }
-                LOG_INFO("Created X11 window: %lu", x11_data->window);
-                xlib.XSaveContext(ctx.display, x11_data->window, ctx.context, (XPointer)x11_data);
-                window_data->flags = flags;
-                apply_motif_hints(ctx.display, x11_data->window, flags);
 
-                // EWMH: fullscreen or maximized
-                if (ctx.wm.NET_WM_STATE)
+                hints->flags = StateHint;
+                hints->initial_state = NormalState;
+
+                xlib.XSetWMHints(g_ctx->display, window->window, hints);
+                xlib.XFree(hints);
+            }
+
+            // Set ICCCM WM_NORMAL_HINTS property
+            {
+                XSizeHints *hints = xlib.XAllocSizeHints();
+                if (!hints)
                 {
-                    acul::vector<Atom> wm_states;
-                    if ((flags & WindowFlagBits::fullscreen))
+                    AWIN_LOG_ERROR("Failed to allocate size hints");
+                    return false;
+                }
+
+                if (!(flags & WindowFlagBits::resizable))
+                {
+                    hints->flags |= (PMinSize | PMaxSize);
+                    hints->min_width = hints->max_width = width;
+                    hints->min_height = hints->max_height = height;
+                }
+
+                hints->flags |= PPosition;
+                hints->x = 0;
+                hints->y = 0;
+
+                hints->flags |= PWinGravity;
+                hints->win_gravity = StaticGravity;
+
+                xlib.XSetWMNormalHints(g_ctx->display, window->window, hints);
+                xlib.XFree(hints);
+            }
+
+            // Set ICCCM WM_CLASS property
+            {
+                XClassHint *hint = xlib.XAllocClassHint();
+
+                const char *resource_name = getenv("RESOURCE_NAME");
+                if (resource_name && strlen(resource_name))
+                    hint->res_name = (char *)resource_name;
+                else if (!title.empty())
+                    hint->res_name = (char *)title.c_str();
+                else
+                    hint->res_name = (char *)"window-application";
+
+                if (!title.empty())
+                    hint->res_class = (char *)title.c_str();
+                else
+                    hint->res_class = (char *)"Window-Application";
+
+                xlib.XSetClassHint(g_ctx->display, window->window, hint);
+                xlib.XFree(hint);
+            }
+            return true;
+        }
+
+        bool wait_for_x11_event(f64 *timeout)
+        {
+            struct pollfd fd = {ConnectionNumber(g_ctx->display), POLLIN};
+            while (!g_ctx->xlib.XPending(g_ctx->display))
+                if (!poll_posix(&fd, 1, timeout)) return false;
+            return true;
+        }
+
+        // Wait for event data to arrive on any event file descriptor
+        // This avoids blocking other threads via the per-display Xlib lock that also
+        // covers GLX functions
+        //
+        static bool wait_for_any_event(f64 *timeout)
+        {
+            struct pollfd fds[] = {
+                {ConnectionNumber(g_ctx->display), POLLIN}, {g_ctx->empty_pipe[0], POLLIN}, {-1, POLLIN}};
+
+            while (!g_ctx->xlib.XPending(g_ctx->display))
+            {
+                if (!poll_posix(fds, sizeof(fds) / sizeof(fds[0]), timeout)) return false;
+                for (size_t i = 1; i < sizeof(fds) / sizeof(fds[0]); i++)
+                    if (fds[i].revents & POLLIN) return true;
+            }
+
+            return true;
+        }
+
+        inline bool wait_for_visibility_notify(X11WindowData *window_data)
+        {
+            XEvent dummy;
+            f64 timeout = 0.1;
+            while (!g_ctx->xlib.XCheckTypedWindowEvent(g_ctx->display, window_data->window, VisibilityNotify, &dummy))
+                if (!wait_for_x11_event(&timeout)) return false;
+            return true;
+        }
+
+        void show_window(WindowData *window_data)
+        {
+            auto *x11 = (X11WindowData *)window_data;
+            g_ctx->xlib.XMapWindow(g_ctx->display, x11->window);
+            wait_for_visibility_notify(x11);
+
+            if (window_data->flags & WindowFlagBits::maximized)
+            {
+                XEvent ev{};
+                ev.xclient.type = ClientMessage;
+                ev.xclient.window = x11->window;
+                ev.xclient.message_type = g_ctx->wm.NET_WM_STATE;
+                ev.xclient.format = 32;
+                ev.xclient.data.l[0] = _NET_WM_STATE_ADD;
+                ev.xclient.data.l[1] = g_ctx->wm.NET_WM_STATE_MAXIMIZED_HORZ;
+                ev.xclient.data.l[2] = g_ctx->wm.NET_WM_STATE_MAXIMIZED_VERT;
+                ev.xclient.data.l[3] = 1; // source = application
+                g_ctx->xlib.XSendEvent(g_ctx->display, g_ctx->root, False,
+                                       SubstructureRedirectMask | SubstructureNotifyMask, &ev);
+                g_ctx->xlib.XFlush(g_ctx->display);
+            }
+        }
+
+        void hide_window(WindowData *window_data)
+        {
+            auto *x11 = (X11WindowData *)window_data;
+            g_ctx->xlib.XUnmapWindow(g_ctx->display, x11->window);
+            g_ctx->xlib.XFlush(g_ctx->display);
+        }
+
+        // Drains available data from the empty event pipe
+        static void drain_empty_events()
+        {
+            while (true)
+            {
+                char dummy[64];
+                const ssize_t result = read(g_ctx->empty_pipe[0], dummy, sizeof(dummy));
+                if (result == -1 && errno != EINTR) break;
+            }
+        }
+
+        // Returns whether the window is iconified
+        static int get_window_state(X11WindowData *window)
+        {
+            int result = WithdrawnState;
+            struct
+            {
+                CARD32 state;
+                Window icon;
+            } *state = NULL;
+
+            if (get_window_property(window->window, g_ctx->wm.WM_STATE, g_ctx->wm.WM_STATE, (unsigned char **)&state) >=
+                2)
+                result = state->state;
+
+            if (state) g_ctx->xlib.XFree(state);
+
+            return result;
+        }
+
+        // Sends an EWMH or ICCCM event to the window manager
+        static void send_event_to_wm(X11WindowData *window_data, Atom type, long a, long b, long c, long d, long e)
+        {
+            XEvent event = {ClientMessage};
+            event.xclient.window = window_data->window;
+            event.xclient.format = 32;
+            event.xclient.message_type = type;
+            event.xclient.data.l[0] = a;
+            event.xclient.data.l[1] = b;
+            event.xclient.data.l[2] = c;
+            event.xclient.data.l[3] = d;
+            event.xclient.data.l[4] = e;
+            auto &xlib = g_ctx->xlib;
+            xlib.XSendEvent(g_ctx->display, g_ctx->root, False, SubstructureNotifyMask | SubstructureRedirectMask,
+                            &event);
+        }
+
+        // Grabs the cursor and confines it to the window
+        static void capture_cursor(X11WindowData *window_data)
+        {
+            g_ctx->xlib.XGrabPointer(g_ctx->display, window_data->window, True,
+                                     ButtonPressMask | ButtonReleaseMask | PointerMotionMask, GrabModeAsync,
+                                     GrabModeAsync, window_data->window, None, CurrentTime);
+        }
+
+        // Ungrabs the cursor
+        static void release_cursor() { g_ctx->xlib.XUngrabPointer(g_ctx->display, CurrentTime); }
+
+        acul::point2D<i32> get_cursor_position(WindowData *window_data)
+        {
+            auto *x11_data = (X11WindowData *)window_data;
+            auto &xlib = g_ctx->xlib;
+            XID root_return, child_return;
+            int root_x, root_y, win_x, win_y;
+            unsigned int mask_return;
+
+            if (xlib.XQueryPointer(g_ctx->display, x11_data->window, &root_return, &child_return, &root_x, &root_y,
+                                   &win_x, &win_y, &mask_return))
+                return {win_x, win_y};
+            return {};
+        }
+
+        void set_cursor_position(WindowData *window_data, acul::point2D<i32> position)
+        {
+            acul::point2D<int> abs_pos;
+            auto &xlib = g_ctx->xlib;
+            auto *xd = reinterpret_cast<X11WindowData *>(window_data);
+            xlib.XTranslateCoordinates(g_ctx->display, xd->window, g_ctx->root, position.x, position.y, &abs_pos.x,
+                                       &abs_pos.y, &g_ctx->helper_window);
+            xlib.XWarpPointer(g_ctx->display, g_ctx->root, g_ctx->root, 0, 0, 0, 0, abs_pos.x, abs_pos.y);
+            xlib.XFlush(g_ctx->display);
+        }
+
+        // From __os_linux_keys.cpp
+        void on_key_press(XEvent *, unsigned int, Bool, X11WindowData *);
+        void on_key_release(XEvent *, unsigned int, X11WindowData *);
+        void on_btn_press(XEvent *, X11WindowData *);
+        void on_btn_release(XEvent *, X11WindowData *);
+
+        void on_client_msg(XEvent *event, WindowData *window_data)
+        {
+            auto &xlib = g_ctx->xlib;
+            if (event->xclient.message_type == g_ctx->wm.WM_PROTOCOLS)
+            {
+                const Atom protocol = event->xclient.data.l[0];
+                if (protocol == None) return;
+                if (protocol == g_ctx->wm.WM_DELETE_WINDOW)
+                    window_data->ready_to_close = true;
+                else if (protocol == g_ctx->wm.NET_WM_PING)
+                {
+                    // The window manager is pinging the application to ensure
+                    // it's still responding to events
+                    XEvent reply = *event;
+                    reply.xclient.window = g_ctx->root;
+                    xlib.XSendEvent(g_ctx->display, g_ctx->root, False,
+                                    SubstructureNotifyMask | SubstructureRedirectMask, &reply);
+                }
+            }
+            // todo: make DnD here
+        }
+
+        bool is_window_maximized(X11WindowData *window_data)
+        {
+            Atom *states;
+            bool maximized = false;
+
+            if (!g_ctx->wm.NET_WM_STATE || !g_ctx->wm.NET_WM_STATE_MAXIMIZED_VERT ||
+                !g_ctx->wm.NET_WM_STATE_MAXIMIZED_HORZ)
+                return maximized;
+
+            const unsigned long count =
+                get_window_property(window_data->window, g_ctx->wm.NET_WM_STATE, XA_ATOM, (unsigned char **)&states);
+
+            for (unsigned long i = 0; i < count; i++)
+            {
+                if (states[i] == g_ctx->wm.NET_WM_STATE_MAXIMIZED_VERT ||
+                    states[i] == g_ctx->wm.NET_WM_STATE_MAXIMIZED_HORZ)
+                {
+                    maximized = true;
+                    break;
+                }
+            }
+
+            if (states) g_ctx->xlib.XFree(states);
+            return maximized;
+        }
+
+        void toogle_rid(bool enable)
+        {
+            constexpr int mask_len = XIMaskLen(XI_LASTEVENT);
+            unsigned char mask[mask_len];
+            memset(mask, 0, sizeof(mask));
+
+            if (enable)
+            {
+                XISetMask(mask, XI_RawMotion);
+                XISetMask(mask, XI_ButtonPress);
+                XISetMask(mask, XI_ButtonRelease);
+            }
+
+            XIEventMask em{};
+            em.deviceid = XIAllDevices;
+            em.mask_len = mask_len;
+            em.mask = mask;
+
+            g_ctx->xlib.xi.XISelectEvents(g_ctx->display, g_ctx->root, &em, 1);
+            g_ctx->xlib.XFlush(g_ctx->display);
+        }
+
+        inline bool is_raw_event(XEvent *event)
+        {
+            auto &x11 = g_ctx->xlib;
+            return x11.xi.init && event->xcookie.evtype == XI_RawMotion &&
+                   event->xcookie.extension == x11.xi.major_op_code &&
+                   x11.XGetEventData(g_ctx->display, &event->xcookie);
+        }
+
+        // Process the specified X event
+        static void process_event(XEvent *event)
+        {
+            auto &xlib = g_ctx->xlib;
+            unsigned int keycode = 0;
+            Bool filtered = False;
+
+            if (event->type == GenericEvent && is_raw_event(event))
+            {
+                XIRawEvent *raw = (XIRawEvent *)event->xcookie.data;
+                acul::point2D<i32> delta{0, 0};
+                int idx = 0;
+                if (XIMaskIsSet(raw->valuators.mask, 0)) delta.x = raw->raw_values[idx++];
+                if (XIMaskIsSet(raw->valuators.mask, 1)) delta.y = raw->raw_values[idx++];
+                if (g_ctx->focused_window)
+                    acul::events::dispatch_event_group<PosEvent>(g_env->events.mouse_move_delta,
+                                                                 event_id::mouse_move_delta,
+                                                                 g_ctx->focused_window->owner, delta);
+                xlib.XFreeEventData(g_ctx->display, &event->xcookie);
+                return;
+            }
+
+            // HACK: Save scancode as some IMs clear the field in XFilterEvent
+            if (event->type == KeyPress || event->type == KeyRelease) keycode = event->xkey.keycode;
+            filtered = xlib.XFilterEvent(event, None);
+
+            auto &xkb = xlib.xkb;
+            if (xkb.init)
+            {
+                if (event->type == xkb.event_base + XkbEventCode)
+                {
+                    if (((XkbEvent *)event)->any.xkb_type == XkbStateNotify &&
+                        (((XkbEvent *)event)->state.changed & XkbGroupStateMask))
+                        xkb.group = ((XkbEvent *)event)->state.group;
+                    return;
+                }
+            }
+
+            X11WindowData *window_data = nullptr;
+            if (xlib.XFindContext(g_ctx->display, event->xany.window, g_ctx->context, (XPointer *)&window_data) != 0)
+                return;
+
+            if (event->type == SelectionRequest)
+            {
+                handle_selection_request(event);
+                return;
+            }
+
+            switch (event->type)
+            {
+                case ReparentNotify:
+                    window_data->parent = event->xreparent.parent;
+                    return;
+                case KeyPress:
+                    on_key_press(event, keycode, filtered, window_data);
+                    return;
+                case KeyRelease:
+                    on_key_release(event, keycode, window_data);
+                    return;
+                case ButtonPress:
+                    on_btn_press(event, window_data);
+                    return;
+                case ButtonRelease:
+                    on_btn_release(event, window_data);
+                    return;
+                case EnterNotify:
+                {
+                    acul::events::dispatch_event_group<MouseEnterEvent>(g_env->events.mouse_enter, window_data->owner,
+                                                                        true);
+
+                    if (!window_data->is_cursor_hidden)
                     {
-                        if (ctx.wm.NET_WM_STATE_FULLSCREEN) wm_states.push_back(ctx.wm.NET_WM_STATE_FULLSCREEN);
-                        if (ctx.wm.NET_WM_BYPASS_COMPOSITOR)
+                        if (window_data->cursor && window_data->cursor->valid())
+                            window_data->cursor->assign(window_data->owner);
+                        else if (platform::g_env->default_cursor.valid())
+                            platform::g_env->default_cursor.assign(window_data->owner);
+                    }
+                    acul::point2D dim{event->xcrossing.x, event->xcrossing.y};
+                    acul::events::dispatch_event_group<PosEvent>(g_env->events.mouse_move, event_id::mouse_move,
+                                                                 window_data->owner, dim);
+                    return;
+                }
+                case LeaveNotify:
+                {
+                    acul::events::dispatch_event_group<MouseEnterEvent>(g_env->events.mouse_enter, window_data->owner,
+                                                                        false);
+                    return;
+                }
+                case MotionNotify:
+                {
+                    acul::point2D pos{event->xmotion.x, event->xmotion.y};
+                    acul::events::dispatch_event_group<PosEvent>(g_env->events.mouse_move, event_id::mouse_move,
+                                                                 window_data->owner, pos);
+                    return;
+                }
+                case ConfigureNotify:
+                {
+                    acul::point2D<i32> dimenstions(event->xconfigure.width, event->xconfigure.height);
+                    if (dimenstions != window_data->dimenstions)
+                    {
+                        window_data->dimenstions = dimenstions;
+                        acul::events::dispatch_event_group<PosEvent>(g_env->events.resize, event_id::resize,
+                                                                     window_data->owner, window_data->dimenstions);
+                    }
+                    acul::point2D<i32> pos(event->xconfigure.x, event->xconfigure.y);
+
+                    // NOTE: ConfigureNotify events from the server are in local
+                    //       coordinates, so if we are reparented we need to translate
+                    //       the position into root (screen) coordinates
+                    if (!event->xany.send_event && window_data->parent != g_ctx->root)
+                    {
+                        grab_error_handler();
+
+                        XID dummy;
+                        xlib.XTranslateCoordinates(g_ctx->display, window_data->parent, g_ctx->root, pos.x, pos.y,
+                                                   &pos.x, &pos.y, &dummy);
+
+                        release_error_handler();
+                        if (g_ctx->error_code == BadWindow) return;
+                    }
+
+                    if (window_data->window_pos != pos)
+                    {
+                        window_data->window_pos = pos;
+                        acul::events::dispatch_event_group<PosEvent>(g_env->events.move, event_id::move,
+                                                                     window_data->owner, pos);
+                    }
+                    return;
+                }
+                case ClientMessage:
+                    if (!filtered && event->xclient.message_type != None) on_client_msg(event, window_data);
+                    return;
+
+                case FocusIn:
+                {
+                    if (event->xfocus.mode == NotifyGrab || event->xfocus.mode == NotifyUngrab)
+                    {
+                        // Ignore focus events from popup indicator windows, window menu
+                        // key chords and window dragging
+                        return;
+                    }
+                    if (window_data->is_cursor_hidden) capture_cursor(window_data);
+                    if (window_data->ic) xlib.XSetICFocus(window_data->ic);
+
+                    window_data->focused = true;
+                    acul::events::dispatch_event_group<FocusEvent>(g_env->events.focus, window_data->owner, true);
+                    toogle_rid(true);
+                    g_ctx->focused_window = window_data;
+                    return;
+                }
+                case FocusOut:
+                {
+                    if (event->xfocus.mode == NotifyGrab || event->xfocus.mode == NotifyUngrab)
+                    {
+                        // Ignore focus events from popup indicator windows, window menu
+                        // key chords and window dragging
+                        return;
+                    }
+                    if (window_data->is_cursor_hidden) release_cursor();
+                    if (window_data->ic) xlib.XUnsetICFocus(window_data->ic);
+
+                    window_data->focused = false;
+                    acul::events::dispatch_event_group<FocusEvent>(g_env->events.focus, window_data->owner, false);
+                    toogle_rid(false);
+                    return;
+                }
+                case PropertyNotify:
+                {
+                    if (event->xproperty.state != PropertyNewValue) return;
+
+                    if (event->xproperty.atom == g_ctx->wm.WM_STATE)
+                    {
+                        const int state = get_window_state(window_data);
+                        if (state != IconicState && state != NormalState) return;
+
+                        const bool iconified = (state == IconicState);
+                        const bool already = (window_data->flags & WindowFlagBits::minimized);
+
+                        if (iconified != already)
                         {
-                            unsigned long one = 1;
-                            xlib.XChangeProperty(ctx.display, x11_data->window, ctx.wm.NET_WM_BYPASS_COMPOSITOR,
-                                                 XA_CARDINAL, 32, PropModeReplace,
-                                                 reinterpret_cast<unsigned char *>(&one), 1);
+                            if (iconified)
+                                window_data->flags |= WindowFlagBits::minimized;
+                            else
+                                window_data->flags &= ~WindowFlagBits::minimized;
+
+                            acul::events::dispatch_event_group<StateEvent>(g_env->events.minimize, event_id::minimize,
+                                                                           window_data->owner, iconified);
                         }
                     }
-                    if ((flags & WindowFlagBits::maximized) && ctx.wm.NET_WM_STATE_MAXIMIZED_VERT &&
-                        ctx.wm.NET_WM_STATE_MAXIMIZED_HORZ)
+                    else if (event->xproperty.atom == g_ctx->wm.NET_WM_STATE)
                     {
-                        wm_states.push_back(ctx.wm.NET_WM_STATE_MAXIMIZED_VERT);
-                        wm_states.push_back(ctx.wm.NET_WM_STATE_MAXIMIZED_HORZ);
-                    }
-                    if (!wm_states.empty())
-                        xlib.XChangeProperty(ctx.display, x11_data->window, ctx.wm.NET_WM_STATE, XA_ATOM, 32,
-                                             PropModeReplace, reinterpret_cast<unsigned char *>(wm_states.data()),
-                                             static_cast<int>(wm_states.size()));
-                }
+                        const bool maximized = is_window_maximized(window_data);
+                        const bool already = (window_data->flags & WindowFlagBits::maximized);
 
-                if (!prepare_window_wm_hints(x11_data, flags, {width, height}, title)) return false;
-                if (ctx.im) create_input_context(x11_data);
+                        if (maximized != already)
+                        {
+                            if (maximized)
+                                window_data->flags |= WindowFlagBits::maximized;
+                            else
+                                window_data->flags &= ~WindowFlagBits::maximized;
 
-                set_window_title(x11_data, title);
-                get_window_pos(x11_data, x11_data->window_pos);
-                window_data->dimenstions = get_window_size(x11_data->window);
-
-                if (!(flags & WindowFlagBits::hidden)) show_window(window_data);
-
-                window_data->cursor = &platform::env.default_cursor;
-                return true;
-            }
-
-            void destroy(WindowData *window_data)
-            {
-                auto *x11_data = (X11WindowData *)window_data;
-                auto &xlib = ctx.xlib;
-
-                if (x11_data->ic)
-                {
-                    xlib.XDestroyIC(x11_data->ic);
-                    x11_data->ic = NULL;
-                }
-
-                if (x11_data->window)
-                {
-                    LOG_INFO("Destroying Window: %lu", x11_data->window);
-                    xlib.XDeleteContext(ctx.display, x11_data->window, ctx.context);
-                    xlib.XUnmapWindow(ctx.display, x11_data->window);
-                    xlib.XDestroyWindow(ctx.display, x11_data->window);
-                    x11_data->window = (XID)0;
-                }
-
-                if (x11_data->colormap)
-                {
-                    xlib.XFreeColormap(ctx.display, x11_data->colormap);
-                    x11_data->colormap = (Colormap)0;
-                }
-
-                xlib.XFlush(ctx.display);
-            }
-
-            acul::point2D<i32> get_window_position(WindowData *window)
-            {
-                auto *x11_data = (X11WindowData *)window;
-                ::Window dummy;
-                acul::point2D<i32> r;
-                ctx.xlib.XTranslateCoordinates(ctx.display, x11_data->window, ctx.root, 0, 0, &r.x, &r.y, &dummy);
-                return r;
-            }
-
-            void set_window_position(WindowData *window, acul::point2D<i32> position)
-            {
-                auto *x11_data = (X11WindowData *)window;
-                auto &xlib = ctx.xlib;
-                if (window->flags & WindowFlagBits::hidden)
-                {
-                    long supplied;
-                    XSizeHints *hints = xlib.XAllocSizeHints();
-
-                    if (xlib.XGetWMNormalHints(ctx.display, x11_data->window, hints, &supplied))
-                    {
-                        hints->flags |= PPosition;
-                        hints->x = hints->y = 0;
-
-                        xlib.XSetWMNormalHints(ctx.display, x11_data->window, hints);
+                            acul::events::dispatch_event_group<StateEvent>(g_env->events.maximize, event_id::maximize,
+                                                                           window_data->owner, maximized);
+                        }
                     }
 
-                    xlib.XFree(hints);
+                    return;
                 }
-                xlib.XMoveWindow(ctx.display, x11_data->window, position.x, position.y);
-                xlib.XFlush(ctx.display);
+                default:
+                    return;
+            }
+        }
+
+        bool prepare_window_wm_hints(X11WindowData *x11_data, WindowFlags flags, acul::point2D<i32> dim,
+                                     const acul::string &title)
+        {
+            auto &xlib = g_ctx->xlib;
+
+            // ICCCM WM_HINTS: initial state (Normal or Iconic)
+            {
+                XWMHints *hints = xlib.XAllocWMHints();
+                hints->flags = StateHint;
+                hints->initial_state = (flags & WindowFlagBits::minimized) ? IconicState : NormalState;
+                xlib.XSetWMHints(g_ctx->display, x11_data->window, hints);
+                xlib.XFree(hints);
             }
 
-            MonitorInfo get_primary_monitor_info()
+            // Declare the WM protocols supported by Awin
             {
-                auto &xlib = ctx.xlib;
+                Atom protocols[] = {g_ctx->wm.WM_DELETE_WINDOW, g_ctx->wm.NET_WM_PING};
+                xlib.XSetWMProtocols(g_ctx->display, x11_data->window, protocols, sizeof(protocols) / sizeof(Atom));
+            }
 
-                MonitorInfo result;
+            // Declare our PID
+            {
+                const long pid = getpid();
+                xlib.XChangeProperty(g_ctx->display, x11_data->window, g_ctx->wm.NET_WM_PID, XA_CARDINAL, 32,
+                                     PropModeReplace, (unsigned char *)&pid, 1);
+            }
 
-                result.dimensions.x = DisplayWidth(ctx.display, ctx.screen);
-                result.dimensions.y = DisplayHeight(ctx.display, ctx.screen);
+            if (g_ctx->wm.NET_WM_WINDOW_TYPE && g_ctx->wm.NET_WM_WINDOW_TYPE_NORMAL)
+            {
+                Atom type = g_ctx->wm.NET_WM_WINDOW_TYPE_NORMAL;
+                xlib.XChangeProperty(g_ctx->display, x11_data->window, g_ctx->wm.NET_WM_WINDOW_TYPE, XA_ATOM, 32,
+                                     PropModeReplace, (unsigned char *)&type, 1);
+            }
 
-                Atom type;
-                int format;
-                unsigned long nitems, bytes_after;
-                unsigned char *data = nullptr;
-
-                if (ctx.wm.NET_WORKAREA &&
-                    xlib.XGetWindowProperty(ctx.display, ctx.root, ctx.wm.NET_WORKAREA, 0, 4, False, XA_CARDINAL, &type,
-                                            &format, &nitems, &bytes_after, &data) == Success &&
-                    data && nitems >= 4)
+            // Set ICCCM WM_HINTS property
+            {
+                XWMHints *hints = xlib.XAllocWMHints();
+                if (!hints)
                 {
-                    long *workarea = reinterpret_cast<long *>(data);
-                    result.work.x = workarea[2];
-                    result.work.y = workarea[3];
-                    xlib.XFree(data);
+                    AWIN_LOG_ERROR("Failed to allocate WM hints");
+                    return false;
                 }
-                else
-                    result.work = result.dimensions;
 
-                return result;
+                hints->flags = StateHint;
+                hints->initial_state = NormalState;
+
+                xlib.XSetWMHints(g_ctx->display, x11_data->window, hints);
+                xlib.XFree(hints);
             }
 
-            void center_window(WindowData *window)
+            // Set ICCCM WM_NORMAL_HINTS property
             {
-                auto &xlib = ctx.xlib;
-                MonitorInfo info = get_primary_monitor_info();
-                acul::point2D<long> center = {(info.work.x - window->dimenstions.x) / 2,
-                                              (info.work.y - window->dimenstions.y) / 2};
-                if (center.y < 0) center.y = 0;
-                auto *x11_data = (X11WindowData *)window;
-                xlib.XMoveResizeWindow(ctx.display, x11_data->window, center.x, center.y, window->dimenstions.x,
-                                       window->dimenstions.y);
-                xlib.XFlush(ctx.display);
-            }
-
-            static void update_normal_hints(X11WindowData *window_data, acul::point2D<i32> dim)
-            {
-                auto &xlib = ctx.xlib;
                 XSizeHints *hints = xlib.XAllocSizeHints();
-                if (!hints) return;
-
-                long supplied;
-                xlib.XGetWMNormalHints(ctx.display, window_data->window, hints, &supplied);
-
-                hints->flags &= ~(PMinSize | PMaxSize | PAspect);
-
-                if (window_data->flags & WindowFlagBits::resizable)
+                if (!hints)
                 {
-                    if (window_data->resize_limit.x != WINDOW_DONT_CARE &&
-                        window_data->resize_limit.y != WINDOW_DONT_CARE)
-                    {
-                        hints->flags |= PMinSize;
-                        hints->min_width = window_data->resize_limit.x;
-                        hints->min_height = window_data->resize_limit.y;
-                    }
+                    AWIN_LOG_ERROR("Failed to allocate size hints");
+                    return false;
                 }
-                else
+
+                if (!(flags & WindowFlagBits::resizable))
                 {
                     hints->flags |= (PMinSize | PMaxSize);
                     hints->min_width = hints->max_width = dim.x;
                     hints->min_height = hints->max_height = dim.y;
                 }
 
-                xlib.XSetWMNormalHints(ctx.display, window_data->window, hints);
+                hints->flags |= PWinGravity;
+                hints->win_gravity = StaticGravity;
+
+                xlib.XSetWMNormalHints(g_ctx->display, x11_data->window, hints);
                 xlib.XFree(hints);
             }
 
-            void update_resize_limit(WindowData *window)
+            // Set ICCCM WM_CLASS property
             {
-                update_normal_hints((X11WindowData *)window, window->dimenstions);
-                ctx.xlib.XFlush(ctx.display);
+                XClassHint *hint = xlib.XAllocClassHint();
+                const char *resource_name = getenv("RESOURCE_NAME");
+                bool is_title_valid = !title.empty();
+                if (resource_name && acul::null_terminated_length(resource_name))
+                    hint->res_name = (char *)resource_name;
+                else
+                    hint->res_name = is_title_valid ? (char *)title.c_str() : (char *)"awin-application";
+                hint->res_class = is_title_valid ? (char *)title.c_str() : (char *)"awin-Application";
+                xlib.XSetClassHint(g_ctx->display, x11_data->window, hint);
+                xlib.XFree(hint);
             }
+            return true;
+        }
 
-            void minimize_window(WindowData *window)
+        inline void get_window_pos(const X11WindowData *window_data, acul::point2D<i32> &pos)
+        {
+            XID dummy;
+            g_ctx->xlib.XTranslateCoordinates(g_ctx->display, window_data->window, g_ctx->root, 0, 0, &pos.x, &pos.y,
+                                              &dummy);
+        }
+
+        acul::point2D<i32> get_window_size(::Window window)
+        {
+            XWindowAttributes attribs;
+            g_ctx->xlib.XGetWindowAttributes(g_ctx->display, window, &attribs);
+            return {attribs.width, attribs.height};
+        }
+
+        acul::point2D<i32> get_window_size(const Window &window)
+        {
+            return get_window_size(native_access::get_x11_window_handle(window));
+        }
+
+        bool create_window(WindowData *window_data, const acul::string &title, i32 width, i32 height, WindowFlags flags)
+        {
+            auto &xlib = g_ctx->xlib;
+            Visual *visual = DefaultVisual(g_ctx->display, g_ctx->screen);
+            int depth = DefaultDepth(g_ctx->display, g_ctx->screen);
+            // Create a colormap based on the visual used by the current context
+            auto *x11_data = (X11WindowData *)window_data;
+            x11_data->colormap = xlib.XCreateColormap(g_ctx->display, g_ctx->root, visual, AllocNone);
+
+            XSetWindowAttributes wa = {0};
+            wa.colormap = x11_data->colormap;
+            wa.event_mask = StructureNotifyMask | KeyPressMask | KeyReleaseMask | PointerMotionMask | ButtonPressMask |
+                            ButtonReleaseMask | ExposureMask | FocusChangeMask | VisibilityChangeMask |
+                            EnterWindowMask | LeaveWindowMask | PropertyChangeMask;
+            grab_error_handler();
+            x11_data->parent = g_ctx->root;
+            x11_data->window = xlib.XCreateWindow(g_ctx->display, g_ctx->root, 0, 0, width, height,
+                                                  0,     // Border width
+                                                  depth, // Color depth
+                                                  InputOutput, visual, CWBorderPixel | CWColormap | CWEventMask, &wa);
+            release_error_handler();
+            if (!x11_data->window)
             {
-                auto *x11_data = (X11WindowData *)window;
-                auto &xlib = ctx.xlib;
-                xlib.XIconifyWindow(ctx.display, x11_data->window, ctx.screen);
-                xlib.XFlush(ctx.display);
+                AWIN_LOG_ERROR("Failed to create window");
+                return false;
             }
+            AWIN_LOG_INFO("Created X11 window: %lu", x11_data->window);
+            xlib.XSaveContext(g_ctx->display, x11_data->window, g_ctx->context, (XPointer)x11_data);
+            window_data->flags = flags;
+            apply_motif_hints(g_ctx->display, x11_data->window, flags);
 
-            void maximize_window(WindowData *window)
+            // EWMH: fullscreen or maximized
+            if (g_ctx->wm.NET_WM_STATE)
             {
-                if (!ctx.wm.NET_WM_STATE || !ctx.wm.NET_WM_STATE_MAXIMIZED_VERT || !ctx.wm.NET_WM_STATE_MAXIMIZED_HORZ)
-                    return;
-                auto &xlib = ctx.xlib;
-                auto *x11_data = (X11WindowData *)window;
-                if (window->flags & WindowFlagBits::hidden)
+                acul::vector<Atom> wm_states;
+                if ((flags & WindowFlagBits::fullscreen))
                 {
-                    Atom *states = NULL;
-                    unsigned long count =
-                        get_window_property(x11_data->window, ctx.wm.NET_WM_STATE, XA_ATOM, (unsigned char **)&states);
-                    Atom missing[2] = {ctx.wm.NET_WM_STATE_MAXIMIZED_VERT, ctx.wm.NET_WM_STATE_MAXIMIZED_HORZ};
-                    unsigned long missing_count = 2;
-
-                    for (unsigned long i = 0; i < count; i++)
+                    if (g_ctx->wm.NET_WM_STATE_FULLSCREEN) wm_states.push_back(g_ctx->wm.NET_WM_STATE_FULLSCREEN);
+                    if (g_ctx->wm.NET_WM_BYPASS_COMPOSITOR)
                     {
-                        for (unsigned long j = 0; j < missing_count; j++)
+                        unsigned long one = 1;
+                        xlib.XChangeProperty(g_ctx->display, x11_data->window, g_ctx->wm.NET_WM_BYPASS_COMPOSITOR,
+                                             XA_CARDINAL, 32, PropModeReplace, reinterpret_cast<unsigned char *>(&one),
+                                             1);
+                    }
+                }
+                if ((flags & WindowFlagBits::maximized) && g_ctx->wm.NET_WM_STATE_MAXIMIZED_VERT &&
+                    g_ctx->wm.NET_WM_STATE_MAXIMIZED_HORZ)
+                {
+                    wm_states.push_back(g_ctx->wm.NET_WM_STATE_MAXIMIZED_VERT);
+                    wm_states.push_back(g_ctx->wm.NET_WM_STATE_MAXIMIZED_HORZ);
+                }
+                if (!wm_states.empty())
+                    xlib.XChangeProperty(g_ctx->display, x11_data->window, g_ctx->wm.NET_WM_STATE, XA_ATOM, 32,
+                                         PropModeReplace, reinterpret_cast<unsigned char *>(wm_states.data()),
+                                         static_cast<int>(wm_states.size()));
+            }
+
+            if (!prepare_window_wm_hints(x11_data, flags, {width, height}, title)) return false;
+            if (g_ctx->im) create_input_context(x11_data);
+
+            set_window_title(x11_data, title);
+            get_window_pos(x11_data, x11_data->window_pos);
+            window_data->dimenstions = get_window_size(x11_data->window);
+
+            if (!(flags & WindowFlagBits::hidden)) show_window(window_data);
+
+            window_data->cursor = &platform::g_env->default_cursor;
+            return true;
+        }
+
+        void destroy(WindowData *window_data)
+        {
+            auto *x11_data = (X11WindowData *)window_data;
+            auto &xlib = g_ctx->xlib;
+
+            if (x11_data->ic)
+            {
+                xlib.XDestroyIC(x11_data->ic);
+                x11_data->ic = NULL;
+            }
+
+            if (x11_data->window)
+            {
+                AWIN_LOG_INFO("Destroying Window: %lu", x11_data->window);
+                xlib.XDeleteContext(g_ctx->display, x11_data->window, g_ctx->context);
+                xlib.XUnmapWindow(g_ctx->display, x11_data->window);
+                xlib.XDestroyWindow(g_ctx->display, x11_data->window);
+                x11_data->window = (XID)0;
+            }
+
+            if (x11_data->colormap)
+            {
+                xlib.XFreeColormap(g_ctx->display, x11_data->colormap);
+                x11_data->colormap = (Colormap)0;
+            }
+
+            xlib.XFlush(g_ctx->display);
+        }
+
+        acul::point2D<i32> get_window_position(WindowData *window)
+        {
+            auto *x11_data = (X11WindowData *)window;
+            ::Window dummy;
+            acul::point2D<i32> r;
+            g_ctx->xlib.XTranslateCoordinates(g_ctx->display, x11_data->window, g_ctx->root, 0, 0, &r.x, &r.y, &dummy);
+            return r;
+        }
+
+        void set_window_position(WindowData *window, acul::point2D<i32> position)
+        {
+            auto *x11_data = (X11WindowData *)window;
+            auto &xlib = g_ctx->xlib;
+            if (window->flags & WindowFlagBits::hidden)
+            {
+                long supplied;
+                XSizeHints *hints = xlib.XAllocSizeHints();
+
+                if (xlib.XGetWMNormalHints(g_ctx->display, x11_data->window, hints, &supplied))
+                {
+                    hints->flags |= PPosition;
+                    hints->x = hints->y = 0;
+
+                    xlib.XSetWMNormalHints(g_ctx->display, x11_data->window, hints);
+                }
+
+                xlib.XFree(hints);
+            }
+            xlib.XMoveWindow(g_ctx->display, x11_data->window, position.x, position.y);
+            xlib.XFlush(g_ctx->display);
+        }
+
+        MonitorInfo get_primary_monitor_info()
+        {
+            auto &xlib = g_ctx->xlib;
+
+            MonitorInfo result;
+
+            result.dimensions.x = DisplayWidth(g_ctx->display, g_ctx->screen);
+            result.dimensions.y = DisplayHeight(g_ctx->display, g_ctx->screen);
+
+            Atom type;
+            int format;
+            unsigned long nitems, bytes_after;
+            unsigned char *data = nullptr;
+
+            if (g_ctx->wm.NET_WORKAREA &&
+                xlib.XGetWindowProperty(g_ctx->display, g_ctx->root, g_ctx->wm.NET_WORKAREA, 0, 4, False, XA_CARDINAL,
+                                        &type, &format, &nitems, &bytes_after, &data) == Success &&
+                data && nitems >= 4)
+            {
+                long *workarea = reinterpret_cast<long *>(data);
+                result.work.x = workarea[2];
+                result.work.y = workarea[3];
+                xlib.XFree(data);
+            }
+            else
+                result.work = result.dimensions;
+
+            return result;
+        }
+
+        void center_window(WindowData *window)
+        {
+            auto &xlib = g_ctx->xlib;
+            MonitorInfo info = get_primary_monitor_info();
+            acul::point2D<long> center = {(info.work.x - window->dimenstions.x) / 2,
+                                          (info.work.y - window->dimenstions.y) / 2};
+            if (center.y < 0) center.y = 0;
+            auto *x11_data = (X11WindowData *)window;
+            xlib.XMoveResizeWindow(g_ctx->display, x11_data->window, center.x, center.y, window->dimenstions.x,
+                                   window->dimenstions.y);
+            xlib.XFlush(g_ctx->display);
+        }
+
+        static void update_normal_hints(X11WindowData *window_data, acul::point2D<i32> dim)
+        {
+            auto &xlib = g_ctx->xlib;
+            XSizeHints *hints = xlib.XAllocSizeHints();
+            if (!hints) return;
+
+            long supplied;
+            xlib.XGetWMNormalHints(g_ctx->display, window_data->window, hints, &supplied);
+
+            hints->flags &= ~(PMinSize | PMaxSize | PAspect);
+
+            if (window_data->flags & WindowFlagBits::resizable)
+            {
+                if (window_data->resize_limit.x != WINDOW_DONT_CARE && window_data->resize_limit.y != WINDOW_DONT_CARE)
+                {
+                    hints->flags |= PMinSize;
+                    hints->min_width = window_data->resize_limit.x;
+                    hints->min_height = window_data->resize_limit.y;
+                }
+            }
+            else
+            {
+                hints->flags |= (PMinSize | PMaxSize);
+                hints->min_width = hints->max_width = dim.x;
+                hints->min_height = hints->max_height = dim.y;
+            }
+
+            xlib.XSetWMNormalHints(g_ctx->display, window_data->window, hints);
+            xlib.XFree(hints);
+        }
+
+        void update_resize_limit(WindowData *window)
+        {
+            update_normal_hints((X11WindowData *)window, window->dimenstions);
+            g_ctx->xlib.XFlush(g_ctx->display);
+        }
+
+        void minimize_window(WindowData *window)
+        {
+            auto *x11_data = (X11WindowData *)window;
+            auto &xlib = g_ctx->xlib;
+            xlib.XIconifyWindow(g_ctx->display, x11_data->window, g_ctx->screen);
+            xlib.XFlush(g_ctx->display);
+        }
+
+        void maximize_window(WindowData *window)
+        {
+            if (!g_ctx->wm.NET_WM_STATE || !g_ctx->wm.NET_WM_STATE_MAXIMIZED_VERT ||
+                !g_ctx->wm.NET_WM_STATE_MAXIMIZED_HORZ)
+                return;
+            auto &xlib = g_ctx->xlib;
+            auto *x11_data = (X11WindowData *)window;
+            if (window->flags & WindowFlagBits::hidden)
+            {
+                Atom *states = NULL;
+                unsigned long count =
+                    get_window_property(x11_data->window, g_ctx->wm.NET_WM_STATE, XA_ATOM, (unsigned char **)&states);
+                Atom missing[2] = {g_ctx->wm.NET_WM_STATE_MAXIMIZED_VERT, g_ctx->wm.NET_WM_STATE_MAXIMIZED_HORZ};
+                unsigned long missing_count = 2;
+
+                for (unsigned long i = 0; i < count; i++)
+                {
+                    for (unsigned long j = 0; j < missing_count; j++)
+                    {
+                        if (states[i] == missing[j])
                         {
-                            if (states[i] == missing[j])
-                            {
-                                missing[j] = missing[missing_count - 1];
-                                --missing_count;
-                            }
+                            missing[j] = missing[missing_count - 1];
+                            --missing_count;
                         }
                     }
-
-                    if (states) xlib.XFree(states);
-
-                    if (!missing_count) return;
-
-                    xlib.XChangeProperty(ctx.display, x11_data->window, ctx.wm.NET_WM_STATE, XA_ATOM, 32,
-                                         PropModeAppend, (unsigned char *)missing, missing_count);
-                }
-                else
-                    send_event_to_wm(x11_data, ctx.wm.NET_WM_STATE, _NET_WM_STATE_ADD,
-                                     ctx.wm.NET_WM_STATE_MAXIMIZED_VERT, ctx.wm.NET_WM_STATE_MAXIMIZED_HORZ, 1, 0);
-                xlib.XFlush(ctx.display);
-            }
-
-            void poll_events()
-            {
-                drain_empty_events();
-                auto &xlib = ctx.xlib;
-
-                xlib.XPending(ctx.display);
-
-                while (QLength(ctx.display))
-                {
-                    XEvent event;
-                    xlib.XNextEvent(ctx.display, &event);
-                    process_event(&event);
                 }
 
-                xlib.XFlush(ctx.display);
+                if (states) xlib.XFree(states);
+
+                if (!missing_count) return;
+
+                xlib.XChangeProperty(g_ctx->display, x11_data->window, g_ctx->wm.NET_WM_STATE, XA_ATOM, 32,
+                                     PropModeAppend, (unsigned char *)missing, missing_count);
+            }
+            else
+                send_event_to_wm(x11_data, g_ctx->wm.NET_WM_STATE, _NET_WM_STATE_ADD,
+                                 g_ctx->wm.NET_WM_STATE_MAXIMIZED_VERT, g_ctx->wm.NET_WM_STATE_MAXIMIZED_HORZ, 1, 0);
+            xlib.XFlush(g_ctx->display);
+        }
+
+        void poll_events()
+        {
+            drain_empty_events();
+            auto &xlib = g_ctx->xlib;
+
+            xlib.XPending(g_ctx->display);
+
+            while (QLength(g_ctx->display))
+            {
+                XEvent event;
+                xlib.XNextEvent(g_ctx->display, &event);
+                process_event(&event);
             }
 
-            void wait_events()
-            {
-                wait_for_any_event(NULL);
-                poll_events();
-            }
+            xlib.XFlush(g_ctx->display);
+        }
 
-            void wait_events_timeout()
-            {
-                wait_for_any_event(env.timeout > WINDOW_TIMEOUT_INF ? &env.timeout : NULL);
-                poll_events();
-            }
+        void wait_events()
+        {
+            wait_for_any_event(NULL);
+            poll_events();
+        }
 
-            void push_empty_event()
+        void wait_events_timeout()
+        {
+            wait_for_any_event(g_env->timeout > WINDOW_TIMEOUT_INF ? &g_env->timeout : NULL);
+            poll_events();
+        }
+
+        void push_empty_event()
+        {
+            for (;;)
             {
-                for (;;)
+                const char byte = 0;
+                const ssize_t result = write(g_ctx->empty_pipe[1], &byte, 1);
+                if (result == 1 || (result == -1 && errno != EINTR)) break;
+            }
+        }
+
+        f32 get_dpi(WindowData *) { return g_ctx->dpi.x; }
+
+        void set_window_icon(WindowData *w, const acul::vector<Image> &images)
+        {
+            size_t total = 0;
+            for (const auto &img : images) { total += 2 + size_t(img.dimenstions.x) * size_t(img.dimenstions.y); }
+
+            acul::vector<unsigned long> buf;
+            buf.reserve(total);
+
+            for (const auto &img : images)
+            {
+                buf.push_back(static_cast<unsigned long>(img.dimenstions.x));
+                buf.push_back(static_cast<unsigned long>(img.dimenstions.y));
+
+                // RGBA8 to ARGB32 (CARDINAL)
+                const uint8_t *p = reinterpret_cast<const uint8_t *>(img.pixels);
+                int pixels_count = img.dimenstions.x * img.dimenstions.y;
+                for (int i = 0; i < pixels_count; ++i)
                 {
-                    const char byte = 0;
-                    const ssize_t result = write(ctx.empty_pipe[1], &byte, 1);
-                    if (result == 1 || (result == -1 && errno != EINTR)) break;
-                }
-            }
-
-            f32 get_dpi(WindowData *) { return ctx.dpi.x; }
-
-            void set_window_icon(WindowData *w, const acul::vector<Image> &images)
-            {
-                size_t total = 0;
-                for (const auto &img : images) { total += 2 + size_t(img.dimenstions.x) * size_t(img.dimenstions.y); }
-
-                acul::vector<unsigned long> buf;
-                buf.reserve(total);
-
-                for (const auto &img : images)
-                {
-                    buf.push_back(static_cast<unsigned long>(img.dimenstions.x));
-                    buf.push_back(static_cast<unsigned long>(img.dimenstions.y));
-
-                    // RGBA8 to ARGB32 (CARDINAL)
-                    const uint8_t *p = reinterpret_cast<const uint8_t *>(img.pixels);
-                    int pixels_count = img.dimenstions.x * img.dimenstions.y;
-                    for (int i = 0; i < pixels_count; ++i)
-                    {
-                        u32 r = p[i * 4 + 0];
-                        u32 g = p[i * 4 + 1];
-                        u32 b = p[i * 4 + 2];
-                        u32 a = p[i * 4 + 3];
-                        unsigned long argb =
-                            (static_cast<unsigned long>(a) << 24) | (static_cast<unsigned long>(r) << 16) |
-                            (static_cast<unsigned long>(g) << 8) | (static_cast<unsigned long>(b) << 0);
-                        buf.push_back(argb);
-                    }
-                }
-
-                auto &xlib = ctx.xlib;
-                auto *window = reinterpret_cast<X11WindowData *>(w);
-                xlib.XChangeProperty(ctx.display, window->window, ctx.wm.NET_WM_ICON, XA_CARDINAL, 32, PropModeReplace,
-                                     reinterpret_cast<const unsigned char *>(buf.data()), static_cast<int>(buf.size()));
-                xlib.XFlush(ctx.display);
-            }
-
-            ::Cursor load_system_cursor(Display *display, const char *name, unsigned int fallback_shape)
-            {
-                if (ctx.xlib.xcursor.XcursorLibraryLoadCursor)
-                {
-                    if (auto cur = ctx.xlib.xcursor.XcursorLibraryLoadCursor(display, name)) return cur;
-                }
-
-                return ctx.xlib.XCreateFontCursor(display, fallback_shape);
-            }
-
-            Cursor::Platform *create_cursor(Cursor::Type type)
-            {
-                struct Shape
-                {
-                    const char *name;
-                    unsigned int fallback;
-                };
-
-                static const acul::hashmap<Cursor::Type, Shape> cursor_map = {
-                    {Cursor::Type::arrow, {"left_ptr", XC_left_ptr}},
-                    {Cursor::Type::ibeam, {"xterm", XC_xterm}},
-                    {Cursor::Type::crosshair, {"crosshair", XC_crosshair}},
-                    {Cursor::Type::hand, {"hand2", XC_hand2}},
-                    {Cursor::Type::resize_ew, {"sb_h_double_arrow", XC_sb_h_double_arrow}},
-                    {Cursor::Type::resize_ns, {"sb_v_double_arrow", XC_sb_v_double_arrow}},
-                    {Cursor::Type::resize_nwse, {"bottom_right_corner", XC_bottom_right_corner}},
-                    {Cursor::Type::resize_nesw, {"bottom_left_corner", XC_bottom_left_corner}},
-                    {Cursor::Type::resize_all, {"fleur", XC_fleur}},
-                    {Cursor::Type::not_allowed, {"not-allowed", XC_pirate}}, // fallback shape
-                };
-
-                auto it = cursor_map.find(type);
-                if (it == cursor_map.end()) return nullptr;
-
-                const auto &entry = it->second;
-
-                auto *cursor = acul::alloc<X11Cursor>();
-                cursor->handle = load_system_cursor(ctx.display, entry.name, entry.fallback);
-                return cursor;
-            }
-
-            void assign_cursor(Window *window, Cursor::Platform *cursor)
-            {
-                auto *x11_cursor = (X11Cursor *)cursor;
-                auto &xlib = ctx.xlib;
-                auto *x11_data = (X11WindowData *)get_window_data(*window);
-                if (x11_cursor->handle)
-                    xlib.XDefineCursor(ctx.display, x11_data->window, x11_cursor->handle);
-                else
-                    xlib.XUndefineCursor(ctx.display, x11_data->window);
-                xlib.XFlush(ctx.display);
-            }
-
-            void destroy_cursor(Cursor::Platform *cursor)
-            {
-                auto *x11_cursor = (X11Cursor *)cursor;
-                if (x11_cursor->handle)
-                {
-                    ctx.xlib.XFreeCursor(ctx.display, x11_cursor->handle);
-                    x11_cursor->handle = 0;
+                    u32 r = p[i * 4 + 0];
+                    u32 g = p[i * 4 + 1];
+                    u32 b = p[i * 4 + 2];
+                    u32 a = p[i * 4 + 3];
+                    unsigned long argb = (static_cast<unsigned long>(a) << 24) | (static_cast<unsigned long>(r) << 16) |
+                                         (static_cast<unsigned long>(g) << 8) | (static_cast<unsigned long>(b) << 0);
+                    buf.push_back(argb);
                 }
             }
 
-            bool is_cursor_valid(const Cursor::Platform *cursor)
+            auto &xlib = g_ctx->xlib;
+            auto *window = reinterpret_cast<X11WindowData *>(w);
+            xlib.XChangeProperty(g_ctx->display, window->window, g_ctx->wm.NET_WM_ICON, XA_CARDINAL, 32,
+                                 PropModeReplace, reinterpret_cast<const unsigned char *>(buf.data()),
+                                 static_cast<int>(buf.size()));
+            xlib.XFlush(g_ctx->display);
+        }
+
+        ::Cursor load_system_cursor(Display *display, const char *name, unsigned int fallback_shape)
+        {
+            if (g_ctx->xlib.xcursor.XcursorLibraryLoadCursor)
             {
-                auto *x11_cursor = (X11Cursor *)cursor;
-                return x11_cursor->handle != 0;
+                if (auto cur = g_ctx->xlib.xcursor.XcursorLibraryLoadCursor(display, name)) return cur;
             }
 
-            void hide_cursor(WindowData *window_data)
-            {
-                auto *x11_data = (X11WindowData *)window_data;
-                if (window_data->is_cursor_hidden) return;
-                ctx.xlib.XDefineCursor(ctx.display, x11_data->window, ctx.hidden_cursor.handle);
-                ctx.xlib.XFlush(ctx.display);
-                window_data->is_cursor_hidden = true;
-            }
+            return g_ctx->xlib.XCreateFontCursor(display, fallback_shape);
+        }
 
-            void show_cursor(Window *window, WindowData *window_data)
+        Cursor::Platform *create_cursor(Cursor::Type type)
+        {
+            struct Shape
             {
-                if (!window_data->is_cursor_hidden) return;
-                if (window_data->cursor && window_data->cursor->valid())
-                    window_data->cursor->assign(window);
-                else if (platform::env.default_cursor.valid())
-                    platform::env.default_cursor.assign(window);
-                window_data->is_cursor_hidden = false;
-            }
+                const char *name;
+                unsigned int fallback;
+            };
 
-        } // namespace x11
-    } // namespace platform
+            static const acul::hashmap<Cursor::Type, Shape> cursor_map = {
+                {Cursor::Type::arrow, {"left_ptr", XC_left_ptr}},
+                {Cursor::Type::ibeam, {"xterm", XC_xterm}},
+                {Cursor::Type::crosshair, {"crosshair", XC_crosshair}},
+                {Cursor::Type::hand, {"hand2", XC_hand2}},
+                {Cursor::Type::resize_ew, {"sb_h_double_arrow", XC_sb_h_double_arrow}},
+                {Cursor::Type::resize_ns, {"sb_v_double_arrow", XC_sb_v_double_arrow}},
+                {Cursor::Type::resize_nwse, {"bottom_right_corner", XC_bottom_right_corner}},
+                {Cursor::Type::resize_nesw, {"bottom_left_corner", XC_bottom_left_corner}},
+                {Cursor::Type::resize_all, {"fleur", XC_fleur}},
+                {Cursor::Type::not_allowed, {"not-allowed", XC_pirate}}, // fallback shape
+            };
+
+            auto it = cursor_map.find(type);
+            if (it == cursor_map.end()) return nullptr;
+
+            const auto &entry = it->second;
+
+            auto *cursor = acul::alloc<X11Cursor>();
+            cursor->handle = load_system_cursor(g_ctx->display, entry.name, entry.fallback);
+            return cursor;
+        }
+
+        void assign_cursor(Window *window, Cursor::Platform *cursor)
+        {
+            auto *x11_cursor = (X11Cursor *)cursor;
+            auto &xlib = g_ctx->xlib;
+            auto *x11_data = (X11WindowData *)get_window_data(*window);
+            if (x11_cursor->handle)
+                xlib.XDefineCursor(g_ctx->display, x11_data->window, x11_cursor->handle);
+            else
+                xlib.XUndefineCursor(g_ctx->display, x11_data->window);
+            xlib.XFlush(g_ctx->display);
+        }
+
+        void destroy_cursor(Cursor::Platform *cursor)
+        {
+            auto *x11_cursor = (X11Cursor *)cursor;
+            if (x11_cursor->handle)
+            {
+                g_ctx->xlib.XFreeCursor(g_ctx->display, x11_cursor->handle);
+                x11_cursor->handle = 0;
+            }
+        }
+
+        bool is_cursor_valid(const Cursor::Platform *cursor)
+        {
+            auto *x11_cursor = (X11Cursor *)cursor;
+            return x11_cursor->handle != 0;
+        }
+
+        void hide_cursor(WindowData *window_data)
+        {
+            auto *x11_data = (X11WindowData *)window_data;
+            if (window_data->is_cursor_hidden) return;
+            g_ctx->xlib.XDefineCursor(g_ctx->display, x11_data->window, g_ctx->hidden_cursor.handle);
+            g_ctx->xlib.XFlush(g_ctx->display);
+            window_data->is_cursor_hidden = true;
+        }
+
+        void show_cursor(Window *window, WindowData *window_data)
+        {
+            if (!window_data->is_cursor_hidden) return;
+            if (window_data->cursor && window_data->cursor->valid())
+                window_data->cursor->assign(window);
+            else if (platform::g_env->default_cursor.valid())
+                platform::g_env->default_cursor.assign(window);
+            window_data->is_cursor_hidden = false;
+        }
+
+    } // namespace platform::x11
 
     ::Window native_access::get_x11_window_handle(const Window &window)
     {
