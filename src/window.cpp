@@ -80,6 +80,7 @@ namespace awin
         platform::g_env->default_cursor.reset();
         platform::destroy_platform();
         acul::release(platform::g_env);
+        platform::g_env = nullptr;
     }
 
     f64 get_time()
