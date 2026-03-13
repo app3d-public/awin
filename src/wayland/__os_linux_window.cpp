@@ -1,5 +1,5 @@
 #include <awin/native_access.hpp>
-#include <awin/window.hpp>
+#include <awin/awin.hpp>
 #include <fcntl.h>
 #include <linux/input-event-codes.h>
 #include <sys/mman.h>
@@ -1507,13 +1507,6 @@ namespace awin
         void set_window_icon(WindowData *, const acul::vector<Image> &)
         {
             AWIN_LOG_WARN("Wayland: The platform does not support setting the window icon");
-        }
-
-        MonitorInfo get_primary_monitor_info()
-        {
-            if (g_ctx->outputs.empty()) return {{0, 0}, {0, 0}};
-            auto &output = g_ctx->outputs.front();
-            return {output.dimensions, output.dimensions};
         }
 
         void show_window(WindowData *window_data)

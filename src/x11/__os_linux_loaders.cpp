@@ -189,4 +189,39 @@ namespace awin::platform::x11
 
         return true;
     }
+
+    bool RandRLoader::load()
+    {
+#if defined(__CYGWIN__)
+        handle = dlopen("libXrandr-2.so", RTLD_LAZY);
+#elif defined(__OpenBSD__) || defined(__NetBSD__)
+        handle = dlopen("libXrandr.so", RTLD_LAZY);
+#else
+        handle = dlopen("libXrandr.so.2", RTLD_LAZY);
+#endif
+        if (!handle)
+        {
+            AWIN_LOG_WARN("Failed to load XRandR library: %s", dlerror());
+            return false;
+        }
+
+        LOAD_FUNCTION(XRRAllocGamma, handle);
+        LOAD_FUNCTION(XRRFreeCrtcInfo, handle);
+        LOAD_FUNCTION(XRRFreeGamma, handle);
+        LOAD_FUNCTION(XRRFreeOutputInfo, handle);
+        LOAD_FUNCTION(XRRFreeScreenResources, handle);
+        LOAD_FUNCTION(XRRGetCrtcGamma, handle);
+        LOAD_FUNCTION(XRRGetCrtcGammaSize, handle);
+        LOAD_FUNCTION(XRRGetCrtcInfo, handle);
+        LOAD_FUNCTION(XRRGetOutputInfo, handle);
+        LOAD_FUNCTION(XRRGetOutputPrimary, handle);
+        LOAD_FUNCTION(XRRGetScreenResourcesCurrent, handle);
+        LOAD_FUNCTION(XRRQueryExtension, handle);
+        LOAD_FUNCTION(XRRQueryVersion, handle);
+        LOAD_FUNCTION(XRRSelectInput, handle);
+        LOAD_FUNCTION(XRRSetCrtcConfig, handle);
+        LOAD_FUNCTION(XRRSetCrtcGamma, handle);
+        LOAD_FUNCTION(XRRUpdateConfiguration, handle);
+        return true;
+    }
 } // namespace awin::platform::x11

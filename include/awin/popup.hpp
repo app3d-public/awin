@@ -5,7 +5,7 @@
 #include <acul/string/string.hpp>
 #include <acul/vector.hpp>
 #include <initializer_list>
-#include "window.hpp"
+#include "awin.hpp"
 
 namespace awin
 {

@@ -1,5 +1,5 @@
 #include <X11/X.h>
-#include <awin/window.hpp>
+#include <awin/awin.hpp>
 #include <fcntl.h>
 #include "../linux_pd.hpp"
 #include "platform.hpp"
@@ -67,6 +67,40 @@ namespace awin::platform::x11
             xi.major = 2;
             xi.minor = 0;
             xi.init = xi.XIQueryVersion(g_ctx->display, &xi.major, &xi.minor) == Success;
+        }
+    }
+
+    void init_randr()
+    {
+        auto &randr = g_ctx->xlib.randr;
+        if (!randr.load()) return;
+        AWIN_LOG_INFO("Loaded XRandR library");
+
+        if (!randr.XRRQueryExtension || !randr.XRRQueryVersion || !randr.XRRGetScreenResourcesCurrent ||
+            !randr.XRRGetOutputInfo || !randr.XRRGetCrtcInfo || !randr.XRRFreeOutputInfo ||
+            !randr.XRRFreeCrtcInfo || !randr.XRRFreeScreenResources)
+        {
+            AWIN_LOG_WARN("XRandR entry points are incomplete");
+            unload(randr.handle);
+            return;
+        }
+
+        randr.init = randr.XRRQueryExtension(g_ctx->display, &randr.event_base, &randr.error_base);
+        if (!randr.init)
+        {
+            AWIN_LOG_WARN("XRandR extension not available");
+            unload(randr.handle);
+            return;
+        }
+
+        randr.major = 1;
+        randr.minor = 3;
+        if (!randr.XRRQueryVersion(g_ctx->display, &randr.major, &randr.minor))
+        {
+            AWIN_LOG_WARN("Failed to query XRandR version");
+            randr.init = false;
+            unload(randr.handle);
+            return;
         }
     }
 
@@ -348,6 +382,7 @@ namespace awin::platform::x11
 
         if (!create_empty_pipe()) return false;
         init_xi();
+        init_randr();
         if (g_ctx->xlib.xcursor.load()) AWIN_LOG_INFO("Loaded Xcursor library");
 #ifndef ACUL_BUILD_MIN
         if (g_ctx->xlib.xcb.load()) AWIN_LOG_INFO("Loaded XCB");
@@ -414,6 +449,9 @@ namespace awin::platform::x11
     {
         caller.init_platform = init_platform;
         caller.destroy_platform = destroy_platform;
+        caller.poll_monitors = poll_monitors;
+        caller.get_monitor_video_modes = get_monitor_video_modes;
+        caller.get_monitor_video_mode = get_monitor_video_mode;
         caller.alloc_window_data = alloc_window_data;
         caller.poll_events = poll_events;
         caller.wait_events = wait_events;
@@ -423,7 +461,6 @@ namespace awin::platform::x11
         caller.get_window_size = get_window_size;
         caller.get_clipboard_string = get_clipboard_string;
         caller.set_clipboard_string = set_clipboard_string;
-        caller.get_primary_monitor_info = get_primary_monitor_info;
     }
 
     void init_wcall_data(LinuxWindowCaller &caller)

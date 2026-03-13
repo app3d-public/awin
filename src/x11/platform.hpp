@@ -49,6 +49,9 @@ namespace awin::platform::x11
         XIData xi;
         XCBData xcb;
         XCursorLoader xcursor;
+        struct RandRData : ExtensionData, RandRLoader
+        {
+        } randr;
     };
 
     struct WMAtoms
@@ -257,6 +260,7 @@ namespace awin::platform::x11
 
         ~Context()
         {
+            unload(xlib.randr.handle);
             unload(xlib.xcb.handle);
             unload(xlib.xi.handle);
             unload(xlib.xcursor.handle);
@@ -312,6 +316,9 @@ namespace awin::platform::x11
 
     void init_pcall_data(LinuxPlatformCaller &caller);
     void init_wcall_data(LinuxWindowCaller &caller);
+    bool poll_monitors(acul::vector<Monitor> &result);
+    bool get_monitor_video_modes(const Monitor *monitor, acul::vector<VidMode> &result);
+    bool get_monitor_video_mode(const Monitor *monitor, VidMode &result);
 
     void init_ccall_data(LinuxCursorCaller &caller);
     Cursor::Platform *create_cursor(Cursor::Type);

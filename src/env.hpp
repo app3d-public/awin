@@ -1,7 +1,8 @@
 #pragma once
+
 #include <acul/string/string.hpp>
-#include <awin/window.hpp>
-#include "awin/types.hpp"
+#include <awin/awin.hpp>
+#include <awin/types.hpp>
 
 namespace awin
 {
@@ -45,6 +46,7 @@ namespace awin
             acul::log::log_service *log_service = nullptr;
             acul::log::logger_base *logger = nullptr;
             Cursor default_cursor;
+            acul::vector<Monitor> monitors;
             EventRegistry events;
         } *g_env;
     } // namespace platform

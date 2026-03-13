@@ -1,7 +1,7 @@
 #pragma once
 
 #include <X11/X.h>
-#include "window.hpp"
+#include "awin.hpp"
 #ifdef _WIN32
     #include <windows.h>
 #else

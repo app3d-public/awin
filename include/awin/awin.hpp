@@ -10,6 +10,7 @@
 
 #include <acul/event.hpp>
 #include <acul/log.hpp>
+#include <acul/vector.hpp>
 #include "types.hpp"
 
 #define WINDOW_BACKEND_UNKNOWN -1
@@ -20,6 +21,52 @@
 
 namespace awin
 {
+    struct VidMode
+    {
+        int width{};
+        int height{};
+        struct Color
+        {
+            u8 r, g, b;
+        } color_bits;
+        int refresh_rate = 0;
+
+        inline int bpp() const { return color_bits.r + color_bits.g + color_bits.b; }
+
+        bool operator<(const VidMode &rhs) const
+        {
+            const int lhs_bpp = bpp();
+            const int rhs_bpp = rhs.bpp();
+            if (lhs_bpp != rhs_bpp) return lhs_bpp < rhs_bpp;
+
+            const int lhs_area = width * height;
+            const int rhs_area = rhs.width * rhs.height;
+            if (lhs_area != rhs_area) return lhs_area < rhs_area;
+            if (width != rhs.width) return width < rhs.width;
+            return refresh_rate < rhs.refresh_rate;
+        }
+
+        bool operator==(const VidMode &rhs) const
+        {
+            return width == rhs.width && height == rhs.height && color_bits.r == rhs.color_bits.r &&
+                   color_bits.g == rhs.color_bits.g && color_bits.b == rhs.color_bits.b &&
+                   refresh_rate == rhs.refresh_rate;
+        }
+    };
+
+    struct Monitor
+    {
+        acul::string name;
+        acul::string system_name;
+        acul::point2D<i32> position;
+        acul::point2D<i32> work_position;
+        acul::point2D<i32> dimensions;
+        acul::point2D<i32> work_dimensions;
+        acul::point2D<i32> physical_size_mm;
+        acul::point2D<f32> content_scale{1.f, 1.f};
+        bool primary{false};
+    };
+
     // A window entity in the windowing system
     class APPLIB_API Window
     {
@@ -333,16 +380,18 @@ namespace awin
     // Set the window library initialization time to the specified value in seconds.
     APPLIB_API void set_time(f64 time);
 
-    /**
-     * Retrieves information about the primary monitor of the system. The primary monitor
-     * is typically the default display where applications are opened by default. This function
-     * is particularly useful for applications that need to be aware of the monitor's
-     * resolution, position, and size for layout optimizations, window positioning, or
-     * adapting to different screen sizes.
-     *
-     * @return Position and size of the primary monitor.
-     */
-    APPLIB_API MonitorInfo get_primary_monitor_info();
+    // Retrieves monitor list cached during platform initialization.
+    APPLIB_API const acul::vector<Monitor> &get_monitors();
+
+    // Retrieves the primary monitor. Returns nullptr if no monitors are available.
+    // Returned pointer is valid until monitor list is repolled or library is destroyed.
+    APPLIB_API const Monitor *get_primary_monitor();
+
+    // Retrieves all supported video modes for the given monitor.
+    APPLIB_API acul::vector<VidMode> get_monitor_video_modes(const Monitor *monitor);
+
+    // Retrieves the current video mode for the given monitor.
+    APPLIB_API VidMode get_monitor_video_mode(const Monitor *monitor);
 
     // Processes all pending events in the event queue. This function checks the state
     // of all windows and other event sources, processes those events, and returns
@@ -381,9 +430,9 @@ namespace awin
 
     struct InitConfig
     {
-        acul::events::dispatcher* events_dispatcher = nullptr;
-        acul::log::log_service* log_service = nullptr;
-        acul::log::logger_base* logger = nullptr;
+        acul::events::dispatcher *events_dispatcher = nullptr;
+        acul::log::log_service *log_service = nullptr;
+        acul::log::logger_base *logger = nullptr;
     };
 
     // Initialize the library.

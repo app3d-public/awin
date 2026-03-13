@@ -8,6 +8,9 @@
 
 namespace awin
 {
+    struct Monitor;
+    struct VidMode;
+
     struct Cursor::Platform
     {
         ~Platform();
@@ -46,6 +49,9 @@ namespace awin
         {
             bool (*init_platform)();
             void (*destroy_platform)();
+            bool (*poll_monitors)(acul::vector<Monitor> &);
+            bool (*get_monitor_video_modes)(const Monitor *, acul::vector<VidMode> &);
+            bool (*get_monitor_video_mode)(const Monitor *, VidMode &);
             WindowData *(*alloc_window_data)();
             void (*poll_events)();
             void (*wait_events)();
@@ -55,7 +61,6 @@ namespace awin
             acul::point2D<i32> (*get_window_size)(const Window &);
             acul::string (*get_clipboard_string)();
             void (*set_clipboard_string)(const acul::string &);
-            MonitorInfo (*get_primary_monitor_info)();
         };
 
         struct LinuxCursorCaller

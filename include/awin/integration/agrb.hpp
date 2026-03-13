@@ -2,7 +2,7 @@
 #define APP_WINDOW_VULKAN_H
 
 #include <agrb/device.hpp>
-#include "../window.hpp"
+#include "../awin.hpp"
 
 namespace awin
 {

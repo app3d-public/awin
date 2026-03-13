@@ -1,6 +1,6 @@
 #include <acul/string/string.hpp>
 #include <acul/string/string_view.hpp>
-#include <awin/window.hpp>
+#include <awin/awin.hpp>
 #include "../env.hpp"
 #include "platform.hpp"
 #include "window.hpp"
@@ -1127,8 +1127,6 @@ namespace awin::platform::x11
         {
             // HACK: Key repeat events will arrive as KeyRelease/KeyPress
             //       pairs with similar or identical time stamps
-            //       The key repeat logic in _glfwInputKey expects only key
-            //       presses to repeat, so detect and discard release events
             if (xlib.XEventsQueued(g_ctx->display, QueuedAfterReading))
             {
                 XEvent next;

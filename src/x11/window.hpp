@@ -3,7 +3,7 @@
 #include <X11/Xlib.h>
 #include <acul/pair.hpp>
 #include <acul/string/string.hpp>
-#include <awin/window.hpp>
+#include <awin/awin.hpp>
 #include <poll.h>
 
 namespace awin
@@ -70,7 +70,6 @@ namespace awin
             void set_clipboard_string(const acul::string &text);
 
             void set_window_icon(WindowData *, const acul::vector<Image> &);
-            MonitorInfo get_primary_monitor_info();
         } // namespace x11
     } // namespace platform
 } // namespace awin

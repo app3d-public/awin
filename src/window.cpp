@@ -1,4 +1,4 @@
-#include <awin/window.hpp>
+#include <awin/awin.hpp>
 #include <cmath>
 #include "env.hpp"
 

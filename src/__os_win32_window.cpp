@@ -1,6 +1,7 @@
 #include <acul/string/string.hpp>
+#include <awin/awin.hpp>
 #include <awin/native_access.hpp>
-#include <awin/window.hpp>
+#include <dbt.h>
 #include <shlobj.h>
 #include <windef.h>
 #include <windowsx.h>
@@ -18,6 +19,8 @@ namespace awin
 
     namespace platform
     {
+        bool poll_monitors(acul::vector<Monitor> &result);
+
         Context ctx;
 
         struct Win32WindowData final : WindowData
@@ -64,6 +67,21 @@ namespace awin
             if (GetKeyState(VK_CAPITAL) & 1) mods |= io::KeyModeBits::caps_lock;
             if (GetKeyState(VK_NUMLOCK) & 1) mods |= io::KeyModeBits::num_lock;
             return mods;
+        }
+
+        static void update_primary_screen_cache()
+        {
+            const Monitor *monitor = get_primary_monitor();
+            if (monitor)
+            {
+                ctx.screen.x = monitor->dimensions.x;
+                ctx.screen.y = monitor->dimensions.y;
+            }
+            if (ctx.screen.x <= 0 || ctx.screen.y <= 0)
+            {
+                ctx.screen.x = GetSystemMetrics(SM_CXSCREEN);
+                ctx.screen.y = GetSystemMetrics(SM_CYSCREEN);
+            }
         }
 
         void add_frame_to_client_area(RECT *area, bool is_maximized, int multiplier)
@@ -127,9 +145,7 @@ namespace awin
                     window = reinterpret_cast<Win32WindowData *>(create_struct->lpCreateParams);
                     if (!window) break;
                     SetPropW(hwnd, L"AWIN", reinterpret_cast<HANDLE>(window));
-                    MonitorInfo monitor_info = get_primary_monitor_info();
-                    ctx.screen.x = monitor_info.dimensions.x;
-                    ctx.screen.y = monitor_info.dimensions.y;
+                    update_primary_screen_cache();
                     if (window->flags & WindowFlagBits::fullscreen)
                     {
                         SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, ctx.screen.x, ctx.screen.y, SWP_SHOWWINDOW);
@@ -493,6 +509,21 @@ namespace awin
                                                                         yscale);
                     break;
                 }
+                case WM_DISPLAYCHANGE:
+                {
+                    poll_monitors(g_env->monitors);
+                    update_primary_screen_cache();
+                    break;
+                }
+                case WM_DEVICECHANGE:
+                {
+                    if (wParam == DBT_DEVNODES_CHANGED)
+                    {
+                        poll_monitors(g_env->monitors);
+                        update_primary_screen_cache();
+                    }
+                    break;
+                }
                 case WM_SETCURSOR:
                 {
                     if (LOWORD(lParam) == HTCLIENT)
@@ -586,23 +617,11 @@ namespace awin
             if (!RegisterClassExW(&ctx.win32_class)) return false;
             // Init platform for using COM objects
             HRESULT hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
-            return !FAILED(hr);
+            if (FAILED(hr)) return false;
+            if (!poll_monitors(g_env->monitors)) AWIN_LOG_WARN("[Win32] Failed to poll monitors during init");
+            return true;
         }
     } // namespace platform
-
-    MonitorInfo get_primary_monitor_info()
-    {
-        HMONITOR hMonitor = MonitorFromPoint({0, 0}, MONITOR_DEFAULTTOPRIMARY);
-        MONITORINFO monitor_info = {sizeof(monitor_info)};
-        if (GetMonitorInfoW(hMonitor, &monitor_info))
-        {
-            return {.work = {monitor_info.rcWork.right, monitor_info.rcWork.bottom},
-                    .dimensions = {monitor_info.rcMonitor.right - monitor_info.rcMonitor.left,
-                                   monitor_info.rcMonitor.bottom - monitor_info.rcMonitor.top}};
-        }
-        else
-            return {};
-    }
 
     Window::Window(const acul::string &title, i32 width, i32 height, WindowFlags flags)
         : _data(acul::alloc<platform::Win32WindowData>())
@@ -809,16 +828,12 @@ namespace awin
     void poll_events()
     {
         MSG msg = {};
-        HWND hwnd = GetActiveWindow();
 
         while (PeekMessageW(&msg, NULL, 0, 0, PM_REMOVE))
         {
             TranslateMessage(&msg);
             DispatchMessageW(&msg);
         }
-
-        auto *window = (platform::Win32WindowData *)GetPropW(hwnd, L"AWIN");
-        if (!window) return;
     }
 
     void wait_events_timeout()

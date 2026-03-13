@@ -179,13 +179,6 @@ namespace awin
         using KeyMode = acul::flags<KeyModeBits>;
     } // namespace io
 
-    // Basic information about a monitor/display.
-    struct MonitorInfo
-    {
-        acul::point2D<long> work;
-        acul::point2D<long> dimensions;
-    };
-
     class APPLIB_API Cursor
     {
 

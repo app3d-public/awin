@@ -1,5 +1,5 @@
 #include <awin/native_access.hpp>
-#include <awin/window.hpp>
+#include <awin/awin.hpp>
 
 void test_window()
 {

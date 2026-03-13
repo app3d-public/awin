@@ -3,7 +3,7 @@
 #include <X11/Xmd.h>
 #include <X11/cursorfont.h>
 #include <awin/native_access.hpp>
-#include <awin/window.hpp>
+#include <awin/awin.hpp>
 #include "../env.hpp"
 #include "platform.hpp"
 #include "window.hpp"
@@ -1103,14 +1103,11 @@ namespace awin
             xlib.XFlush(g_ctx->display);
         }
 
-        MonitorInfo get_primary_monitor_info()
+        static acul::point2D<long> get_primary_work_dimensions()
         {
             auto &xlib = g_ctx->xlib;
-
-            MonitorInfo result;
-
-            result.dimensions.x = DisplayWidth(g_ctx->display, g_ctx->screen);
-            result.dimensions.y = DisplayHeight(g_ctx->display, g_ctx->screen);
+            acul::point2D<long> work_dimensions = {DisplayWidth(g_ctx->display, g_ctx->screen),
+                                                   DisplayHeight(g_ctx->display, g_ctx->screen)};
 
             Atom type;
             int format;
@@ -1123,22 +1120,18 @@ namespace awin
                 data && nitems >= 4)
             {
                 long *workarea = reinterpret_cast<long *>(data);
-                result.work.x = workarea[2];
-                result.work.y = workarea[3];
+                work_dimensions.x = workarea[2];
+                work_dimensions.y = workarea[3];
                 xlib.XFree(data);
             }
-            else
-                result.work = result.dimensions;
-
-            return result;
+            return work_dimensions;
         }
 
         void center_window(WindowData *window)
         {
             auto &xlib = g_ctx->xlib;
-            MonitorInfo info = get_primary_monitor_info();
-            acul::point2D<long> center = {(info.work.x - window->dimenstions.x) / 2,
-                                          (info.work.y - window->dimenstions.y) / 2};
+            const auto work = get_primary_work_dimensions();
+            acul::point2D<long> center = {(work.x - window->dimenstions.x) / 2, (work.y - window->dimenstions.y) / 2};
             if (center.y < 0) center.y = 0;
             auto *x11_data = (X11WindowData *)window;
             xlib.XMoveResizeWindow(g_ctx->display, x11_data->window, center.x, center.y, window->dimenstions.x,

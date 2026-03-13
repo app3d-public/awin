@@ -91,7 +91,6 @@ namespace awin
             void set_clipboard_string(const acul::string &text);
 
             void set_window_icon(WindowData *, const acul::vector<Image> &);
-            MonitorInfo get_primary_monitor_info();
 
             void center_window(WindowData *window);
             void update_resize_limit(WindowData *window);

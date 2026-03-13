@@ -317,6 +317,32 @@ namespace awin
 
                 bool load();
             };
+
+            class RandRLoader
+            {
+            public:
+                void *handle = nullptr;
+
+                PFN_XRRAllocGamma XRRAllocGamma = nullptr;
+                PFN_XRRFreeCrtcInfo XRRFreeCrtcInfo = nullptr;
+                PFN_XRRFreeGamma XRRFreeGamma = nullptr;
+                PFN_XRRFreeOutputInfo XRRFreeOutputInfo = nullptr;
+                PFN_XRRFreeScreenResources XRRFreeScreenResources = nullptr;
+                PFN_XRRGetCrtcGamma XRRGetCrtcGamma = nullptr;
+                PFN_XRRGetCrtcGammaSize XRRGetCrtcGammaSize = nullptr;
+                PFN_XRRGetCrtcInfo XRRGetCrtcInfo = nullptr;
+                PFN_XRRGetOutputInfo XRRGetOutputInfo = nullptr;
+                PFN_XRRGetOutputPrimary XRRGetOutputPrimary = nullptr;
+                PFN_XRRGetScreenResourcesCurrent XRRGetScreenResourcesCurrent = nullptr;
+                PFN_XRRQueryExtension XRRQueryExtension = nullptr;
+                PFN_XRRQueryVersion XRRQueryVersion = nullptr;
+                PFN_XRRSelectInput XRRSelectInput = nullptr;
+                PFN_XRRSetCrtcConfig XRRSetCrtcConfig = nullptr;
+                PFN_XRRSetCrtcGamma XRRSetCrtcGamma = nullptr;
+                PFN_XRRUpdateConfiguration XRRUpdateConfiguration = nullptr;
+
+                bool load();
+            };
         } // namespace x11
     } // namespace platform
 } // namespace awin

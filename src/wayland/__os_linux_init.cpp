@@ -46,6 +46,7 @@ namespace awin::platform::wayland
         Output *output = (Output *)user_data;
         output->dimensions.x = width;
         output->dimensions.y = height;
+        output->current_mode = refresh;
     }
 
     static void output_handle_done(void *user_data, wl_output *)
@@ -393,6 +394,9 @@ namespace awin::platform::wayland
     {
         caller.init_platform = init_platform;
         caller.destroy_platform = destroy_platform;
+        caller.poll_monitors = poll_monitors;
+        caller.get_monitor_video_modes = get_monitor_video_modes;
+        caller.get_monitor_video_mode = get_monitor_video_mode;
         caller.alloc_window_data = alloc_window_data;
         caller.poll_events = poll_events;
         caller.wait_events = wait_events;
@@ -402,7 +406,6 @@ namespace awin::platform::wayland
         caller.get_window_size = get_window_size;
         caller.get_clipboard_string = get_clipboard_string;
         caller.set_clipboard_string = set_clipboard_string;
-        caller.get_primary_monitor_info = get_primary_monitor_info;
     }
 
     void init_wcall_data(LinuxWindowCaller &caller)

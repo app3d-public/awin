@@ -17,6 +17,27 @@ namespace awin
             LinuxCursorCaller ccall;
         } pd;
 
+        bool poll_monitors(acul::vector<Monitor> &result)
+        {
+            result.clear();
+            if (!pd.pcall.poll_monitors) return false;
+            return pd.pcall.poll_monitors(result);
+        }
+
+        bool get_monitor_video_modes(const Monitor *monitor, acul::vector<VidMode> &result)
+        {
+            result.clear();
+            if (!pd.pcall.get_monitor_video_modes) return false;
+            return pd.pcall.get_monitor_video_modes(monitor, result);
+        }
+
+        bool get_monitor_video_mode(const Monitor *monitor, VidMode &result)
+        {
+            result = {};
+            if (!pd.pcall.get_monitor_video_mode) return false;
+            return pd.pcall.get_monitor_video_mode(monitor, result);
+        }
+
         void init_timer()
         {
             g_env->timer.clock_id = CLOCK_REALTIME;
@@ -72,7 +93,9 @@ namespace awin
                 AWIN_LOG_ERROR("Unknown window backend");
                 return false;
             }
-            return pd.pcall.init_platform();
+            if (!pd.pcall.init_platform()) return false;
+            poll_monitors(g_env->monitors);
+            return true;
         }
 
         u64 get_time_value()
@@ -161,8 +184,6 @@ namespace awin
     }
 
     bool Cursor::valid() const { return platform::pd.ccall.valid(_pd); }
-
-    MonitorInfo get_primary_monitor_info() { return platform::pd.pcall.get_primary_monitor_info(); }
 
     Window::Window(const acul::string &title, i32 width, i32 height, WindowFlags flags)
         : _data(platform::pd.pcall.alloc_window_data())
