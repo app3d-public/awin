@@ -267,6 +267,23 @@ namespace awin
                             action = io::KeyPressState::release;
                             break;
                     };
+
+                    // Keep receiving button-release even when pointer leaves the window.
+                    // Do not interfere with hidden-cursor capture mode.
+                    if (!window->is_cursor_hidden)
+                    {
+                        if (action == io::KeyPressState::press)
+                        {
+                            if (GetCapture() != hwnd) SetCapture(hwnd);
+                        }
+                        else
+                        {
+                            const bool any_button_down =
+                                (wParam & (MK_LBUTTON | MK_RBUTTON | MK_MBUTTON | MK_XBUTTON1 | MK_XBUTTON2)) != 0;
+                            if (!any_button_down && GetCapture() == hwnd) ReleaseCapture();
+                        }
+                    }
+
                     acul::events::dispatch_event_group<awin::MouseClickEvent>(events.mouse_click, window->owner, button,
                                                                               action);
                     break;
@@ -818,6 +835,8 @@ namespace awin
         auto *wd = (platform::Win32WindowData *)_data;
         ShowWindow(wd->hwnd, maximized() ? SW_RESTORE : SW_MAXIMIZE);
     }
+
+    void set_timeout(f64 timeout) { platform::g_env->timeout = timeout; }
 
     void wait_events()
     {

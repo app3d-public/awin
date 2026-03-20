@@ -380,6 +380,8 @@ namespace awin
     // Set the window library initialization time to the specified value in seconds.
     APPLIB_API void set_time(f64 time);
 
+    APPLIB_API void set_timeout(f64 timeout = WINDOW_TIMEOUT_INF);
+
     // Retrieves monitor list cached during platform initialization.
     APPLIB_API const acul::vector<Monitor> &get_monitors();
 
