@@ -158,12 +158,18 @@ namespace awin
         DWORD get_window_style(WindowFlags flags)
         {
             DWORD style = WS_CLIPSIBLINGS | WS_CLIPCHILDREN;
-            if (flags & WindowFlagBits::fullscreen) style |= WS_POPUP;
-            if (flags & WindowFlagBits::decorated) style |= WS_SYSMENU;
-            if (flags & WindowFlagBits::minimize_box) style |= WS_MINIMIZEBOX;
-            if (flags & WindowFlagBits::maximize_box) style |= WS_MAXIMIZEBOX;
-            if (flags & WindowFlagBits::resizable) style |= WS_THICKFRAME;
-            if (flags & WindowFlagBits::decorated) style |= WS_CAPTION;
+            const bool is_decorated = flags & WindowFlagBits::decorated;
+            if ((flags & WindowFlagBits::fullscreen) || !is_decorated)
+            {
+                style |= WS_POPUP;
+            }
+            else
+            {
+                style |= WS_SYSMENU | WS_CAPTION;
+                if (flags & WindowFlagBits::minimize_box) style |= WS_MINIMIZEBOX;
+                if (flags & WindowFlagBits::maximize_box) style |= WS_MAXIMIZEBOX;
+                if (flags & WindowFlagBits::resizable) style |= WS_THICKFRAME;
+            }
             return style;
         }
 

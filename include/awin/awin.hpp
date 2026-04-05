@@ -78,6 +78,11 @@ namespace awin
         u8 b{0};
     };
 
+    inline constexpr ColorHint make_color_hint(u8 r, u8 g, u8 b, u8 a = 255)
+    {
+        return ColorHint{.enabled = true, .a = a, .r = r, .g = g, .b = b};
+    }
+
     struct WindowTitleBarButtonHints
     {
         ColorHint background;
