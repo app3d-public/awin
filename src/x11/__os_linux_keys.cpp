@@ -964,7 +964,7 @@ namespace awin::platform::x11
         for (Atom target : formats)
         {
             XEvent event;
-            xlib.XConvertSelection(g_ctx->display, selection, target, g_ctx->select_atoms.WINDOW_SELECTION,
+            xlib.XConvertSelection(g_ctx->display, selection, target, g_ctx->select_atoms.AWIN_SELECTION,
                                    g_ctx->helper_window, CurrentTime);
 
             while (!xlib.XCheckTypedWindowEvent(g_ctx->display, g_ctx->helper_window, SelectionNotify, &event))

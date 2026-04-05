@@ -216,7 +216,7 @@ namespace awin::platform::x11
         g_ctx->select_atoms.ATOM_PAIR = xlib.XInternAtom(g_ctx->display, "ATOM_PAIR", False);
 
         // Custom selection property atom
-        g_ctx->select_atoms.WINDOW_SELECTION = xlib.XInternAtom(g_ctx->display, "WINDOW_SELECTION", False);
+        g_ctx->select_atoms.AWIN_SELECTION = xlib.XInternAtom(g_ctx->display, "AWIN_SELECTION", False);
 
         // ICCCM standard clipboard atoms
         g_ctx->select_atoms.TARGETS = xlib.XInternAtom(g_ctx->display, "TARGETS", False);

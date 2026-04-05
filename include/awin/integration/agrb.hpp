@@ -1,5 +1,5 @@
-#ifndef APP_WINDOW_VULKAN_H
-#define APP_WINDOW_VULKAN_H
+#ifndef APP_AWIN_VULKAN_H
+#define APP_AWIN_VULKAN_H
 
 #include <agrb/device.hpp>
 #include "../awin.hpp"

@@ -99,7 +99,7 @@ namespace awin::platform::x11
         Atom UTF8_STRING;
         Atom COMPOUND_STRING;
         Atom ATOM_PAIR;
-        Atom WINDOW_SELECTION;
+        Atom AWIN_SELECTION;
     };
 
     struct X11Cursor final : Cursor::Platform

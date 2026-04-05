@@ -612,7 +612,7 @@ namespace awin
                         window->pending.flags |= WindowFlagBits::fullscreen;
                         break;
                     case XDG_TOPLEVEL_STATE_ACTIVATED:
-                        window->pending.flags |= WindowFlagBits::activated;
+                        window->pending.activated = true;
                         break;
                     default:
                         break;
@@ -679,7 +679,7 @@ namespace awin
             auto *window = (WaylandWindowData *)user_data;
             xdg_surface_ack_configure(surface, serial);
 
-            const bool is_pending_activated = window->pending.flags & WindowFlagBits::activated;
+            const bool is_pending_activated = window->pending.activated;
             if (window->activated != is_pending_activated)
             {
                 window->activated = is_pending_activated;
@@ -716,9 +716,9 @@ namespace awin
 
             if (libdecor_configuration_get_window_state(config, &window_state))
             {
-                fullscreen = (window_state & LIBDECOR_WINDOW_STATE_FULLSCREEN) != 0;
-                activated = (window_state & LIBDECOR_WINDOW_STATE_ACTIVE) != 0;
-                maximized = (window_state & LIBDECOR_WINDOW_STATE_MAXIMIZED) != 0;
+                fullscreen = (window_state & LIBDECOR_AWIN_STATE_FULLSCREEN) != 0;
+                activated = (window_state & LIBDECOR_AWIN_STATE_ACTIVE) != 0;
+                maximized = (window_state & LIBDECOR_AWIN_STATE_MAXIMIZED) != 0;
             }
             else
             {
@@ -1360,7 +1360,7 @@ namespace awin
 
         void wait_events() { handle_events(NULL); }
 
-        void wait_events_timeout() { handle_events(g_env->timeout > WINDOW_TIMEOUT_INF ? &g_env->timeout : NULL); }
+        void wait_events_timeout() { handle_events(g_env->timeout > AWIN_TIMEOUT_INF ? &g_env->timeout : NULL); }
 
         void push_empty_event()
         {

@@ -1,5 +1,5 @@
-#ifndef APP_WINDOW_POPUP_H
-#define APP_WINDOW_POPUP_H
+#ifndef APP_AWIN_POPUP_H
+#define APP_AWIN_POPUP_H
 
 #include <acul/api.hpp>
 #include <acul/string/string.hpp>

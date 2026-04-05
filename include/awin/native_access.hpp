@@ -13,8 +13,28 @@ namespace awin
     namespace native_access
     {
 #ifdef _WIN32
+    #if defined(AWIN_WIN32_APP_SDK_ENABLED)
+        struct Win32TitleBarMetrics
+        {
+            i32 left_inset{0};
+            i32 right_inset{0};
+            i32 height{0};
+        };
+
+        struct Win32TitleBarDragRect
+        {
+            i32 x{0};
+            i32 y{0};
+            i32 width{0};
+            i32 height{0};
+        };
+
+        APPLIB_API bool set_win32_title_bar_config(Window &window, const WindowTitleBarHints &config);
+        APPLIB_API bool get_win32_title_bar_metrics(const Window &window, Win32TitleBarMetrics &metrics);
+        APPLIB_API bool set_win32_title_bar_drag_rects(const Window &window,
+                                                       const acul::vector<Win32TitleBarDragRect> &rects);
+    #endif
         APPLIB_API HWND get_hwnd(const Window &window);
-        APPLIB_API acul::point2D<i32> get_full_client_size(const Window &window);
 #else
         APPLIB_API int get_backend_type();
         APPLIB_API ::Window get_x11_window_handle(const Window &window);

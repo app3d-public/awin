@@ -17,7 +17,7 @@ namespace awin::integration
         dst.push_back(vk::KHRWin32SurfaceExtensionName);
 #else
         int backend = native_access::get_backend_type();
-        if (backend == WINDOW_BACKEND_X11)
+        if (backend == AWIN_BACKEND_X11)
         {
     #ifdef VK_USE_PLATFORM_XCB_KHR
             auto it = ext.find(vk::KHRXcbSurfaceExtensionName);
@@ -32,7 +32,7 @@ namespace awin::integration
     #endif
         }
     #ifdef VK_USE_PLATFORM_WAYLAND_KHR
-        else if (backend == WINDOW_BACKEND_WAYLAND)
+        else if (backend == AWIN_BACKEND_WAYLAND)
             dst.push_back(vk::KHRWaylandSurfaceExtensionName);
     #endif
 #endif
@@ -79,7 +79,7 @@ namespace awin::integration
             return vk::Result::eSuccess;
 #else
             int backend = native_access::get_backend_type();
-            if (backend == WINDOW_BACKEND_X11)
+            if (backend == AWIN_BACKEND_X11)
             {
     #ifdef VK_USE_PLATFORM_XCB_KHR
                 if (platform::x11::g_ctx->xlib.xcb.is_extension_present && platform::x11::g_ctx->xlib.xcb.handle)
@@ -91,7 +91,7 @@ namespace awin::integration
                 return vk::Result::eErrorExtensionNotPresent;
     #endif
             }
-            else if (backend == WINDOW_BACKEND_WAYLAND)
+            else if (backend == AWIN_BACKEND_WAYLAND)
             {
     #ifdef VK_USE_PLATFORM_WAYLAND_KHR
                 vk::WaylandSurfaceCreateInfoKHR info;

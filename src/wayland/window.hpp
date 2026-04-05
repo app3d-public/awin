@@ -52,6 +52,7 @@ namespace awin
                 {
                     acul::point2D<int> dimensions;
                     WindowFlags flags;
+                    bool activated{false};
                 } pending;
             };
 

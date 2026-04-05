@@ -1,5 +1,5 @@
-#ifndef APP_WINDOW_TYPES_H
-#define APP_WINDOW_TYPES_H
+#ifndef APP_AWIN_TYPES_H
+#define APP_AWIN_TYPES_H
 
 #include <acul/api.hpp>
 #include <acul/enum.hpp>
@@ -233,25 +233,16 @@ namespace awin
     // Flags for window creation, stored as u16 for memory efficiency.
     struct WindowFlagBits
     {
-#ifdef _WIN32
-    #define NATIVE_RESERVE_FLAG snapped
-#else
-    #define NATIVE_RESERVE_FLAG activated
-#endif
         enum enum_type : u16
         {
-            resizable = 0x0001,           // Allows window resizing.
-            NATIVE_RESERVE_FLAG = 0x0002, //
-                                          // Win32: Enables window snapping to screen edges.
-                                          // Wayland: Reserved for internal API.
-                                          // Actually doesn't need in a Window instance
-            decorated = 0x0004,           // Adds decorations like title bar and borders.
-            fullscreen = 0x0008,          // Enables fullscreen mode.
-            minimize_box = 0x00010,       // Includes a minimize button.
-            maximize_box = 0x00020,       // Includes a maximize button.
-            hidden = 0x00040,             // Does not show the window on creation.
-            minimized = 0x00080,          // Minimized.
-            maximized = 0x00100,          // Maximized.
+            resizable = 0x0001,     // Allows window resizing.
+            decorated = 0x0004,     // Adds decorations like title bar and borders.
+            fullscreen = 0x0008,    // Enables fullscreen mode.
+            minimize_box = 0x00010, // Includes a minimize button.
+            maximize_box = 0x00020, // Includes a maximize button.
+            hidden = 0x00040,       // Does not show the window on creation.
+            minimized = 0x00080,    // Minimized.
+            maximized = 0x00100,    // Maximized.
         };
         using flag_bitmask = std::true_type;
     };
@@ -259,9 +250,9 @@ namespace awin
     // Flags for window creation, stored as u8 for memory efficiency.
     using WindowFlags = acul::flags<WindowFlagBits>;
 
-#define WINDOW_DEFAULT_FLAGS                                                                  \
-    WindowFlagBits::resizable | WindowFlagBits::minimize_box | WindowFlagBits::maximize_box | \
-        WindowFlagBits::decorated | WindowFlagBits::NATIVE_RESERVE_FLAG
+#define AWIN_DEFAULT_FLAGS                                                                  \
+    awin::WindowFlagBits::resizable | awin::WindowFlagBits::minimize_box | awin::WindowFlagBits::maximize_box | \
+        awin::WindowFlagBits::decorated
 
     struct Image
     {

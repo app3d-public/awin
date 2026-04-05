@@ -144,6 +144,12 @@ namespace awin::platform
         int padding;
         acul::point2D<int> frame, screen;
         UINT dpi;
+        u32 platform_flags{0};
+        bool com_initialized{false};
+#if defined(AWIN_WIN32_APP_SDK_ENABLED)
+        bool windows_app_sdk_enabled{false};
+        bool windows_app_sdk_bootstrapped{false};
+#endif
         acul::lut_table<256, KeyTraits> keymap;
     } ctx;
 } // namespace awin::platform

@@ -985,12 +985,21 @@ namespace awin
             wa.event_mask = StructureNotifyMask | KeyPressMask | KeyReleaseMask | PointerMotionMask | ButtonPressMask |
                             ButtonReleaseMask | ExposureMask | FocusChangeMask | VisibilityChangeMask |
                             EnterWindowMask | LeaveWindowMask | PropertyChangeMask;
+            unsigned long attribute_mask = CWBorderPixel | CWColormap | CWEventMask;
+            if (g_env->has_active_window_hints && g_env->active_window_hints.background.enabled)
+            {
+                wa.background_pixel =
+                    (static_cast<unsigned long>(g_env->active_window_hints.background.r) << 16) |
+                    (static_cast<unsigned long>(g_env->active_window_hints.background.g) << 8) |
+                    static_cast<unsigned long>(g_env->active_window_hints.background.b);
+                attribute_mask |= CWBackPixel;
+            }
             grab_error_handler();
             x11_data->parent = g_ctx->root;
             x11_data->window = xlib.XCreateWindow(g_ctx->display, g_ctx->root, 0, 0, width, height,
                                                   0,     // Border width
                                                   depth, // Color depth
-                                                  InputOutput, visual, CWBorderPixel | CWColormap | CWEventMask, &wa);
+                                                  InputOutput, visual, attribute_mask, &wa);
             release_error_handler();
             if (!x11_data->window)
             {
@@ -1152,7 +1161,7 @@ namespace awin
 
             if (window_data->flags & WindowFlagBits::resizable)
             {
-                if (window_data->resize_limit.x != WINDOW_DONT_CARE && window_data->resize_limit.y != WINDOW_DONT_CARE)
+                if (window_data->resize_limit.x != AWIN_DONT_CARE && window_data->resize_limit.y != AWIN_DONT_CARE)
                 {
                     hints->flags |= PMinSize;
                     hints->min_width = window_data->resize_limit.x;
@@ -1249,7 +1258,7 @@ namespace awin
 
         void wait_events_timeout()
         {
-            wait_for_any_event(g_env->timeout > WINDOW_TIMEOUT_INF ? &g_env->timeout : NULL);
+            wait_for_any_event(g_env->timeout > AWIN_TIMEOUT_INF ? &g_env->timeout : NULL);
             poll_events();
         }
 

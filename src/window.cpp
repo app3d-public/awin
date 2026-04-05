@@ -1,5 +1,8 @@
 #include <awin/awin.hpp>
 #include <cmath>
+#if defined(_WIN32) && defined(AWIN_WIN32_APP_SDK_ENABLED)
+    #include <winrt/Microsoft.UI.Windowing.h>
+#endif
 #include "env.hpp"
 
 namespace awin
@@ -7,6 +10,15 @@ namespace awin
     namespace platform
     {
         WindowEnvironment *g_env{nullptr};
+
+        bool consume_next_window_hints(WindowHints &out_hints)
+        {
+            if (!g_env || !g_env->next_window_hints) return false;
+            out_hints = *g_env->next_window_hints;
+            acul::release(g_env->next_window_hints);
+            g_env->next_window_hints = nullptr;
+            return true;
+        }
 
         void input_key(WindowData *data, io::Key key, io::KeyPressState action, io::KeyMode mods)
         {
@@ -42,10 +54,6 @@ namespace awin
         assert(g_env && g_env->ed);
         auto *ed = g_env->ed;
         auto &events = g_env->events;
-#ifdef _WIN32
-        acul::events::cache_event_group(event_id::nc_mouse_down, events.ncl_mouse_down, ed);
-        acul::events::cache_event_group(event_id::nc_hit_test, events.nc_hit_test, ed);
-#endif
         acul::events::cache_event_group(event_id::focus, events.focus, ed);
         acul::events::cache_event_group(event_id::scroll, events.scroll, ed);
         acul::events::cache_event_group(event_id::minimize, events.minimize, ed);
@@ -66,6 +74,7 @@ namespace awin
         platform::g_env = acul::alloc<platform::WindowEnvironment>();
         platform::g_env->log_service = config.log_service;
         platform::g_env->logger = config.logger;
+        platform::g_env->platform_flags = config.platform_flags;
         if (!platform::init_platform()) throw acul::runtime_error("Failed to initialize Window platform");
         platform::init_timer();
         set_time(0.0);
@@ -77,6 +86,11 @@ namespace awin
     {
         assert(platform::g_env);
         AWIN_LOG_INFO("Destroying Window library");
+        if (platform::g_env->next_window_hints)
+        {
+            acul::release(platform::g_env->next_window_hints);
+            platform::g_env->next_window_hints = nullptr;
+        }
         platform::g_env->default_cursor.reset();
         platform::destroy_platform();
         acul::release(platform::g_env);
@@ -98,5 +112,29 @@ namespace awin
         }
         platform::g_env->timer.offset =
             platform::get_time_value() - static_cast<u64>(time * platform::get_time_frequency());
+    }
+
+    void set_next_window_hints(const WindowHints *hints)
+    {
+        if (!platform::g_env) return;
+        if (platform::g_env->next_window_hints)
+        {
+            acul::release(platform::g_env->next_window_hints);
+            platform::g_env->next_window_hints = nullptr;
+        }
+
+        if (!hints) return;
+        platform::g_env->next_window_hints = acul::alloc<WindowHints>(*hints);
+    }
+
+    bool is_titlebar_customization_supported()
+    {
+#if defined(_WIN32) && defined(AWIN_WIN32_APP_SDK_ENABLED)
+        if (!platform::g_env) return false;
+        if (!(platform::g_env->platform_flags & AWIN_PLATFORM_WIN32_APP_SDK)) return false;
+        return winrt::Microsoft::UI::Windowing::AppWindowTitleBar::IsCustomizationSupported();
+#else
+        return false;
+#endif
     }
 } // namespace awin

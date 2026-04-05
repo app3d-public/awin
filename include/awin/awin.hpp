@@ -5,19 +5,21 @@
  * Copyright (c) 2023, Wusiki Jeronii <wusikijeronii@gmail.com>
  ***********************************************************************************/
 
-#ifndef APP_WINDOW_WINDOW_H
-#define APP_WINDOW_WINDOW_H
+#ifndef APP_AWIN_AWIN_H
+#define APP_AWIN_AWIN_H
 
 #include <acul/event.hpp>
 #include <acul/log.hpp>
 #include <acul/vector.hpp>
 #include "types.hpp"
 
-#define WINDOW_BACKEND_UNKNOWN -1
-#define WINDOW_BACKEND_X11     0
-#define WINDOW_BACKEND_WAYLAND 1
-#define WINDOW_TIMEOUT_INF     -1
-#define WINDOW_DONT_CARE       -1
+#define AWIN_BACKEND_UNKNOWN -1
+#define AWIN_BACKEND_X11     0
+#define AWIN_BACKEND_WAYLAND 1
+#define AWIN_TIMEOUT_INF     -1
+#define AWIN_DONT_CARE       -1
+#define AWIN_PLATFORM_WIN32_APP_SDK           0x00000001u
+#define AWIN_PLATFORM_WIN32_APP_SDK_BOOTSTRAP 0x00000002u
 
 namespace awin
 {
@@ -67,13 +69,51 @@ namespace awin
         bool primary{false};
     };
 
+    struct ColorHint
+    {
+        bool enabled{false};
+        u8 a{255};
+        u8 r{0};
+        u8 g{0};
+        u8 b{0};
+    };
+
+    struct WindowTitleBarButtonHints
+    {
+        ColorHint background;
+        ColorHint foreground;
+        ColorHint hover_background;
+        ColorHint hover_foreground;
+        ColorHint pressed_background;
+        ColorHint pressed_foreground;
+        ColorHint inactive_background;
+        ColorHint inactive_foreground;
+    };
+
+    struct WindowTitleBarHints
+    {
+        bool enabled{false};
+        bool extends_content_into_title_bar{false};
+        ColorHint background;
+        ColorHint foreground;
+        ColorHint inactive_background;
+        ColorHint inactive_foreground;
+        WindowTitleBarButtonHints buttons;
+    };
+
+    struct WindowHints
+    {
+        ColorHint background;
+        WindowTitleBarHints title_bar;
+    };
+
     // A window entity in the windowing system
     class APPLIB_API Window
     {
     public:
         // Initialize a window with a title, dimensions, and creation flags.
-        explicit Window(const acul::string &title, i32 width = WINDOW_DONT_CARE, i32 height = WINDOW_DONT_CARE,
-                        WindowFlags flags = WINDOW_DEFAULT_FLAGS);
+        explicit Window(const acul::string &title, i32 width = AWIN_DONT_CARE, i32 height = AWIN_DONT_CARE,
+                        WindowFlags flags = AWIN_DEFAULT_FLAGS);
 
         // Destroy the window
         void destroy();
@@ -216,10 +256,6 @@ namespace awin
         enum : u64
         {
             unknown = 0x0,
-#ifdef _WIN32
-            nc_hit_test = 0x2D5AA1F9EE962269,
-            nc_mouse_down = 0x12D7ACB8440B7678,
-#endif
             focus = 0x05AC2ABF9E301AD1,
             char_input = 0x0B37F6873EA5B017,
             key_input = 0x0E8A91707EFCEB90,
@@ -235,25 +271,6 @@ namespace awin
             move = 0x2A5416AB994F5AAE
         };
     }; // namespace event_id
-
-#ifdef _WIN32
-    // Event specific to Win32 platform, carrying native window message data.
-    struct Win32NativeEvent : acul::events::event
-    {
-        awin::Window *window; // Pointer to the associated Window object.
-        HWND hwnd;            // Handle to the window.
-        UINT uMsg;            // Windows message identifier.
-        WPARAM wParam;        // Additional message information.
-        LPARAM lParam;        // Additional message information.
-        LRESULT lResult;      // Pointer to the result of the message processing.
-
-        explicit Win32NativeEvent(u64 id = 0, awin::Window *window = nullptr, HWND hwnd = 0, UINT uMsg = 0,
-                                  WPARAM wParam = 0, LPARAM lParam = 0, LRESULT lResult = -1)
-            : event(id), window(window), hwnd(hwnd), uMsg(uMsg), wParam(wParam), lParam(lParam), lResult(lResult)
-        {
-        }
-    };
-#endif
 
     // Represents a focus change event in a window.
     struct FocusEvent : public acul::events::event
@@ -380,7 +397,7 @@ namespace awin
     // Set the window library initialization time to the specified value in seconds.
     APPLIB_API void set_time(f64 time);
 
-    APPLIB_API void set_timeout(f64 timeout = WINDOW_TIMEOUT_INF);
+    APPLIB_API void set_timeout(f64 timeout = AWIN_TIMEOUT_INF);
 
     // Retrieves monitor list cached during platform initialization.
     APPLIB_API const acul::vector<Monitor> &get_monitors();
@@ -430,11 +447,17 @@ namespace awin
     // Set text string in the clipboard buffer
     APPLIB_API void set_clipboard_string(const Window &window, const acul::string &text);
 
+    // Sets one-shot hints for the next created window. Pass nullptr to clear pending hints.
+    APPLIB_API void set_next_window_hints(const WindowHints *hints);
+
+    APPLIB_API bool is_titlebar_customization_supported();
+
     struct InitConfig
     {
         acul::events::dispatcher *events_dispatcher = nullptr;
         acul::log::log_service *log_service = nullptr;
         acul::log::logger_base *logger = nullptr;
+        u32 platform_flags = 0;
     };
 
     // Initialize the library.

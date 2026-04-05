@@ -10,7 +10,7 @@ void test_window()
     awin::init_library(config);
 #ifdef __unix__
     int backend_type = awin::native_access::get_backend_type();
-    if (backend_type == WINDOW_BACKEND_WAYLAND) awin::native_access::enable_wayland_surface_placeholder();
+    if (backend_type == AWIN_BACKEND_WAYLAND) awin::native_access::enable_wayland_surface_placeholder();
 #endif
     awin::Window window("Test Window", 640, 480);
     window.resize_limit({500, 400});

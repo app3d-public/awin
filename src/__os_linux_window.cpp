@@ -56,12 +56,12 @@ namespace awin
 
         void destroy_platform()
         {
-            if (pd.backend_type != WINDOW_BACKEND_UNKNOWN) pd.pcall.destroy_platform();
+            if (pd.backend_type != AWIN_BACKEND_UNKNOWN) pd.pcall.destroy_platform();
         };
 
         bool init_platform_caller()
         {
-            pd.backend_type = WINDOW_BACKEND_UNKNOWN;
+            pd.backend_type = AWIN_BACKEND_UNKNOWN;
             const char *xdg_session = getenv("XDG_SESSION_TYPE");
             if (!xdg_session)
                 return false;
@@ -70,7 +70,7 @@ namespace awin
                 platform::wayland::init_pcall_data(pd.pcall);
                 platform::wayland::init_wcall_data(pd.wcall);
                 platform::wayland::init_ccall_data(pd.ccall);
-                pd.backend_type = WINDOW_BACKEND_WAYLAND;
+                pd.backend_type = AWIN_BACKEND_WAYLAND;
                 return true;
             }
             else if (strcmp(xdg_session, "x11") == 0)
@@ -78,7 +78,7 @@ namespace awin
                 platform::x11::init_pcall_data(pd.pcall);
                 platform::x11::init_wcall_data(pd.wcall);
                 platform::x11::init_ccall_data(pd.ccall);
-                pd.backend_type = WINDOW_BACKEND_X11;
+                pd.backend_type = AWIN_BACKEND_X11;
                 return true;
             }
             return false;
@@ -189,7 +189,11 @@ namespace awin
         : _data(platform::pd.pcall.alloc_window_data())
     {
         _data->owner = this;
-        if (!platform::pd.wcall.create_window(_data, title, width, height, flags))
+        platform::g_env->has_active_window_hints = platform::consume_next_window_hints(platform::g_env->active_window_hints);
+        const bool created = platform::pd.wcall.create_window(_data, title, width, height, flags);
+        platform::g_env->has_active_window_hints = false;
+        platform::g_env->active_window_hints = {};
+        if (!created)
             throw acul::runtime_error("Failed to create Window");
     }
 
