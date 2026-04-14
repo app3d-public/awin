@@ -49,11 +49,11 @@ function(awin_windows_app_sdk_init)
     set(awin_windows_app_sdk_packages_dir "${awin_windows_app_sdk_root_dir}/packages")
     set(awin_windows_app_sdk_generated_dir "${awin_windows_app_sdk_root_dir}/include-gen")
 
-    acbt_nuget_install_package(
+    nuget_install_package(
         PACKAGE_NAME "Microsoft.WindowsAppSDK.Foundation"
         PACKAGE_VERSION "${AWIN_WIN32_APP_SDK_FOUNDATION_VERSION}"
         OUTPUT_DIRECTORY "${awin_windows_app_sdk_packages_dir}")
-    acbt_nuget_install_package(
+    nuget_install_package(
         PACKAGE_NAME "Microsoft.WindowsAppSDK.InteractiveExperiences"
         PACKAGE_VERSION "${AWIN_WIN32_APP_SDK_INTERACTIVE_VERSION}"
         OUTPUT_DIRECTORY "${awin_windows_app_sdk_packages_dir}")
@@ -62,6 +62,22 @@ function(awin_windows_app_sdk_init)
         "${awin_windows_app_sdk_packages_dir}/Microsoft.WindowsAppSDK.Foundation.${AWIN_WIN32_APP_SDK_FOUNDATION_VERSION}")
     set(awin_windows_app_sdk_interactive_dir
         "${awin_windows_app_sdk_packages_dir}/Microsoft.WindowsAppSDK.InteractiveExperiences.${AWIN_WIN32_APP_SDK_INTERACTIVE_VERSION}")
+
+    # Support both NuGet extraction layouts:
+    # 1) <PackageName>.<Version> (expected)
+    # 2) <Version> (legacy cache copy layout)
+    set(awin_windows_app_sdk_foundation_dir_legacy
+        "${awin_windows_app_sdk_packages_dir}/${AWIN_WIN32_APP_SDK_FOUNDATION_VERSION}")
+    set(awin_windows_app_sdk_interactive_dir_legacy
+        "${awin_windows_app_sdk_packages_dir}/${AWIN_WIN32_APP_SDK_INTERACTIVE_VERSION}")
+
+    if(NOT EXISTS "${awin_windows_app_sdk_foundation_dir}" AND EXISTS "${awin_windows_app_sdk_foundation_dir_legacy}")
+        set(awin_windows_app_sdk_foundation_dir "${awin_windows_app_sdk_foundation_dir_legacy}")
+    endif()
+
+    if(NOT EXISTS "${awin_windows_app_sdk_interactive_dir}" AND EXISTS "${awin_windows_app_sdk_interactive_dir_legacy}")
+        set(awin_windows_app_sdk_interactive_dir "${awin_windows_app_sdk_interactive_dir_legacy}")
+    endif()
 
     if(CMAKE_SIZEOF_VOID_P EQUAL 8)
         if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(ARM64|arm64|aarch64)$")
@@ -96,7 +112,7 @@ function(awin_windows_app_sdk_init)
         "${awin_windows_app_sdk_metadata_base}/Microsoft.UI.winmd")
     set(awin_windows_app_sdk_bootstrap_dll
         "${awin_windows_app_sdk_foundation_dir}/runtimes/win-${awin_windows_app_sdk_arch}/native/Microsoft.WindowsAppRuntime.Bootstrap.dll")
-    acbt_get_windows_dll_file_version(
+    get_windows_dll_file_version(
         "${awin_windows_app_sdk_bootstrap_dll}"
         awin_windows_app_sdk_bootstrap_version)
 
@@ -114,7 +130,7 @@ function(awin_windows_app_sdk_init)
     endforeach()
 
     if(NOT TARGET awin_windows_app_sdk_headers)
-        acbt_add_cppwinrt_target(
+        add_cppwinrt_target(
             TARGET_NAME awin_windows_app_sdk_headers
             OUTPUT_DIR "${awin_windows_app_sdk_generated_dir}"
             INPUT_WINMD "${awin_windows_app_sdk_ui_winmd}"
@@ -201,7 +217,7 @@ function(awin_target_copy_windows_app_sdk_bootstrap target_name)
     awin_windows_app_sdk_init()
     awin_windows_app_sdk_get_property(AWIN_WINDOWS_APP_SDK_BOOTSTRAP_DLL awin_windows_app_sdk_bootstrap_dll)
 
-    acbt_get_target_output_dir("${target_name}" target_output_dir)
+    get_target_output_dir("${target_name}" target_output_dir)
     set(bootstrap_output_path "${target_output_dir}/Microsoft.WindowsAppRuntime.Bootstrap.dll")
 
     normalize_variable_name("${target_name}_windows_app_sdk_bootstrap" bootstrap_copy_target_name)
