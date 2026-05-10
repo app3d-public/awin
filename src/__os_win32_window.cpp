@@ -5,17 +5,6 @@
 #include <shlobj.h>
 #include <windef.h>
 #include <windowsx.h>
-#if defined(AWIN_WIN32_APP_SDK_ENABLED)
-    #include <winrt/Microsoft.UI.Interop.h>
-    #include <winrt/Microsoft.UI.Windowing.h>
-    #include <winrt/Windows.Foundation.Collections.h>
-    #include <winrt/Windows.Graphics.h>
-    #include <winrt/Windows.UI.h>
-    #include <winrt/base.h>
-#endif
-#if defined(AWIN_WIN32_APP_SDK_BOOTSTRAP_ENABLED)
-    #include <MddBootstrap.h>
-#endif
 #include "env.hpp"
 #include "win32_pd.hpp"
 
@@ -49,127 +38,19 @@ namespace awin
             bool has_background_hint{false};
             bool background_hint_active{false};
             COLORREF background_color{RGB(35, 35, 35)};
-#if defined(AWIN_WIN32_APP_SDK_ENABLED)
-            bool windows_app_sdk_enabled{false};
-            bool extends_content_into_title_bar{false};
-            winrt::Microsoft::UI::Windowing::AppWindow app_window{nullptr};
-            winrt::Microsoft::UI::Windowing::AppWindowTitleBar title_bar{nullptr};
-            native_access::Win32TitleBarMetrics title_bar_metrics{};
-#endif
         };
-
-#if defined(AWIN_WIN32_APP_SDK_ENABLED)
-        static winrt::Windows::UI::Color to_winrt_color(const ColorHint &color)
-        {
-            winrt::Windows::UI::Color result{};
-            result.A = color.a;
-            result.R = color.r;
-            result.G = color.g;
-            result.B = color.b;
-            return result;
-        }
-
-        static bool update_title_bar_metrics(Win32WindowData *window)
-        {
-            if (!window || !window->title_bar) return false;
-            try
-            {
-                window->title_bar_metrics.left_inset = window->title_bar.LeftInset();
-                window->title_bar_metrics.right_inset = window->title_bar.RightInset();
-                window->title_bar_metrics.height = window->title_bar.Height();
-                return true;
-            }
-            catch (...)
-            {
-                return false;
-            }
-        }
-
-        static bool initialize_app_sdk_window(Win32WindowData *window)
-        {
-            if (!window || !ctx.windows_app_sdk_enabled || !window->hwnd) return false;
-
-            try
-            {
-                const auto id = winrt::Microsoft::UI::GetWindowIdFromWindow(window->hwnd);
-                window->app_window = winrt::Microsoft::UI::Windowing::AppWindow::GetFromWindowId(id);
-                window->title_bar = window->app_window ? window->app_window.TitleBar() : nullptr;
-                window->windows_app_sdk_enabled = window->app_window != nullptr;
-                if (window->title_bar) update_title_bar_metrics(window);
-                return window->windows_app_sdk_enabled;
-            }
-            catch (...)
-            {
-                window->app_window = nullptr;
-                window->title_bar = nullptr;
-                window->windows_app_sdk_enabled = false;
-                return false;
-            }
-        }
-
-        static void apply_optional_color(const ColorHint &value, auto setter)
-        {
-            if (value.enabled) setter(to_winrt_color(value));
-        }
-
-        static bool apply_title_bar_config(Win32WindowData *window, const WindowTitleBarHints &config)
-        {
-            if (!window || !config.enabled || !window->windows_app_sdk_enabled || !window->title_bar) return false;
-            if (!winrt::Microsoft::UI::Windowing::AppWindowTitleBar::IsCustomizationSupported()) return false;
-
-            try
-            {
-                window->extends_content_into_title_bar = config.extends_content_into_title_bar;
-                window->title_bar.ExtendsContentIntoTitleBar(config.extends_content_into_title_bar);
-
-                apply_optional_color(config.background, [&](const auto &c) { window->title_bar.BackgroundColor(c); });
-                apply_optional_color(config.foreground, [&](const auto &c) { window->title_bar.ForegroundColor(c); });
-                apply_optional_color(config.inactive_background,
-                                     [&](const auto &c) { window->title_bar.InactiveBackgroundColor(c); });
-                apply_optional_color(config.inactive_foreground,
-                                     [&](const auto &c) { window->title_bar.InactiveForegroundColor(c); });
-                apply_optional_color(config.buttons.background,
-                                     [&](const auto &c) { window->title_bar.ButtonBackgroundColor(c); });
-                apply_optional_color(config.buttons.foreground,
-                                     [&](const auto &c) { window->title_bar.ButtonForegroundColor(c); });
-                apply_optional_color(config.buttons.hover_background,
-                                     [&](const auto &c) { window->title_bar.ButtonHoverBackgroundColor(c); });
-                apply_optional_color(config.buttons.hover_foreground,
-                                     [&](const auto &c) { window->title_bar.ButtonHoverForegroundColor(c); });
-                apply_optional_color(config.buttons.pressed_background,
-                                     [&](const auto &c) { window->title_bar.ButtonPressedBackgroundColor(c); });
-                apply_optional_color(config.buttons.pressed_foreground,
-                                     [&](const auto &c) { window->title_bar.ButtonPressedForegroundColor(c); });
-                apply_optional_color(config.buttons.inactive_background,
-                                     [&](const auto &c) { window->title_bar.ButtonInactiveBackgroundColor(c); });
-                apply_optional_color(config.buttons.inactive_foreground,
-                                     [&](const auto &c) { window->title_bar.ButtonInactiveForegroundColor(c); });
-
-                update_title_bar_metrics(window);
-                return true;
-            }
-            catch (...)
-            {
-                return false;
-            }
-        }
-#endif
 
         DWORD get_window_style(WindowFlags flags)
         {
             DWORD style = WS_CLIPSIBLINGS | WS_CLIPCHILDREN;
-            const bool is_decorated = flags & WindowFlagBits::decorated;
-            if ((flags & WindowFlagBits::fullscreen) || !is_decorated)
-            {
-                style |= WS_POPUP;
-            }
-            else
-            {
-                style |= WS_SYSMENU | WS_CAPTION;
-                if (flags & WindowFlagBits::minimize_box) style |= WS_MINIMIZEBOX;
-                if (flags & WindowFlagBits::maximize_box) style |= WS_MAXIMIZEBOX;
-                if (flags & WindowFlagBits::resizable) style |= WS_THICKFRAME;
-            }
+            const bool decorated = flags & WindowFlagBits::decorated;
+            const bool extended_nc_area = flags & WindowFlagBits::extended_nc_area;
+            if ((flags & WindowFlagBits::fullscreen) || (!decorated && !extended_nc_area)) style |= WS_POPUP;
+            if (decorated || extended_nc_area) style |= WS_SYSMENU;
+            if (flags & WindowFlagBits::minimize_box) style |= WS_MINIMIZEBOX;
+            if (flags & WindowFlagBits::maximize_box) style |= WS_MAXIMIZEBOX;
+            if (flags & WindowFlagBits::resizable) style |= WS_THICKFRAME;
+            if (decorated) style |= WS_CAPTION;
             return style;
         }
 
@@ -498,9 +379,6 @@ namespace awin
                 case WM_SIZE:
                 {
                     acul::point2D<i32> dimenstions(LOWORD(lParam), HIWORD(lParam));
-#if defined(AWIN_WIN32_APP_SDK_ENABLED)
-                    if (window && window->windows_app_sdk_enabled) update_title_bar_metrics(window);
-#endif
                     if (!(window->flags & WindowFlagBits::hidden))
                     {
                         bool want_min = (wParam == SIZE_MINIMIZED);
@@ -553,9 +431,6 @@ namespace awin
                     ctx.dpi = LOWORD(wParam);
                     const float xscale = LOWORD(wParam) / 96.0f;
                     const float yscale = HIWORD(wParam) / 96.0f;
-#if defined(AWIN_WIN32_APP_SDK_ENABLED)
-                    if (window && window->windows_app_sdk_enabled) update_title_bar_metrics(window);
-#endif
                     acul::events::dispatch_event_group<DpiChangedEvent>(events.dpi_changed, window->owner, xscale,
                                                                         yscale);
                     break;
@@ -629,21 +504,9 @@ namespace awin
         void destroy_platform()
         {
             AWIN_LOG_INFO("[Win32] Destroying platform");
-#if defined(AWIN_WIN32_APP_SDK_BOOTSTRAP_ENABLED)
-            if (ctx.windows_app_sdk_bootstrapped)
-            {
-                MddBootstrapShutdown();
-                ctx.windows_app_sdk_bootstrapped = false;
-            }
-#endif
             if (ctx.com_initialized)
             {
-#if defined(AWIN_WIN32_APP_SDK_ENABLED)
-                if (ctx.windows_app_sdk_enabled)
-                    winrt::uninit_apartment();
-                else
-#endif
-                    CoUninitialize();
+                CoUninitialize();
                 ctx.com_initialized = false;
             }
             if (ctx.instance)
@@ -667,27 +530,6 @@ namespace awin
         bool init_platform()
         {
             ctx.platform_flags = g_env->platform_flags;
-            if ((ctx.platform_flags & AWIN_PLATFORM_WIN32_APP_SDK_BOOTSTRAP) &&
-                !(ctx.platform_flags & AWIN_PLATFORM_WIN32_APP_SDK))
-            {
-                AWIN_LOG_ERROR("[Win32] Bootstrap requires AWIN_PLATFORM_WIN32_APP_SDK");
-                return false;
-            }
-#if !defined(AWIN_WIN32_APP_SDK_ENABLED)
-            if (ctx.platform_flags & AWIN_PLATFORM_WIN32_APP_SDK)
-            {
-                AWIN_LOG_ERROR("[Win32] Windows App SDK was requested but awin was built without App SDK support");
-                return false;
-            }
-#endif
-#if !defined(AWIN_WIN32_APP_SDK_BOOTSTRAP_ENABLED)
-            if (ctx.platform_flags & AWIN_PLATFORM_WIN32_APP_SDK_BOOTSTRAP)
-            {
-                AWIN_LOG_ERROR(
-                    "[Win32] Windows App SDK bootstrap was requested but awin was built without bootstrap support");
-                return false;
-            }
-#endif
             if (!SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2))
                 AWIN_LOG_WARN("[Win32] Failed to set process dpi awareness context");
             ctx.instance = GetModuleHandleW(nullptr);
@@ -706,52 +548,9 @@ namespace awin
                 ctx.win32_class.hIcon = LoadIcon(NULL, IDI_APPLICATION);
             }
             if (!RegisterClassExW(&ctx.win32_class)) return false;
-#if defined(AWIN_WIN32_APP_SDK_ENABLED)
-            if (ctx.platform_flags & AWIN_PLATFORM_WIN32_APP_SDK)
-            {
-                try
-                {
-                    winrt::init_apartment(winrt::apartment_type::single_threaded);
-                    ctx.com_initialized = true;
-                    ctx.windows_app_sdk_enabled = true;
-                }
-                catch (...)
-                {
-                    AWIN_LOG_ERROR("[Win32] Failed to initialize WinRT apartment");
-                    return false;
-                }
-            }
-            else
-#endif
-            {
-                HRESULT hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
-                if (FAILED(hr)) return false;
-                ctx.com_initialized = true;
-            }
-#if defined(AWIN_WIN32_APP_SDK_BOOTSTRAP_ENABLED)
-            if (ctx.platform_flags & AWIN_PLATFORM_WIN32_APP_SDK_BOOTSTRAP)
-            {
-                constexpr UINT32 release_major_minor = (static_cast<UINT32>(AWIN_WIN32_APP_SDK_VERSION_MAJOR) << 16) |
-                                                       static_cast<UINT32>(AWIN_WIN32_APP_SDK_VERSION_MINOR);
-                const HRESULT bootstrap_hr = MddBootstrapInitialize(release_major_minor, L"", {});
-                if (FAILED(bootstrap_hr))
-                {
-                    AWIN_LOG_ERROR("[Win32] MddBootstrapInitialize failed: 0x%08lx", bootstrap_hr);
-                    if (ctx.com_initialized)
-                    {
-    #if defined(AWIN_WIN32_APP_SDK_ENABLED)
-                        if (ctx.windows_app_sdk_enabled)
-                            winrt::uninit_apartment();
-                        else
-    #endif
-                            CoUninitialize();
-                        ctx.com_initialized = false;
-                    }
-                    return false;
-                }
-                ctx.windows_app_sdk_bootstrapped = true;
-            }
-#endif
+            HRESULT hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
+            if (FAILED(hr)) return false;
+            ctx.com_initialized = true;
             if (!poll_monitors(g_env->monitors)) AWIN_LOG_WARN("[Win32] Failed to poll monitors during init");
             return true;
         }
@@ -765,31 +564,24 @@ namespace awin
         wd->title = acul::utf8_to_utf16(title);
         wd->dimenstions = {width == -1 ? CW_USEDEFAULT : width, height == -1 ? CW_USEDEFAULT : height};
         wd->flags = flags;
-        WindowHints next_window_hints{};
-        const bool has_next_window_hints = platform::consume_next_window_hints(next_window_hints);
+        ColorHint next_window_background{};
+        const bool has_next_window_background = platform::consume_next_window_hints(next_window_background);
 
         wd->style = platform::get_window_style(flags);
         wd->ex_style = WS_EX_APPWINDOW;
         wd->hwnd = nullptr;
         wd->cursor = &platform::g_env->default_cursor;
-        if (has_next_window_hints && next_window_hints.background.enabled)
+        if (has_next_window_background && next_window_background.enabled)
         {
             wd->has_background_hint = true;
             wd->background_hint_active = true;
-            wd->background_color =
-                RGB(next_window_hints.background.r, next_window_hints.background.g, next_window_hints.background.b);
+            wd->background_color = RGB(next_window_background.r, next_window_background.g, next_window_background.b);
         }
         wd->hwnd = CreateWindowExW(wd->ex_style, platform::ctx.win32_class.lpszClassName, (LPCWSTR)wd->title.c_str(),
                                    wd->style & ~WS_VISIBLE, CW_USEDEFAULT, CW_USEDEFAULT, wd->dimenstions.x,
                                    wd->dimenstions.y, nullptr, nullptr, platform::ctx.instance, (LPVOID)wd);
 
         if (!wd->hwnd) throw acul::runtime_error("Failed to create window");
-#if defined(AWIN_WIN32_APP_SDK_ENABLED)
-        if (platform::ctx.windows_app_sdk_enabled && !platform::initialize_app_sdk_window(wd))
-            throw acul::runtime_error("Failed to initialize Windows App SDK window state");
-        if (has_next_window_hints && next_window_hints.title_bar.enabled)
-            platform::apply_title_bar_config(wd, next_window_hints.title_bar);
-#endif
         if (!(flags & WindowFlagBits::hidden))
         {
             if (flags & WindowFlagBits::minimized)
@@ -1143,48 +935,9 @@ namespace awin
         return wd->hwnd;
     }
 
-#if defined(AWIN_WIN32_APP_SDK_ENABLED)
-    bool native_access::set_win32_title_bar_config(Window &window, const WindowTitleBarHints &config)
+    WindowFlags get_window_flags(const Window &window)
     {
-        if (!(platform::ctx.platform_flags & AWIN_PLATFORM_WIN32_APP_SDK)) return false;
-        auto *wd = static_cast<platform::Win32WindowData *>(get_window_data(window));
-        return platform::apply_title_bar_config(wd, config);
+        auto *wd = (platform::Win32WindowData *)get_window_data(window);
+        return wd->flags;
     }
-
-    bool native_access::get_win32_title_bar_metrics(const Window &window, Win32TitleBarMetrics &metrics)
-    {
-        if (!(platform::ctx.platform_flags & AWIN_PLATFORM_WIN32_APP_SDK)) return false;
-        auto *wd = static_cast<platform::Win32WindowData *>(get_window_data(window));
-        if (!platform::update_title_bar_metrics(wd)) return false;
-        metrics = wd->title_bar_metrics;
-        return true;
-    }
-
-    bool native_access::set_win32_title_bar_drag_rects(const Window &window,
-                                                       const acul::vector<Win32TitleBarDragRect> &rects)
-    {
-        if (!(platform::ctx.platform_flags & AWIN_PLATFORM_WIN32_APP_SDK)) return false;
-        auto *wd = static_cast<platform::Win32WindowData *>(get_window_data(window));
-        if (!wd || !wd->windows_app_sdk_enabled || !wd->title_bar || !wd->extends_content_into_title_bar) return false;
-
-        try
-        {
-            acul::vector<winrt::Windows::Graphics::RectInt32> native_rects;
-            native_rects.resize(rects.size());
-            for (size_t i = 0; i < rects.size(); ++i)
-            {
-                native_rects[i] = {rects[i].x, rects[i].y, rects[i].width, rects[i].height};
-            }
-            wd->title_bar.SetDragRectangles(
-                winrt::array_view<const winrt::Windows::Graphics::RectInt32>(native_rects.data(), native_rects.size()));
-            platform::update_title_bar_metrics(wd);
-            return true;
-        }
-        catch (...)
-        {
-            return false;
-        }
-    }
-#endif
-
 } // namespace awin

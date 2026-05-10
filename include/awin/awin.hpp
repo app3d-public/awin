@@ -18,8 +18,6 @@
 #define AWIN_BACKEND_WAYLAND 1
 #define AWIN_TIMEOUT_INF     -1
 #define AWIN_DONT_CARE       -1
-#define AWIN_PLATFORM_WIN32_APP_SDK           0x00000001u
-#define AWIN_PLATFORM_WIN32_APP_SDK_BOOTSTRAP 0x00000002u
 
 namespace awin
 {
@@ -82,35 +80,6 @@ namespace awin
     {
         return ColorHint{.enabled = true, .a = a, .r = r, .g = g, .b = b};
     }
-
-    struct WindowTitleBarButtonHints
-    {
-        ColorHint background;
-        ColorHint foreground;
-        ColorHint hover_background;
-        ColorHint hover_foreground;
-        ColorHint pressed_background;
-        ColorHint pressed_foreground;
-        ColorHint inactive_background;
-        ColorHint inactive_foreground;
-    };
-
-    struct WindowTitleBarHints
-    {
-        bool enabled{false};
-        bool extends_content_into_title_bar{false};
-        ColorHint background;
-        ColorHint foreground;
-        ColorHint inactive_background;
-        ColorHint inactive_foreground;
-        WindowTitleBarButtonHints buttons;
-    };
-
-    struct WindowHints
-    {
-        ColorHint background;
-        WindowTitleBarHints title_bar;
-    };
 
     // A window entity in the windowing system
     class APPLIB_API Window
@@ -452,8 +421,8 @@ namespace awin
     // Set text string in the clipboard buffer
     APPLIB_API void set_clipboard_string(const Window &window, const acul::string &text);
 
-    // Sets one-shot hints for the next created window. Pass nullptr to clear pending hints.
-    APPLIB_API void set_next_window_hints(const WindowHints *hints);
+    // Sets one-shot background color for the next created window. Pass nullptr to clear pending hint.
+    APPLIB_API void set_next_window_hints(const ColorHint *background);
 
     APPLIB_API bool is_titlebar_customization_supported();
 
@@ -474,6 +443,8 @@ namespace awin
 #ifndef _WIN32
     APPLIB_API void set_window_icon(Window &window, const acul::vector<Image> &images);
 #endif
+
+    APPLIB_API WindowFlags get_window_flags(const Window &window);
 } // namespace awin
 
 #endif

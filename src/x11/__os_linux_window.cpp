@@ -986,12 +986,12 @@ namespace awin
                             ButtonReleaseMask | ExposureMask | FocusChangeMask | VisibilityChangeMask |
                             EnterWindowMask | LeaveWindowMask | PropertyChangeMask;
             unsigned long attribute_mask = CWBorderPixel | CWColormap | CWEventMask;
-            if (g_env->has_active_window_hints && g_env->active_window_hints.background.enabled)
+            if (g_env->has_active_window_hints && g_env->active_window_background_hint.enabled)
             {
                 wa.background_pixel =
-                    (static_cast<unsigned long>(g_env->active_window_hints.background.r) << 16) |
-                    (static_cast<unsigned long>(g_env->active_window_hints.background.g) << 8) |
-                    static_cast<unsigned long>(g_env->active_window_hints.background.b);
+                    (static_cast<unsigned long>(g_env->active_window_background_hint.r) << 16) |
+                    (static_cast<unsigned long>(g_env->active_window_background_hint.g) << 8) |
+                    static_cast<unsigned long>(g_env->active_window_background_hint.b);
                 attribute_mask |= CWBackPixel;
             }
             grab_error_handler();

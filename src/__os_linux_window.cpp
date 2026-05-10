@@ -189,10 +189,11 @@ namespace awin
         : _data(platform::pd.pcall.alloc_window_data())
     {
         _data->owner = this;
-        platform::g_env->has_active_window_hints = platform::consume_next_window_hints(platform::g_env->active_window_hints);
+        platform::g_env->has_active_window_hints =
+            platform::consume_next_window_hints(platform::g_env->active_window_background_hint);
         const bool created = platform::pd.wcall.create_window(_data, title, width, height, flags);
         platform::g_env->has_active_window_hints = false;
-        platform::g_env->active_window_hints = {};
+        platform::g_env->active_window_background_hint = {};
         if (!created)
             throw acul::runtime_error("Failed to create Window");
     }

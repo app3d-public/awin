@@ -1,8 +1,5 @@
 #include <awin/awin.hpp>
 #include <cmath>
-#if defined(_WIN32) && defined(AWIN_WIN32_APP_SDK_ENABLED)
-    #include <winrt/Microsoft.UI.Windowing.h>
-#endif
 #include "env.hpp"
 
 namespace awin
@@ -11,12 +8,12 @@ namespace awin
     {
         WindowEnvironment *g_env{nullptr};
 
-        bool consume_next_window_hints(WindowHints &out_hints)
+        bool consume_next_window_hints(ColorHint &out_background)
         {
-            if (!g_env || !g_env->next_window_hints) return false;
-            out_hints = *g_env->next_window_hints;
-            acul::release(g_env->next_window_hints);
-            g_env->next_window_hints = nullptr;
+            if (!g_env || !g_env->next_window_background_hint) return false;
+            out_background = *g_env->next_window_background_hint;
+            acul::release(g_env->next_window_background_hint);
+            g_env->next_window_background_hint = nullptr;
             return true;
         }
 
@@ -86,10 +83,10 @@ namespace awin
     {
         assert(platform::g_env);
         AWIN_LOG_INFO("Destroying Window library");
-        if (platform::g_env->next_window_hints)
+        if (platform::g_env->next_window_background_hint)
         {
-            acul::release(platform::g_env->next_window_hints);
-            platform::g_env->next_window_hints = nullptr;
+            acul::release(platform::g_env->next_window_background_hint);
+            platform::g_env->next_window_background_hint = nullptr;
         }
         platform::g_env->default_cursor.reset();
         platform::destroy_platform();
@@ -114,27 +111,18 @@ namespace awin
             platform::get_time_value() - static_cast<u64>(time * platform::get_time_frequency());
     }
 
-    void set_next_window_hints(const WindowHints *hints)
+    void set_next_window_hints(const ColorHint *background)
     {
         if (!platform::g_env) return;
-        if (platform::g_env->next_window_hints)
+        if (platform::g_env->next_window_background_hint)
         {
-            acul::release(platform::g_env->next_window_hints);
-            platform::g_env->next_window_hints = nullptr;
+            acul::release(platform::g_env->next_window_background_hint);
+            platform::g_env->next_window_background_hint = nullptr;
         }
 
-        if (!hints) return;
-        platform::g_env->next_window_hints = acul::alloc<WindowHints>(*hints);
+        if (!background) return;
+        platform::g_env->next_window_background_hint = acul::alloc<ColorHint>(*background);
     }
 
-    bool is_titlebar_customization_supported()
-    {
-#if defined(_WIN32) && defined(AWIN_WIN32_APP_SDK_ENABLED)
-        if (!platform::g_env) return false;
-        if (!(platform::g_env->platform_flags & AWIN_PLATFORM_WIN32_APP_SDK)) return false;
-        return winrt::Microsoft::UI::Windowing::AppWindowTitleBar::IsCustomizationSupported();
-#else
-        return false;
-#endif
-    }
+    bool is_titlebar_customization_supported() { return false; }
 } // namespace awin

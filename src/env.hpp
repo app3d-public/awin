@@ -42,15 +42,15 @@ namespace awin
             acul::log::log_service *log_service = nullptr;
             acul::log::logger_base *logger = nullptr;
             u32 platform_flags = 0;
-            WindowHints *next_window_hints = nullptr;
-            WindowHints active_window_hints{};
+            ColorHint *next_window_background_hint = nullptr;
+            ColorHint active_window_background_hint{};
             bool has_active_window_hints{false};
             Cursor default_cursor;
             acul::vector<Monitor> monitors;
             EventRegistry events;
         } *g_env;
 
-        APPLIB_API bool consume_next_window_hints(WindowHints &out_hints);
+        APPLIB_API bool consume_next_window_hints(ColorHint &out_background);
     } // namespace platform
 
     inline WindowData *get_window_data(const Window &window) { return window._data; }

@@ -243,6 +243,7 @@ namespace awin
             hidden = 0x00040,       // Does not show the window on creation.
             minimized = 0x00080,    // Minimized.
             maximized = 0x00100,    // Maximized.
+            extended_nc_area = 0x00200,
         };
         using flag_bitmask = std::true_type;
     };
