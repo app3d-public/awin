@@ -82,21 +82,21 @@ namespace awin
     }
 
     // A window entity in the windowing system
-    class APPLIB_API Window
+    class Window
     {
     public:
         // Initialize a window with a title, dimensions, and creation flags.
-        explicit Window(const acul::string &title, i32 width = AWIN_DONT_CARE, i32 height = AWIN_DONT_CARE,
-                        WindowFlags flags = AWIN_DEFAULT_FLAGS);
+        AWIN_EXPORT explicit Window(const acul::string &title, i32 width = AWIN_DONT_CARE, i32 height = AWIN_DONT_CARE,
+                                    WindowFlags flags = AWIN_DEFAULT_FLAGS);
 
         // Destroy the window
-        void destroy();
+        AWIN_EXPORT void destroy();
 
         // Get the window title
-        acul::string title() const;
+        AWIN_EXPORT acul::string title() const;
 
         // Set the window title
-        void title(const acul::string &title);
+        AWIN_EXPORT void title(const acul::string &title);
 
         // Returns the width of the window.
         acul::point2D<i32> dimensions() const { return _data->dimenstions; }
@@ -111,22 +111,22 @@ namespace awin
         bool fullscreen() const { return (_data->flags & WindowFlagBits::fullscreen) != 0; }
 
         // Enable fullscreen mode.
-        void enable_fullscreen();
+        AWIN_EXPORT void enable_fullscreen();
 
         // Disable fullscreen mode.
-        void disable_fullscreen();
+        AWIN_EXPORT void disable_fullscreen();
 
         // Get the current cursor position.
-        acul::point2D<i32> cursor_position() const;
+        AWIN_EXPORT acul::point2D<i32> cursor_position() const;
 
         // Set the cursor position
-        void cursor_position(acul::point2D<i32> position);
+        AWIN_EXPORT void cursor_position(acul::point2D<i32> position);
 
         // Show the cursor.
-        void show_cursor();
+        AWIN_EXPORT void show_cursor();
 
         // Hide the cursor.
-        void hide_cursor();
+        AWIN_EXPORT void hide_cursor();
 
         // Check if the cursor is hidden.
         inline bool is_cursor_hidden() const { return _data->is_cursor_hidden; }
@@ -141,13 +141,13 @@ namespace awin
         inline bool minimized() const { return _data->flags & WindowFlagBits::minimized; }
 
         // Minimize the window
-        void minimize();
+        AWIN_EXPORT void minimize();
 
         // Check if the window is maximized.
         inline bool maximized() const { return _data->flags & WindowFlagBits::maximized; }
 
         // Maximize the window
-        void maximize();
+        AWIN_EXPORT void maximize();
 
         // Check if the window is hidden.
         inline bool hidden() const { return _data->flags & awin::WindowFlagBits::hidden; }
@@ -169,25 +169,24 @@ namespace awin
         inline void ready_to_close(bool ready_to_close) { _data->ready_to_close = ready_to_close; }
 
         // Show the window if it is hidden.
-        void show_window();
+        AWIN_EXPORT void show_window();
 
         // Hide the window
-        void hide_window();
+        AWIN_EXPORT void hide_window();
 
         // Get current window position
-        acul::point2D<i32> position() const;
+        AWIN_EXPORT acul::point2D<i32> position() const;
 
         // Set window position
-        void position(acul::point2D<i32> position);
+        AWIN_EXPORT void position(acul::point2D<i32> position);
 
         // Center the window to the parent
-        void center_window();
+        AWIN_EXPORT void center_window();
 
     private:
         WindowData *_data;
 
-        void update_resize_limit();
-
+        AWIN_EXPORT void update_resize_limit();
         friend WindowData *get_window_data(const Window &);
     };
 
@@ -197,7 +196,7 @@ namespace awin
     // to efficiently dispatch events to the appropriate listeners as they occur.
     // Specific actions are taken for different platforms (e.g., Windows-specific event listeners)
     // to ensure compatibility and proper handling across different operating systems.
-    APPLIB_API void update_events();
+    AWIN_EXPORT void update_events();
 
     // Data structures and platform-specific functions that are utilized by internal Window API and offer secure data
     // exchange with external API interfaces.
@@ -366,65 +365,63 @@ namespace awin
         }
     };
     // Get the time elapsed since library initialization in seconds as a floating-point value.
-    APPLIB_API f64 get_time();
+    AWIN_EXPORT f64 get_time();
 
     // Set the window library initialization time to the specified value in seconds.
-    APPLIB_API void set_time(f64 time);
+    AWIN_EXPORT void set_time(f64 time);
 
-    APPLIB_API void set_timeout(f64 timeout = AWIN_TIMEOUT_INF);
+    AWIN_EXPORT void set_timeout(f64 timeout = AWIN_TIMEOUT_INF);
 
     // Retrieves monitor list cached during platform initialization.
-    APPLIB_API const acul::vector<Monitor> &get_monitors();
+    AWIN_EXPORT const acul::vector<Monitor> &get_monitors();
 
     // Retrieves the primary monitor. Returns nullptr if no monitors are available.
     // Returned pointer is valid until monitor list is repolled or library is destroyed.
-    APPLIB_API const Monitor *get_primary_monitor();
+    AWIN_EXPORT const Monitor *get_primary_monitor();
 
     // Retrieves all supported video modes for the given monitor.
-    APPLIB_API acul::vector<VidMode> get_monitor_video_modes(const Monitor *monitor);
+    AWIN_EXPORT acul::vector<VidMode> get_monitor_video_modes(const Monitor *monitor);
 
     // Retrieves the current video mode for the given monitor.
-    APPLIB_API VidMode get_monitor_video_mode(const Monitor *monitor);
+    AWIN_EXPORT VidMode get_monitor_video_mode(const Monitor *monitor);
 
     // Processes all pending events in the event queue. This function checks the state
     // of all windows and other event sources, processes those events, and returns
     // control after all events have been processed. Typically used in an application's
     // update loop to handle events as they occur.
-    APPLIB_API void poll_events();
+    AWIN_EXPORT void poll_events();
 
     // Waits for new events to occur and processes them as soon as they appear.
     // Unlike pollEvents, this function blocks the execution of the program until
     // new events are available. Useful in situations where you want to conserve CPU
     // usage when the application is idle or when you need to wait for user input
     // without continuously polling.
-    APPLIB_API void wait_events();
+    AWIN_EXPORT void wait_events();
 
     // Waits for events with a global timeout and processes them. If no events occur
     // within the given timeout period, the function returns. This is useful for
     // scenarios where you want to wait for events but also perform some other action
     // if no events occur within a certain time frame, such as updating the UI or
     // handling non-event-related logic.
-    APPLIB_API void wait_events_timeout();
+    AWIN_EXPORT void wait_events_timeout();
 
     // Pushes an empty event to the event queue.
-    APPLIB_API void push_empty_event();
+    AWIN_EXPORT void push_empty_event();
 
     // Retrieves the current dots per inch (DPI) value of the display.
-    APPLIB_API f32 get_dpi(const Window &window);
+    AWIN_EXPORT f32 get_dpi(const Window &window);
 
     // Get the client area size
-    APPLIB_API acul::point2D<i32> get_window_size(const Window &window);
+    AWIN_EXPORT acul::point2D<i32> get_window_size(const Window &window);
 
     // Get text string from the clipboard buffer
-    APPLIB_API acul::string get_clipboard_string(const Window &window);
+    AWIN_EXPORT acul::string get_clipboard_string(const Window &window);
 
     // Set text string in the clipboard buffer
-    APPLIB_API void set_clipboard_string(const Window &window, const acul::string &text);
+    AWIN_EXPORT void set_clipboard_string(const Window &window, const acul::string &text);
 
     // Sets one-shot background color for the next created window. Pass nullptr to clear pending hint.
-    APPLIB_API void set_next_window_hints(const ColorHint *background);
-
-    APPLIB_API bool is_titlebar_customization_supported();
+    AWIN_EXPORT void set_next_window_hints(const ColorHint *background);
 
     struct InitConfig
     {
@@ -435,16 +432,16 @@ namespace awin
     };
 
     // Initialize the library.
-    APPLIB_API void init_library(const InitConfig &config);
+    AWIN_EXPORT void init_library(const InitConfig &config);
 
     // Destroy the library and release associated resources.
-    APPLIB_API void destroy_library();
+    AWIN_EXPORT void destroy_library();
 
 #ifndef _WIN32
-    APPLIB_API void set_window_icon(Window &window, const acul::vector<Image> &images);
+    AWIN_EXPORT void set_window_icon(Window &window, const acul::vector<Image> &images);
 #endif
 
-    APPLIB_API WindowFlags get_window_flags(const Window &window);
+    AWIN_EXPORT WindowFlags get_window_flags(const Window &window);
 } // namespace awin
 
 #endif

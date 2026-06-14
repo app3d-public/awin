@@ -26,7 +26,7 @@ namespace awin
             acul::events::event_group *dpi_changed;
         };
 
-        extern APPLIB_API struct WindowEnvironment
+        extern AWIN_EXPORT struct WindowEnvironment
         {
             acul::string clipboard_data; // Clipboard data storage.
             struct Timer
@@ -50,7 +50,7 @@ namespace awin
             EventRegistry events;
         } *g_env;
 
-        APPLIB_API bool consume_next_window_hints(ColorHint &out_background);
+        AWIN_EXPORT bool consume_next_window_hints(ColorHint &out_background);
     } // namespace platform
 
     inline WindowData *get_window_data(const Window &window) { return window._data; }

@@ -123,6 +123,4 @@ namespace awin
         if (!background) return;
         platform::g_env->next_window_background_hint = acul::alloc<ColorHint>(*background);
     }
-
-    bool is_titlebar_customization_supported() { return false; }
 } // namespace awin

@@ -23,6 +23,8 @@ if (ENABLE_AGRB AND NOT TARGET agrb)
     add_subdirectory(modules/agrb)
 endif()
 
+create_symbol_export_file()
+
 add_files(${PROJECT_NAME} RECURSE "${CMAKE_CURRENT_SOURCE_DIR}/src")
 
 if(NOT ENABLE_AGRB)
@@ -30,9 +32,14 @@ if(NOT ENABLE_AGRB)
 endif()
 
 add_library(${PROJECT_NAME} SHARED ${AWIN_SRC})
-set_target_properties(${PROJECT_NAME} PROPERTIES CXX_VISIBILITY_PRESET hidden)
-target_compile_definitions(${PROJECT_NAME} PRIVATE -DAPPLIB_BUILD)
-target_include_directories(${PROJECT_NAME} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include/")
+set_target_properties(${PROJECT_NAME} PROPERTIES
+    DEFINE_SYMBOL AWIN_BUILD
+    CXX_VISIBILITY_PRESET hidden    
+)
+target_include_directories(${PROJECT_NAME} PUBLIC
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/"
+    ${AWIN_CONFIGURE_PATH}
+)
 target_link_libraries(${PROJECT_NAME} PRIVATE acul)
 
 set(AWIN_MANIFEST_DEPS lib${PROJECT_NAME}:${PROJECT_VERSION})

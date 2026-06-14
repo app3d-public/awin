@@ -1,7 +1,6 @@
 #ifndef APP_AWIN_POPUP_H
 #define APP_AWIN_POPUP_H
 
-#include <acul/api.hpp>
 #include <acul/string/string.hpp>
 #include <acul/vector.hpp>
 #include <initializer_list>
@@ -31,7 +30,7 @@ namespace awin
         };
 
         // Displays a popup window with a message, title, and configurable style and buttons.
-        APPLIB_API Buttons message_box(const char *message, const char *title, Style style = Style::info,
+        AWIN_EXPORT Buttons message_box(const char *message, const char *title, Style style = Style::info,
                                        std::initializer_list<Buttons> buttons = {Buttons::ok},
                                        awin::Window *parent = nullptr);
 
@@ -47,16 +46,16 @@ namespace awin
             acul::vector<acul::string> extensions;
         };
 
-        APPLIB_API acul::string open_file_dialog(const char *title, const acul::vector<FilePattern> &pattern,
+        AWIN_EXPORT acul::string open_file_dialog(const char *title, const acul::vector<FilePattern> &pattern,
                                                  const char *default_path = "");
 
-        APPLIB_API acul::vector<acul::string> open_file_dialog_multiple(const char *title,
+        AWIN_EXPORT acul::vector<acul::string> open_file_dialog_multiple(const char *title,
                                                                         const acul::vector<FilePattern> &pattern,
                                                                         const char *default_path = "");
 
-        APPLIB_API acul::string open_folder_dialog(const char *title, const char *defaultPath = "");
+        AWIN_EXPORT acul::string open_folder_dialog(const char *title, const char *defaultPath = "");
 
-        APPLIB_API acul::string save_file_dialog(const char *title, const acul::vector<FilePattern> &pattern,
+        AWIN_EXPORT acul::string save_file_dialog(const char *title, const acul::vector<FilePattern> &pattern,
                                                  const char *default_path = "");
     } // namespace popup
 } // namespace awin

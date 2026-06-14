@@ -296,7 +296,7 @@ namespace awin::platform::wayland
         }
     };
 
-    extern APPLIB_API struct Context
+    extern AWIN_EXPORT struct Context
     {
         WaylandLoader wl;
 

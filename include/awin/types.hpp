@@ -1,11 +1,11 @@
 #ifndef APP_AWIN_TYPES_H
 #define APP_AWIN_TYPES_H
 
-#include <acul/api.hpp>
 #include <acul/enum.hpp>
 #include <acul/memory/alloc.hpp>
 #include <acul/pair.hpp>
 #include <acul/scalars.hpp>
+#include <awin/symbol_export.h>
 
 #define KEY_MOD_START_INDEX 106
 
@@ -179,7 +179,7 @@ namespace awin
         using KeyMode = acul::flags<KeyModeBits>;
     } // namespace io
 
-    class APPLIB_API Cursor
+    class Cursor
     {
 
     public:
@@ -207,13 +207,13 @@ namespace awin
         Cursor(const Cursor &) = delete;
         Cursor &operator=(const Cursor &) = delete;
 
-        Cursor &operator=(Cursor &&other) noexcept;
+        AWIN_EXPORT Cursor &operator=(Cursor &&other) noexcept;
 
         // Check if cursor is valid and was initialized.
         bool valid() const;
 
         // Create a new cursor with the given type.
-        static Cursor create(Type type);
+        AWIN_EXPORT static Cursor create(Type type);
 
         // Assign cursor to the platform context
         void assign(Window *window);
@@ -251,7 +251,7 @@ namespace awin
     // Flags for window creation, stored as u8 for memory efficiency.
     using WindowFlags = acul::flags<WindowFlagBits>;
 
-#define AWIN_DEFAULT_FLAGS                                                                  \
+#define AWIN_DEFAULT_FLAGS                                                                                      \
     awin::WindowFlagBits::resizable | awin::WindowFlagBits::minimize_box | awin::WindowFlagBits::maximize_box | \
         awin::WindowFlagBits::decorated
 

@@ -237,7 +237,7 @@ namespace awin::platform::x11
         }
     };
 
-    extern APPLIB_API struct Context
+    extern AWIN_EXPORT struct Context
     {
         XlibData xlib;
         Display *display;
