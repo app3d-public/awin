@@ -82,8 +82,8 @@ namespace awin::platform::x11
             monitor.content_scale = g_ctx->dpi;
             if (monitor.content_scale.x <= 0.f) monitor.content_scale.x = 1.f;
             if (monitor.content_scale.y <= 0.f) monitor.content_scale.y = 1.f;
-            monitor.primary = true;
             result.push_back(std::move(monitor));
+            g_env->primary_monitor = result.empty() ? nullptr : &result[0];
             return true;
         }
 
@@ -102,6 +102,7 @@ namespace awin::platform::x11
     bool poll_monitors(acul::vector<Monitor> &result)
     {
         result.clear();
+        g_env->primary_monitor = nullptr;
         if (!g_ctx || !g_ctx->display) return false;
 
         auto &randr = g_ctx->xlib.randr;
@@ -112,7 +113,7 @@ namespace awin::platform::x11
         if (!sr) return build_fallback_monitor(result);
 
         const RROutput primary = randr.XRRGetOutputPrimary ? randr.XRRGetOutputPrimary(g_ctx->display, g_ctx->root) : None;
-        bool primary_found = false;
+        size_t primary_index = static_cast<size_t>(-1);
 
         for (int i = 0; i < sr->noutput; ++i)
         {
@@ -152,8 +153,8 @@ namespace awin::platform::x11
             if (monitor.content_scale.x <= 0.f) monitor.content_scale.x = 1.f;
             if (monitor.content_scale.y <= 0.f) monitor.content_scale.y = 1.f;
 
-            monitor.primary = (primary != None && sr->outputs[i] == primary);
-            primary_found = primary_found || monitor.primary;
+            const size_t index = result.size();
+            if (primary != None && sr->outputs[i] == primary) primary_index = index;
             result.push_back(std::move(monitor));
 
             randr.XRRFreeCrtcInfo(ci);
@@ -161,8 +162,8 @@ namespace awin::platform::x11
         }
 
         randr.XRRFreeScreenResources(sr);
-        if (!result.empty() && !primary_found) result[0].primary = true;
         if (result.empty()) return build_fallback_monitor(result);
+        g_env->primary_monitor = &result[primary_index < result.size() ? primary_index : 0];
         return true;
     }
 

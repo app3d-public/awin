@@ -59,6 +59,8 @@ namespace awin::platform::wayland
             output->physical_size.x = (i32)(output->dimensions.x * 25.4f / 96.f);
             output->physical_size.y = (i32)(output->dimensions.y * 25.4f / 96.f);
         }
+        poll_monitors(g_env->monitors);
+        refresh_all_window_monitors();
     }
 
     void update_buffer_scale_from_outputs(WaylandWindowData *window)
@@ -191,8 +193,21 @@ namespace awin::platform::wayland
         auto it = std::find_if(g_ctx->outputs.begin(), g_ctx->outputs.end(),
                                [name](const Output &output) { return output.name_id == name; });
         if (it == g_ctx->outputs.end()) return;
+        for (auto *window : it->windows)
+        {
+            if (window->output == &*it) window->output = nullptr;
+            auto scale_it = std::find_if(window->output_scales.begin(), window->output_scales.end(),
+                                         [handle = it->handle](const OutputScale &scale) {
+                                             return scale.output == handle;
+                                         });
+            if (scale_it != window->output_scales.end()) window->output_scales.erase(scale_it);
+            update_buffer_scale_from_outputs(window);
+            update_window_monitor(window, nullptr, false);
+        }
         wl_output_destroy(it->handle);
         g_ctx->outputs.erase(it);
+        poll_monitors(g_env->monitors);
+        refresh_all_window_monitors();
     }
 
     static const struct wl_registry_listener registry_listener = {registry_handle_global,

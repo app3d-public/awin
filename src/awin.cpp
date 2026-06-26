@@ -64,6 +64,7 @@ namespace awin
         acul::events::cache_event_group(event_id::mouse_move_delta, events.mouse_move_delta, ed);
         acul::events::cache_event_group(event_id::mouse_move, events.mouse_move, ed);
         acul::events::cache_event_group(event_id::dpi_changed, events.dpi_changed, ed);
+        acul::events::cache_event_group(event_id::monitor_change, events.monitor_change, ed);
     }
 
     void init_library(const InitConfig &config)

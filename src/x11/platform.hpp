@@ -254,6 +254,7 @@ namespace awin::platform::x11
         XErrorHandler error_handler = NULL;
         acul::string primary_selection_string;
         WindowData *focused_window = nullptr;
+        struct X11WindowData *active_resize_window = nullptr;
         acul::lut_table<256, KeyTraits> keymap;
         WMAtoms wm;                  // Window manager atoms
         SelectionAtoms select_atoms; // Selection (clipboard) atoms

@@ -102,6 +102,9 @@ namespace awin::platform::x11
             unload(randr.handle);
             return;
         }
+        if (randr.XRRSelectInput)
+            randr.XRRSelectInput(g_ctx->display, g_ctx->root,
+                                 RRScreenChangeNotifyMask | RRCrtcChangeNotifyMask | RROutputChangeNotifyMask);
     }
 
     void init_xkb()

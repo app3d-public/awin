@@ -1,5 +1,6 @@
 #include <awin/native_access.hpp>
 #include <awin/awin.hpp>
+#include <algorithm>
 #include <fcntl.h>
 #include <linux/input-event-codes.h>
 #include <sys/mman.h>
@@ -28,6 +29,103 @@ namespace awin
     {
 
         static void assign_cursor(WaylandWindowData *window, Cursor::Platform *pd);
+
+        static const Monitor *find_monitor_for_output(const Output *output)
+        {
+            if (!output) return get_primary_monitor();
+            const auto system_name = acul::format("wl_output:%u", static_cast<unsigned>(output->name_id));
+            for (const auto &monitor : get_monitors())
+                if (monitor.system_name == system_name) return &monitor;
+            return get_primary_monitor();
+        }
+
+        static void update_window_monitor_if_needed(WaylandWindowData *window)
+        {
+            if (!window || (window->flags & (WindowFlagBits::maximized | WindowFlagBits::fullscreen))) return;
+            update_window_monitor(window, find_monitor_for_output(window->output));
+        }
+
+        void refresh_all_window_monitors()
+        {
+            for (auto *window : g_ctx->windows)
+            {
+                if (!window) continue;
+                window->active_monitor = nullptr;
+                update_window_monitor_if_needed(window);
+            }
+        }
+
+        static bool has_active_resize_tracker()
+        {
+            for (auto *window : g_ctx->windows)
+                if (window && (window->resize_tracker.active || window->resize_tracker.candidate)) return true;
+            return false;
+        }
+
+        static void dispatch_resize_end(WaylandWindowData *window)
+        {
+            if (!window->resize_tracker.active)
+            {
+                window->resize_tracker.candidate = false;
+                return;
+            }
+
+            window->resize_tracker.active = false;
+            window->resize_tracker.candidate = false;
+            window->resize_tracker.platform_active = false;
+            set_window_state_flag(window->state_flags, WindowStateFlagBits::active_resizing, false);
+            set_window_state_flag(window->state_flags, WindowStateFlagBits::accepts_surface_update,
+                                  window->state_flags & WindowStateFlagBits::focused);
+            acul::events::dispatch_event_group<ResizeEvent>(
+                g_env->events.resize, window->owner, window->resize_tracker.last_dimensions,
+                ResizeFlagBits::repeat | ResizeFlagBits::repeat_end);
+        }
+
+        static void dispatch_tracked_resize(WaylandWindowData *window, acul::point2D<i32> dimensions,
+                                            bool platform_resizing)
+        {
+            ResizeFlags flags = ResizeFlagBits::none;
+            if (!platform_resizing && !window->resize_tracker.active && !window->resize_tracker.candidate)
+            {
+                window->resize_tracker.candidate = true;
+                window->resize_tracker.last_time = get_time();
+                window->resize_tracker.last_dimensions = dimensions;
+                acul::events::dispatch_event_group<ResizeEvent>(g_env->events.resize, window->owner, dimensions,
+                                                                flags);
+                return;
+            }
+
+            flags = ResizeFlagBits::repeat;
+            if (!window->resize_tracker.active)
+            {
+                window->resize_tracker.active = true;
+                set_window_state_flag(window->state_flags, WindowStateFlagBits::active_resizing, true);
+                set_window_state_flag(window->state_flags, WindowStateFlagBits::accepts_surface_update, false);
+                flags |= ResizeFlagBits::repeat_begin;
+            }
+            if (window->resize_tracker.candidate) window->resize_tracker.candidate = false;
+
+            if (platform_resizing) window->resize_tracker.platform_active = true;
+            window->resize_tracker.last_time = get_time();
+            window->resize_tracker.last_dimensions = dimensions;
+            acul::events::dispatch_event_group<ResizeEvent>(g_env->events.resize, window->owner, dimensions, flags);
+        }
+
+        static void tick_resize_trackers()
+        {
+            const f64 now = get_time();
+            for (auto *window : g_ctx->windows)
+            {
+                if (!window || (!window->resize_tracker.active && !window->resize_tracker.candidate)) continue;
+                if (now - window->resize_tracker.last_time < AWIN_RESIZE_END_TIMEOUT) continue;
+                if (window->resize_tracker.candidate)
+                {
+                    window->resize_tracker.candidate = false;
+                    continue;
+                }
+                dispatch_resize_end(window);
+            }
+        }
 
         static void pointer_handle_enter(void *user_data, wl_pointer *pointer, u32 serial, wl_surface *surface,
                                          wl_fixed_t sx, wl_fixed_t sy)
@@ -318,7 +416,8 @@ namespace awin
 
         inline void mark_focus_window(WaylandWindowData *window)
         {
-            window->focused = true;
+            set_window_state_flag(window->state_flags, WindowStateFlagBits::focused, true);
+            set_window_state_flag(window->state_flags, WindowStateFlagBits::accepts_surface_update, true);
             acul::events::dispatch_event_group<FocusEvent>(g_env->events.focus, window->owner, true);
             if (!g_ctx->relative_pointer_manager || window->relative_pointer) return;
             window->relative_pointer =
@@ -328,7 +427,8 @@ namespace awin
 
         inline void unmark_focus_window(WaylandWindowData *window)
         {
-            window->focused = false;
+            set_window_state_flag(window->state_flags, WindowStateFlagBits::focused, false);
+            set_window_state_flag(window->state_flags, WindowStateFlagBits::accepts_surface_update, false);
             acul::events::dispatch_event_group<FocusEvent>(g_env->events.focus, window->owner, false);
             if (!window->relative_pointer) return;
             zwp_relative_pointer_v1_destroy(window->relative_pointer);
@@ -614,6 +714,9 @@ namespace awin
                     case XDG_TOPLEVEL_STATE_ACTIVATED:
                         window->pending.activated = true;
                         break;
+                    case XDG_TOPLEVEL_STATE_RESIZING:
+                        window->pending.resizing = true;
+                        break;
                     default:
                         break;
                 }
@@ -636,7 +739,7 @@ namespace awin
         static void xdg_toplevel_handle_close(void *user_data, xdg_toplevel *toplevel)
         {
             auto *window = (WaylandWindowData *)user_data;
-            window->ready_to_close = true;
+            set_window_state_flag(window->state_flags, WindowStateFlagBits::ready_to_close, true);
         }
 
         static const struct xdg_toplevel_listener xdg_toplevel_listener = {xdg_top_level_handle_configure,
@@ -700,8 +803,9 @@ namespace awin
                                                   : (window->flags & ~WindowFlagBits::fullscreen);
 
             if (resize_window(window, window->pending.dimensions))
-                acul::events::dispatch_event_group<PosEvent>(g_env->events.resize, event_id::resize, window->owner,
-                                                             window->pending.dimensions);
+                dispatch_tracked_resize(window, window->pending.dimensions, window->pending.resizing);
+            if (!window->pending.resizing && window->resize_tracker.platform_active)
+                dispatch_resize_end(window);
         }
 
         static const struct xdg_surface_listener xdg_surface_listener = {xdg_surface_handle_configure};
@@ -748,16 +852,14 @@ namespace awin
 
             if (!(window->flags & WindowFlagBits::hidden)) window->flags &= ~WindowFlagBits::hidden;
 
-            if (resize_window(window, size))
-                acul::events::dispatch_event_group<PosEvent>(g_env->events.resize, event_id::resize, window->owner,
-                                                             window->dimenstions);
+            if (resize_window(window, size)) dispatch_tracked_resize(window, window->dimenstions, false);
             wl_surface_commit(window->surface);
         }
 
         void libdecor_frame_handle_close(libdecor_frame *frame, void *user_data)
         {
             WaylandWindowData *window = (WaylandWindowData *)user_data;
-            window->ready_to_close = true;
+            set_window_state_flag(window->state_flags, WindowStateFlagBits::ready_to_close, true);
         }
 
         void libdecor_frame_handle_commit(libdecor_frame *frame, void *user_data)
@@ -1105,11 +1207,16 @@ namespace awin
 
             WaylandWindowData *window = (WaylandWindowData *)user_data;
             Output *_output = (Output *)wl_output_get_user_data(output);
-            window->output = _output;
             if (!window || !_output) return;
-            _output->windows.push_back(window);
-            window->output_scales.emplace_back(output, _output->scale);
+            window->output = _output;
+            if (std::find(_output->windows.begin(), _output->windows.end(), window) == _output->windows.end())
+                _output->windows.push_back(window);
+            auto it = std::find_if(window->output_scales.begin(), window->output_scales.end(),
+                                   [output](const OutputScale &scale) { return scale.output == output; });
+            if (it == window->output_scales.end()) window->output_scales.emplace_back(output, _output->scale);
+            else it->factor = _output->scale;
             update_buffer_scale_from_outputs(window);
+            update_window_monitor_if_needed(window);
         }
 
         static void surface_handle_leave(void *user_data, wl_surface *surface, wl_output *output)
@@ -1133,6 +1240,7 @@ namespace awin
             }
 
             update_buffer_scale_from_outputs(window);
+            update_window_monitor_if_needed(window);
         }
 
         static const struct wl_surface_listener surface_listener = {surface_handle_enter, surface_handle_leave};
@@ -1171,6 +1279,7 @@ namespace awin
                 if (!create_shell_objects(wl_data)) return false;
             }
             wl_data->cursor = &g_env->default_cursor;
+            g_ctx->windows.push_back(wl_data);
             return true;
         }
 
@@ -1192,6 +1301,8 @@ namespace awin
         void destroy(WindowData *window_data)
         {
             auto *wl_data = (WaylandWindowData *)window_data;
+            auto it = std::find(g_ctx->windows.begin(), g_ctx->windows.end(), wl_data);
+            if (it != g_ctx->windows.end()) g_ctx->windows.erase(it);
             if (wl_data == g_ctx->pointer_focus) g_ctx->pointer_focus = NULL;
             if (wl_data == g_ctx->keyboard_focus) g_ctx->keyboard_focus = NULL;
             if (wl_data->fractional_scale) wp_fractional_scale_v1_destroy(wl_data->fractional_scale);
@@ -1300,7 +1411,8 @@ namespace awin
                     wl_display_cancel_read(g_ctx->display);
 
                     for (const auto &output : g_ctx->outputs)
-                        for (auto *window : output.windows) window->ready_to_close = true;
+                    for (auto *window : output.windows)
+                        set_window_state_flag(window->state_flags, WindowStateFlagBits::ready_to_close, true);
                     return;
                 }
 
@@ -1356,11 +1468,27 @@ namespace awin
         {
             f64 timeout = 0.0;
             handle_events(&timeout);
+            tick_resize_trackers();
         }
 
-        void wait_events() { handle_events(NULL); }
+        void wait_events()
+        {
+            f64 resize_timeout = AWIN_RESIZE_POLL_TICK;
+            handle_events(has_active_resize_tracker() ? &resize_timeout : NULL);
+            tick_resize_trackers();
+        }
 
-        void wait_events_timeout() { handle_events(g_env->timeout > AWIN_TIMEOUT_INF ? &g_env->timeout : NULL); }
+        void wait_events_timeout()
+        {
+            f64 resize_timeout = AWIN_RESIZE_POLL_TICK;
+            f64 *timeout = g_env->timeout > AWIN_TIMEOUT_INF ? &g_env->timeout : NULL;
+            if (has_active_resize_tracker())
+            {
+                if (!timeout || *timeout > AWIN_RESIZE_POLL_TICK) timeout = &resize_timeout;
+            }
+            handle_events(timeout);
+            tick_resize_trackers();
+        }
 
         void push_empty_event()
         {
@@ -1608,7 +1736,7 @@ namespace awin
         static void assign_cursor(WaylandWindowData *window, Cursor::Platform *pd)
         {
             if (!g_ctx->pointer) return;
-            if (window->is_cursor_hidden)
+            if (window->state_flags & WindowStateFlagBits::cursor_hidden)
                 wl_pointer_set_cursor(g_ctx->pointer, g_ctx->pointer_enter_serial, NULL, 0, 0);
             else if (pd)
                 set_cursor_image(window, (WaylandCursor *)pd);
@@ -1634,20 +1762,20 @@ namespace awin
 
         void hide_cursor(WindowData *window_data)
         {
-            if (window_data->is_cursor_hidden) return;
-            window_data->is_cursor_hidden = true;
+            if (window_data->state_flags & WindowStateFlagBits::cursor_hidden) return;
+            set_window_state_flag(window_data->state_flags, WindowStateFlagBits::cursor_hidden, true);
             auto *wl_data = (WaylandWindowData *)window_data;
             assign_cursor(wl_data, get_cursor_pd(wl_data->cursor));
         }
 
         void show_cursor(Window *window, WindowData *window_data)
         {
-            if (!window_data->is_cursor_hidden) return;
+            if (!(window_data->state_flags & WindowStateFlagBits::cursor_hidden)) return;
             if (window_data->cursor && window_data->cursor->valid())
                 window_data->cursor->assign(window);
             else if (platform::g_env->default_cursor.valid())
                 platform::g_env->default_cursor.assign(window);
-            window_data->is_cursor_hidden = false;
+            set_window_state_flag(window_data->state_flags, WindowStateFlagBits::cursor_hidden, false);
         }
 
         acul::point2D<i32> get_window_position(WindowData *window)

@@ -17,7 +17,7 @@ void test_window()
 
     bool resize_called = false;
 
-    ed.bind_event(&resize_called, awin::event_id::resize, [&](awin::PosEvent &event) {
+    ed.bind_event(&resize_called, awin::event_id::resize, [&](awin::ResizeEvent &event) {
         if (event.window != &window || event.position.x <= 0 || event.position.y <= 0) return;
         resize_called = true;
         window.ready_to_close(true);

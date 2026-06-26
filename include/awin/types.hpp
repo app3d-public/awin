@@ -2,9 +2,9 @@
 #define APP_AWIN_TYPES_H
 
 #include <acul/enum.hpp>
-#include <acul/memory/alloc.hpp>
 #include <acul/pair.hpp>
 #include <acul/scalars.hpp>
+#include <acul/vector.hpp>
 #include <awin/symbol_export.h>
 
 #define KEY_MOD_START_INDEX 106
@@ -13,6 +13,7 @@
 namespace awin
 {
     class Window;
+    struct Monitor;
 
     namespace io
     {
@@ -251,6 +252,29 @@ namespace awin
     // Flags for window creation, stored as u8 for memory efficiency.
     using WindowFlags = acul::flags<WindowFlagBits>;
 
+    struct WindowStateFlagBits
+    {
+        enum enum_type : u8
+        {
+            none = 0x0,
+            cursor_hidden = 0x1,
+            focused = 0x2,
+            accepts_surface_update = 0x4,
+            ready_to_close = 0x8,
+            active_resizing = 0x10
+        };
+
+        using flag_bitmask = std::true_type;
+    };
+
+    using WindowStateFlags = acul::flags<WindowStateFlagBits>;
+
+    inline void set_window_state_flag(WindowStateFlags &flags, WindowStateFlagBits::enum_type flag, bool value)
+    {
+        if (value) flags |= flag;
+        else flags &= ~flag;
+    }
+
 #define AWIN_DEFAULT_FLAGS                                                                                      \
     awin::WindowFlagBits::resizable | awin::WindowFlagBits::minimize_box | awin::WindowFlagBits::maximize_box | \
         awin::WindowFlagBits::decorated
@@ -266,9 +290,8 @@ namespace awin
         Window *owner;
         acul::point2D<i32> dimenstions;
         WindowFlags flags;
-        bool is_cursor_hidden{false};
-        bool focused{false};
-        bool ready_to_close = false;
+        WindowStateFlags state_flags{WindowStateFlagBits::accepts_surface_update};
+        const Monitor *active_monitor = nullptr;
         acul::point2D<i32> resize_limit{0, 0};
         io::KeyPressState keys[io::Key::last + 1];
         Cursor *cursor{NULL};

@@ -44,10 +44,10 @@ namespace awin::platform::wayland
     bool poll_monitors(acul::vector<Monitor> &result)
     {
         result.clear();
+        g_env->primary_monitor = nullptr;
         if (!g_ctx) return false;
 
         result.reserve(g_ctx->outputs.size());
-        bool primary_assigned = false;
         for (const auto &output : g_ctx->outputs)
         {
             Monitor monitor{};
@@ -62,13 +62,9 @@ namespace awin::platform::wayland
             monitor.physical_size_mm = output.physical_size;
             monitor.content_scale.x = output.scale > 0 ? static_cast<f32>(output.scale) : 1.f;
             monitor.content_scale.y = monitor.content_scale.x;
-            if (!primary_assigned)
-            {
-                monitor.primary = true;
-                primary_assigned = true;
-            }
             result.push_back(std::move(monitor));
         }
+        if (!result.empty()) g_env->primary_monitor = &result[0];
         return !result.empty();
     }
 

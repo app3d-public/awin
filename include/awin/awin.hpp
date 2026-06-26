@@ -64,7 +64,6 @@ namespace awin
         acul::point2D<i32> work_dimensions;
         acul::point2D<i32> physical_size_mm;
         acul::point2D<f32> content_scale{1.f, 1.f};
-        bool primary{false};
     };
 
     struct ColorHint
@@ -77,9 +76,7 @@ namespace awin
     };
 
     inline constexpr ColorHint make_color_hint(u8 r, u8 g, u8 b, u8 a = 255)
-    {
-        return ColorHint{.enabled = true, .a = a, .r = r, .g = g, .b = b};
-    }
+    { return ColorHint{.enabled = true, .a = a, .r = r, .g = g, .b = b}; }
 
     // A window entity in the windowing system
     class Window
@@ -129,13 +126,20 @@ namespace awin
         AWIN_EXPORT void hide_cursor();
 
         // Check if the cursor is hidden.
-        inline bool is_cursor_hidden() const { return _data->is_cursor_hidden; }
+        inline bool is_cursor_hidden() const { return _data->state_flags & WindowStateFlagBits::cursor_hidden; }
 
         // Set cursor
         inline void set_cursor(Cursor *cursor) { _data->cursor = cursor; }
 
         // Check if the window is focused.
-        inline bool focused() const { return _data->focused; }
+        inline bool focused() const { return _data->state_flags & WindowStateFlagBits::focused; }
+
+        // Check whether the owner may update this window surface from the main render loop.
+        inline bool accepts_surface_update() const
+        { return _data->state_flags & WindowStateFlagBits::accepts_surface_update; }
+
+        // Check whether the window is currently inside an active resize series.
+        inline bool is_active_resizing() const { return _data->state_flags & WindowStateFlagBits::active_resizing; }
 
         // Check if the window is minimized.
         inline bool minimized() const { return _data->flags & WindowFlagBits::minimized; }
@@ -163,10 +167,11 @@ namespace awin
         }
 
         // Check if the window is ready to be closed.
-        inline bool ready_to_close() const { return _data->ready_to_close; }
+        inline bool ready_to_close() const { return _data->state_flags & WindowStateFlagBits::ready_to_close; }
 
         // Change the window's ready-to-close state.
-        inline void ready_to_close(bool ready_to_close) { _data->ready_to_close = ready_to_close; }
+        inline void ready_to_close(bool ready_to_close)
+        { set_window_state_flag(_data->state_flags, WindowStateFlagBits::ready_to_close, ready_to_close); }
 
         // Show the window if it is hidden.
         AWIN_EXPORT void show_window();
@@ -238,12 +243,28 @@ namespace awin
             mouse_move = 0x037E8253212E7276,
             scroll = 0x0D66A892FC053357,
             dpi_changed = 0x37516DB961C1BF7A,
+            monitor_change = 0x32F251D7114348D8,
             minimize = 0x16AB16E6670A5AC2,
             maximize = 0x0A8C9013D84CEC08,
             resize = 0x1FB82ED0F4C701CB,
             move = 0x2A5416AB994F5AAE
         };
     }; // namespace event_id
+
+    struct ResizeFlagBits
+    {
+        enum enum_type : u8
+        {
+            none = 0x0,
+            repeat = 0x1,
+            repeat_begin = 0x2,
+            repeat_end = 0x4
+        };
+
+        using flag_bitmask = std::true_type;
+    };
+
+    using ResizeFlags = acul::flags<ResizeFlagBits>;
 
     // Represents a focus change event in a window.
     struct FocusEvent : public acul::events::event
@@ -340,6 +361,19 @@ namespace awin
         }
     };
 
+    struct ResizeEvent : public acul::events::event
+    {
+        awin::Window *window;
+        acul::point2D<i32> position;
+        ResizeFlags flags;
+
+        explicit ResizeEvent(awin::Window *window = nullptr, acul::point2D<i32> position = {},
+                             ResizeFlags flags = ResizeFlagBits::none)
+            : event(event_id::resize), window(window), position(position), flags(flags)
+        {
+        }
+    };
+
     // Represents a scroll event in a window.
     struct ScrollEvent : public acul::events::event
     {
@@ -364,6 +398,18 @@ namespace awin
         {
         }
     };
+
+    struct MonitorChangeEvent : public acul::events::event
+    {
+        awin::Window *window;
+        const Monitor *monitor;
+
+        explicit MonitorChangeEvent(awin::Window *window = nullptr, const Monitor *monitor = nullptr)
+            : event(event_id::monitor_change), window(window), monitor(monitor)
+        {
+        }
+    };
+
     // Get the time elapsed since library initialization in seconds as a floating-point value.
     AWIN_EXPORT f64 get_time();
 
@@ -378,6 +424,9 @@ namespace awin
     // Retrieves the primary monitor. Returns nullptr if no monitors are available.
     // Returned pointer is valid until monitor list is repolled or library is destroyed.
     AWIN_EXPORT const Monitor *get_primary_monitor();
+
+    // Retrieves the current monitor for the given window. Returns primary monitor as fallback.
+    AWIN_EXPORT const Monitor *get_window_monitor(const Window &window);
 
     // Retrieves all supported video modes for the given monitor.
     AWIN_EXPORT acul::vector<VidMode> get_monitor_video_modes(const Monitor *monitor);

@@ -24,6 +24,7 @@ namespace awin
             acul::events::event_group *resize;
             acul::events::event_group *move;
             acul::events::event_group *dpi_changed;
+            acul::events::event_group *monitor_change;
         };
 
         extern AWIN_EXPORT struct WindowEnvironment
@@ -47,6 +48,7 @@ namespace awin
             bool has_active_window_hints{false};
             Cursor default_cursor;
             acul::vector<Monitor> monitors;
+            const Monitor *primary_monitor = nullptr;
             EventRegistry events;
         } *g_env;
 
@@ -54,6 +56,10 @@ namespace awin
     } // namespace platform
 
     inline WindowData *get_window_data(const Window &window) { return window._data; }
+
+    bool update_window_monitor(WindowData *window, const Monitor *monitor, bool notify = true);
+    const Monitor *find_window_monitor_by_overlap(const WindowData *window);
+    bool update_window_monitor_by_overlap(WindowData *window, bool notify = true);
 } // namespace awin
 
 #define AWIN_LOG_DEFAULT(level, ...) \

@@ -18,6 +18,13 @@ namespace awin
                 XIC ic;
                 Colormap colormap;
                 acul::point2D<int> window_pos;
+                struct
+                {
+                    bool active{false};
+                    bool candidate{false};
+                    f64 last_time{0.0};
+                    acul::point2D<i32> last_dimensions{};
+                } resize_tracker;
                 // The time of the last KeyPress event per keycode, for discarding
                 // duplicate key events generated for some keys by ibus
                 Time key_press_times[256] = {0};

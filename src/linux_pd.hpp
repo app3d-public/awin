@@ -6,6 +6,9 @@
 #include <awin/types.hpp>
 #include <sys/poll.h>
 
+#define AWIN_RESIZE_END_TIMEOUT 0.120
+#define AWIN_RESIZE_POLL_TICK   0.016
+
 namespace awin
 {
     struct Monitor;

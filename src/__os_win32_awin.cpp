@@ -36,8 +36,8 @@ namespace awin
             LPBYTE raw_input_data{nullptr};
             UINT raw_input_size{0};
             bool has_background_hint{false};
-            bool background_hint_active{false};
             COLORREF background_color{RGB(35, 35, 35)};
+            u8 resize_flags{0};
         };
 
         DWORD get_window_style(WindowFlags flags)
@@ -81,17 +81,56 @@ namespace awin
             }
         }
 
+        static const Monitor *find_monitor_by_position(acul::point2D<i32> position)
+        {
+            for (const auto &monitor : get_monitors())
+                if (monitor.position == position) return &monitor;
+            return get_primary_monitor();
+        }
+
+        static void update_window_monitor_if_needed(Win32WindowData *window)
+        {
+            if (!window || IsZoomed(window->hwnd) ||
+                (window->flags & (WindowFlagBits::maximized | WindowFlagBits::fullscreen)))
+                return;
+
+            HMONITOR hmonitor = MonitorFromWindow(window->hwnd, MONITOR_DEFAULTTONEAREST);
+            if (!hmonitor) return;
+
+            MONITORINFO info{};
+            info.cbSize = sizeof(info);
+            if (!GetMonitorInfoW(hmonitor, &info)) return;
+
+            const acul::point2D<i32> monitor_position{info.rcMonitor.left, info.rcMonitor.top};
+            if (window->active_monitor && window->active_monitor->position == monitor_position) return;
+            update_window_monitor(window, find_monitor_by_position(monitor_position));
+        }
+
+        static BOOL CALLBACK refresh_window_monitor_callback(HWND hwnd, LPARAM)
+        {
+            auto *window = reinterpret_cast<Win32WindowData *>(GetPropW(hwnd, L"AWIN"));
+            if (!window) return TRUE;
+            window->active_monitor = nullptr;
+            update_window_monitor_if_needed(window);
+            return TRUE;
+        }
+
+        static void refresh_all_window_monitors()
+        {
+            EnumWindows(refresh_window_monitor_callback, 0);
+        }
+
         void on_focus_kill(Win32WindowData *wd)
         {
             if (!wd) return;
-            wd->focused = false;
+            set_window_state_flag(wd->state_flags, WindowStateFlagBits::focused, false);
+            set_window_state_flag(wd->state_flags, WindowStateFlagBits::accepts_surface_update, false);
             acul::events::dispatch_event_group<FocusEvent>(g_env->events.focus, wd->owner, false);
             if (!wd->raw_input) return;
             const RAWINPUTDEVICE rid = {0x01, 0x02, RIDEV_REMOVE, NULL};
             if (!RegisterRawInputDevices(&rid, 1, sizeof(rid)))
                 AWIN_LOG_ERROR("[Win32] Failed to remove raw input device. Error code: %lu", GetLastError());
-            else
-                wd->raw_input = false;
+            else wd->raw_input = false;
         }
 
         LRESULT CALLBACK wnd_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
@@ -116,23 +155,33 @@ namespace awin
                     break;
                 }
                 case WM_NCCREATE:
-                    EnableNonClientDpiScaling(hwnd);
-                    break;
-                case WM_ERASEBKGND:
                 {
-                    if (!window || !window->has_background_hint || !window->background_hint_active) return TRUE;
-                    HDC hdc = (HDC)wParam;
-                    HBRUSH hBrush = CreateSolidBrush(window->background_color);
-                    RECT rect;
-                    GetClientRect(hwnd, &rect);
-                    FillRect(hdc, &rect, hBrush);
-                    DeleteObject(hBrush);
-                    return TRUE;
-                }
-                case WM_PAINT:
-                    if (window && window->background_hint_active) window->background_hint_active = false;
+                    EnableNonClientDpiScaling(hwnd);
+                    CREATESTRUCT *create_struct = reinterpret_cast<CREATESTRUCT *>(lParam);
+                    window = reinterpret_cast<Win32WindowData *>(create_struct->lpCreateParams);
+                    if (window)
+                    {
+                        window->hwnd = hwnd;
+                        SetPropW(hwnd, L"AWIN", reinterpret_cast<HANDLE>(window));
+                    }
                     break;
+                }
+                case WM_ERASEBKGND:
+                    return TRUE;
 
+                case WM_PAINT:
+                {
+                    PAINTSTRUCT ps{};
+                    HDC hdc = BeginPaint(hwnd, &ps);
+                    if (window && window->has_background_hint)
+                    {
+                        HBRUSH brush = CreateSolidBrush(window->background_color);
+                        FillRect(hdc, &ps.rcPaint, brush);
+                        DeleteObject(brush);
+                    }
+                    EndPaint(hwnd, &ps);
+                    return 0;
+                }
                 case WM_LBUTTONDOWN:
                 case WM_RBUTTONDOWN:
                 case WM_MBUTTONDOWN:
@@ -178,7 +227,7 @@ namespace awin
 
                     // Keep receiving button-release even when pointer leaves the window.
                     // Do not interfere with hidden-cursor capture mode.
-                    if (!window->is_cursor_hidden)
+                    if (!(window->state_flags & WindowStateFlagBits::cursor_hidden))
                     {
                         if (action == io::KeyPressState::press)
                         {
@@ -199,18 +248,20 @@ namespace awin
                 case WM_WINDOWPOSCHANGED:
                 {
                     auto *wp = reinterpret_cast<WINDOWPOS *>(lParam);
-                    if ((wp->flags & 0x8000) && IsIconic(window->hwnd)) on_focus_kill(window);
+                    if (window && (wp->flags & 0x8000) && IsIconic(window->hwnd)) on_focus_kill(window);
+                    if (window && (!(wp->flags & SWP_NOMOVE) || !(wp->flags & SWP_NOSIZE)))
+                        update_window_monitor_if_needed(window);
                     break;
                 }
                 case WM_SETFOCUS:
                 {
-                    window->focused = true;
+                    set_window_state_flag(window->state_flags, WindowStateFlagBits::focused, true);
+                    set_window_state_flag(window->state_flags, WindowStateFlagBits::accepts_surface_update, true);
                     acul::events::dispatch_event_group<FocusEvent>(events.focus, window->owner, true);
                     const RAWINPUTDEVICE rid = {0x01, 0x02, RIDEV_INPUTSINK, hwnd};
                     if (!RegisterRawInputDevices(&rid, 1, sizeof(rid)))
                         AWIN_LOG_ERROR("[Win32] Failed to register raw input device. Error code: %lu", GetLastError());
-                    else
-                        window->raw_input = true;
+                    else window->raw_input = true;
                     break;
                 }
                 case WM_KILLFOCUS:
@@ -219,8 +270,7 @@ namespace awin
                 case WM_CHAR:
                 case WM_SYSCHAR:
                 {
-                    if (IS_HIGH_SURROGATE(wParam))
-                        window->high_surrogate = wParam;
+                    if (IS_HIGH_SURROGATE(wParam)) window->high_surrogate = wParam;
                     else if (IS_LOW_SURROGATE(wParam))
                     {
                         if (window->high_surrogate)
@@ -231,8 +281,7 @@ namespace awin
                                                                                codepoint);
                         }
                     }
-                    else
-                        acul::events::dispatch_event_group<CharInputEvent>(events.char_input, window->owner, wParam);
+                    else acul::events::dispatch_event_group<CharInputEvent>(events.char_input, window->owner, wParam);
 
                     if (uMsg == WM_SYSCHAR) break;
                     return 0;
@@ -257,10 +306,8 @@ namespace awin
                         case SC_SCREENSAVE:
                         case SC_MONITORPOWER:
                         {
-                            if (window->flags & WindowFlagBits::fullscreen)
-                                return 0;
-                            else
-                                break;
+                            if (window->flags & WindowFlagBits::fullscreen) return 0;
+                            else break;
                         }
                     }
                     break;
@@ -288,14 +335,12 @@ namespace awin
                                 input_key(window, io::Key::lshift, action, mods);
                                 input_key(window, io::Key::rshift, action, mods);
                             }
-                            else
-                                key = (HIWORD(lParam) & KF_EXTENDED) ? io::Key::rshift : io::Key::lshift;
+                            else key = (HIWORD(lParam) & KF_EXTENDED) ? io::Key::rshift : io::Key::lshift;
                             break;
                         }
                         case VK_CONTROL:
                         {
-                            if (HIWORD(lParam) & KF_EXTENDED)
-                                key = io::Key::rcontrol;
+                            if (HIWORD(lParam) & KF_EXTENDED) key = io::Key::rcontrol;
                             else
                             {
                                 // NOTE: Alt Gr sends Left Ctrl followed by Right Alt
@@ -390,17 +435,14 @@ namespace awin
                                 window->flags |= WindowFlagBits::minimized;
                                 dimenstions = {0, 0};
                             }
-                            else
-                                window->flags &= ~WindowFlagBits::minimized;
+                            else window->flags &= ~WindowFlagBits::minimized;
                             acul::events::dispatch_event_group<StateEvent>(events.minimize, event_id::minimize,
                                                                            window->owner, want_min);
                         }
                         if ((window->flags & WindowFlagBits::maximized) != want_max)
                         {
-                            if (want_max)
-                                window->flags |= WindowFlagBits::maximized;
-                            else
-                                window->flags &= ~WindowFlagBits::maximized;
+                            if (want_max) window->flags |= WindowFlagBits::maximized;
+                            else window->flags &= ~WindowFlagBits::maximized;
                             acul::events::dispatch_event_group<StateEvent>(events.maximize, event_id::maximize,
                                                                            window->owner, want_max);
                         }
@@ -408,12 +450,40 @@ namespace awin
                     if (dimenstions != window->dimenstions)
                     {
                         window->dimenstions = dimenstions;
-                        acul::events::dispatch_event_group<PosEvent>(events.resize, event_id::resize, window->owner,
-                                                                     dimenstions);
+                        ResizeFlags resize_flags{window->resize_flags};
+                        if (resize_flags & ResizeFlagBits::repeat_begin)
+                        {
+                            resize_flags |= ResizeFlagBits::repeat;
+                            set_window_state_flag(window->state_flags, WindowStateFlagBits::active_resizing, true);
+                        }
+                        acul::events::dispatch_event_group<ResizeEvent>(events.resize, window->owner, dimenstions,
+                                                                        resize_flags);
+                        window->resize_flags &= ~ResizeFlagBits::repeat_begin;
+                        update_window_monitor_if_needed(window);
                     }
                     return 0;
                 }
+                case WM_ENTERSIZEMOVE:
+                    if (window)
+                    {
+                        window->resize_flags |= ResizeFlagBits::repeat | ResizeFlagBits::repeat_begin;
+                        set_window_state_flag(window->state_flags, WindowStateFlagBits::accepts_surface_update, false);
+                    }
+                    break;
+                case WM_EXITSIZEMOVE:
+                    if (window)
+                    {
+                        acul::events::dispatch_event_group<ResizeEvent>(
+                            events.resize, window->owner, window->dimenstions,
+                            ResizeFlagBits::repeat | ResizeFlagBits::repeat_end);
+                        window->resize_flags = ResizeFlagBits::none;
+                        set_window_state_flag(window->state_flags, WindowStateFlagBits::active_resizing, false);
+                        set_window_state_flag(window->state_flags, WindowStateFlagBits::accepts_surface_update,
+                                              window->state_flags & WindowStateFlagBits::focused);
+                    }
+                    break;
                 case WM_MOVE:
+                    update_window_monitor_if_needed(window);
                     acul::events::dispatch_event_group<PosEvent>(
                         events.move, event_id::move, window->owner,
                         acul::point2D(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)));
@@ -439,6 +509,7 @@ namespace awin
                 {
                     poll_monitors(g_env->monitors);
                     update_primary_screen_cache();
+                    refresh_all_window_monitors();
                     break;
                 }
                 case WM_DEVICECHANGE:
@@ -447,6 +518,7 @@ namespace awin
                     {
                         poll_monitors(g_env->monitors);
                         update_primary_screen_cache();
+                        refresh_all_window_monitors();
                     }
                     break;
                 }
@@ -454,10 +526,8 @@ namespace awin
                 {
                     if (LOWORD(lParam) == HTCLIENT)
                     {
-                        if (window->cursor->valid())
-                            window->cursor->assign(nullptr);
-                        else
-                            SetCursor(LoadCursor(NULL, IDC_ARROW));
+                        if (window->cursor->valid()) window->cursor->assign(nullptr);
+                        else SetCursor(LoadCursor(NULL, IDC_ARROW));
                         return TRUE;
                     }
                     break;
@@ -490,7 +560,7 @@ namespace awin
                     return 0;
                 }
                 case WM_CLOSE:
-                    window->ready_to_close = true;
+                    set_window_state_flag(window->state_flags, WindowStateFlagBits::ready_to_close, true);
                     return TRUE;
                 case WM_DESTROY:
                     PostQuitMessage(0);
@@ -574,7 +644,6 @@ namespace awin
         if (has_next_window_background && next_window_background.enabled)
         {
             wd->has_background_hint = true;
-            wd->background_hint_active = true;
             wd->background_color = RGB(next_window_background.r, next_window_background.g, next_window_background.b);
         }
         wd->hwnd = CreateWindowExW(wd->ex_style, platform::ctx.win32_class.lpszClassName, (LPCWSTR)wd->title.c_str(),
@@ -584,12 +653,9 @@ namespace awin
         if (!wd->hwnd) throw acul::runtime_error("Failed to create window");
         if (!(flags & WindowFlagBits::hidden))
         {
-            if (flags & WindowFlagBits::minimized)
-                ShowWindow(wd->hwnd, SW_MINIMIZE);
-            else if (flags & WindowFlagBits::maximized)
-                ShowWindow(wd->hwnd, SW_MAXIMIZE);
-            else
-                ShowWindow(wd->hwnd, SW_SHOWNORMAL);
+            if (flags & WindowFlagBits::minimized) ShowWindow(wd->hwnd, SW_MINIMIZE);
+            else if (flags & WindowFlagBits::maximized) ShowWindow(wd->hwnd, SW_MAXIMIZE);
+            else ShowWindow(wd->hwnd, SW_SHOWNORMAL);
         }
         AWIN_LOG_INFO("[Win32] Created Window descriptor: %p", wd->hwnd);
     }
@@ -618,7 +684,6 @@ namespace awin
     {
         if (!hidden()) return;
         auto *wd = (platform::Win32WindowData *)_data;
-        if (wd->has_background_hint) wd->background_hint_active = true;
         WINDOWPLACEMENT placement = {sizeof(WINDOWPLACEMENT)};
         GetWindowPlacement(wd->hwnd, &placement);
         placement.showCmd = wd->flags & WindowFlagBits::maximized ? SW_SHOWMAXIMIZED : SW_NORMAL;
@@ -686,32 +751,30 @@ namespace awin
     void Window::show_cursor()
     {
         auto *wd = (platform::Win32WindowData *)_data;
-        if (!wd->is_cursor_hidden) return;
+        if (!(wd->state_flags & WindowStateFlagBits::cursor_hidden)) return;
         cursor_position(wd->saved_cursor_pos);
         ReleaseCapture();
         ShowCursor(TRUE);
-        wd->is_cursor_hidden = false;
+        set_window_state_flag(wd->state_flags, WindowStateFlagBits::cursor_hidden, false);
     }
 
     void Window::hide_cursor()
     {
         auto *wd = (platform::Win32WindowData *)_data;
-        if (wd->is_cursor_hidden) return;
+        if (wd->state_flags & WindowStateFlagBits::cursor_hidden) return;
         wd->saved_cursor_pos = cursor_position();
         SetCapture(wd->hwnd);
         ShowCursor(FALSE);
         ClipCursor(NULL);
-        wd->is_cursor_hidden = true;
+        set_window_state_flag(wd->state_flags, WindowStateFlagBits::cursor_hidden, true);
     }
 
     acul::point2D<i32> Window::position() const
     {
         RECT rect;
         auto *wd = (platform::Win32WindowData *)_data;
-        if (GetWindowRect(wd->hwnd, &rect))
-            return {rect.left, rect.top};
-        else
-            return {0, 0};
+        if (GetWindowRect(wd->hwnd, &rect)) return {rect.left, rect.top};
+        else return {0, 0};
     }
 
     void Window::position(acul::point2D<i32> position)
@@ -785,8 +848,7 @@ namespace awin
             MsgWaitForMultipleObjects(0, NULL, FALSE, platform::g_env->timeout * 1e3, QS_ALLINPUT);
             platform::g_env->timeout = AWIN_TIMEOUT_INF;
         }
-        else
-            WaitMessage();
+        else WaitMessage();
         poll_events();
     }
 

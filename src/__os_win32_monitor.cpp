@@ -1,5 +1,5 @@
 #include <acul/string/string.hpp>
-#include <awin/awin.hpp>
+#include "env.hpp"
 #include <windows.h>
 
 namespace awin::platform
@@ -21,8 +21,9 @@ namespace awin::platform
             return !dst.empty();
         }
 
-        static void fill_monitor_metrics(const WCHAR *device_name, Monitor &monitor)
+        static bool fill_monitor_metrics(const WCHAR *device_name, Monitor &monitor)
         {
+            bool primary = false;
             DEVMODEW dm{};
             dm.dmSize = sizeof(dm);
             if (EnumDisplaySettingsExW(device_name, ENUM_CURRENT_SETTINGS, &dm, EDS_ROTATEDMODE))
@@ -41,7 +42,7 @@ namespace awin::platform
                     monitor.work_position = {info.rcWork.left, info.rcWork.top};
                     monitor.work_dimensions = {info.rcWork.right - info.rcWork.left,
                                                info.rcWork.bottom - info.rcWork.top};
-                    monitor.primary = (info.dwFlags & MONITORINFOF_PRIMARY) != 0;
+                    primary = (info.dwFlags & MONITORINFOF_PRIMARY) != 0;
                 }
             }
 
@@ -61,22 +62,26 @@ namespace awin::platform
                 monitor.work_position = monitor.position;
                 monitor.work_dimensions = monitor.dimensions;
             }
+            return primary;
         }
 
-        void append_monitor(DISPLAY_DEVICEW &adapter, DISPLAY_DEVICEW *display, acul::vector<Monitor> &result)
+        bool append_monitor(DISPLAY_DEVICEW &adapter, DISPLAY_DEVICEW *display, acul::vector<Monitor> &result)
         {
             Monitor monitor{};
             acul::u16string w_name{(const c16 *)(display ? display->DeviceString : adapter.DeviceString)};
             monitor.name = acul::utf16_to_utf8(w_name);
             monitor.system_name = acul::utf16_to_utf8((const c16 *)(adapter.DeviceName));
-            fill_monitor_metrics(adapter.DeviceName, monitor);
+            const bool primary = fill_monitor_metrics(adapter.DeviceName, monitor);
             result.push_back(std::move(monitor));
+            return primary;
         }
     } // namespace
 
     bool poll_monitors(acul::vector<Monitor> &result)
     {
         result.clear();
+        g_env->primary_monitor = nullptr;
+        size_t primary_index = static_cast<size_t>(-1);
 
         for (DWORD adapter_index = 0;; ++adapter_index)
         {
@@ -93,12 +98,19 @@ namespace awin::platform
                 if (!EnumDisplayDevicesW(adapter.DeviceName, display_index, &display, 0)) break;
                 if (!(display.StateFlags & DISPLAY_DEVICE_ACTIVE)) continue;
                 found_displays = true;
-                append_monitor(adapter, &display, result);
+                const size_t index = result.size();
+                if (append_monitor(adapter, &display, result)) primary_index = index;
             }
 
-            if (!found_displays) append_monitor(adapter, nullptr, result);
+            if (!found_displays)
+            {
+                const size_t index = result.size();
+                if (append_monitor(adapter, nullptr, result)) primary_index = index;
+            }
         }
 
+        if (!result.empty())
+            g_env->primary_monitor = &result[primary_index < result.size() ? primary_index : 0];
         return true;
     }
 

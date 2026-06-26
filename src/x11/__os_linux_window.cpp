@@ -54,6 +54,116 @@ namespace awin
             }
         }
 
+        static void finish_active_resize()
+        {
+            auto *window = g_ctx->active_resize_window;
+            if (!window) return;
+            if (!window->resize_tracker.active)
+            {
+                window->resize_tracker.candidate = false;
+                g_ctx->active_resize_window = nullptr;
+                return;
+            }
+
+            window->resize_tracker.active = false;
+            window->resize_tracker.candidate = false;
+            set_window_state_flag(window->state_flags, WindowStateFlagBits::active_resizing, false);
+            set_window_state_flag(window->state_flags, WindowStateFlagBits::accepts_surface_update,
+                                  window->state_flags & WindowStateFlagBits::focused);
+            acul::events::dispatch_event_group<ResizeEvent>(
+                g_env->events.resize, window->owner, window->resize_tracker.last_dimensions,
+                ResizeFlagBits::repeat | ResizeFlagBits::repeat_end);
+            g_ctx->active_resize_window = nullptr;
+        }
+
+        static void untrack_active_resize_window(X11WindowData *window)
+        {
+            if (g_ctx->active_resize_window == window) g_ctx->active_resize_window = nullptr;
+        }
+
+        static bool has_active_resize_tracker()
+        {
+            return g_ctx->active_resize_window && (g_ctx->active_resize_window->resize_tracker.active ||
+                                                   g_ctx->active_resize_window->resize_tracker.candidate);
+        }
+
+        static void refresh_window_monitors_in_tree(::Window parent_window)
+        {
+            XID root, parent;
+            XID *children = nullptr;
+            unsigned int nchildren = 0;
+            auto &xlib = g_ctx->xlib;
+
+            if (!xlib.XQueryTree(g_ctx->display, parent_window, &root, &parent, &children, &nchildren)) return;
+            for (unsigned int i = 0; i < nchildren; ++i)
+            {
+                X11WindowData *window = nullptr;
+                if (xlib.XFindContext(g_ctx->display, children[i], g_ctx->context, (XPointer *)&window) == 0 && window)
+                {
+                    window->active_monitor = nullptr;
+                    if (!(window->flags & (WindowFlagBits::maximized | WindowFlagBits::fullscreen)))
+                        update_window_monitor_by_overlap(window);
+                }
+                refresh_window_monitors_in_tree(children[i]);
+            }
+            if (children) xlib.XFree(children);
+        }
+
+        static void refresh_all_window_monitors() { refresh_window_monitors_in_tree(g_ctx->root); }
+
+        static void dispatch_tracked_resize(X11WindowData *window, acul::point2D<i32> dimensions)
+        {
+            if (g_ctx->active_resize_window && g_ctx->active_resize_window != window)
+                finish_active_resize();
+
+            ResizeFlags flags = ResizeFlagBits::none;
+            if (!window->resize_tracker.active && !window->resize_tracker.candidate)
+            {
+                window->resize_tracker.candidate = true;
+                window->resize_tracker.last_time = get_time();
+                window->resize_tracker.last_dimensions = dimensions;
+                window->dimenstions = dimensions;
+                g_ctx->active_resize_window = window;
+                if (!(window->flags & (WindowFlagBits::maximized | WindowFlagBits::fullscreen)))
+                    update_window_monitor_by_overlap(window);
+                acul::events::dispatch_event_group<ResizeEvent>(g_env->events.resize, window->owner, dimensions,
+                                                                flags);
+                return;
+            }
+
+            flags = ResizeFlagBits::repeat;
+            if (window->resize_tracker.candidate)
+            {
+                window->resize_tracker.active = true;
+                window->resize_tracker.candidate = false;
+                set_window_state_flag(window->state_flags, WindowStateFlagBits::active_resizing, true);
+                set_window_state_flag(window->state_flags, WindowStateFlagBits::accepts_surface_update, false);
+                flags |= ResizeFlagBits::repeat_begin;
+                g_ctx->active_resize_window = window;
+            }
+
+            window->resize_tracker.last_time = get_time();
+            window->resize_tracker.last_dimensions = dimensions;
+            window->dimenstions = dimensions;
+            if (!(window->flags & (WindowFlagBits::maximized | WindowFlagBits::fullscreen)))
+                update_window_monitor_by_overlap(window);
+            acul::events::dispatch_event_group<ResizeEvent>(g_env->events.resize, window->owner, dimensions, flags);
+        }
+
+        static void tick_resize_trackers()
+        {
+            auto *window = g_ctx->active_resize_window;
+            if (!window || (!window->resize_tracker.active && !window->resize_tracker.candidate)) return;
+            if (get_time() - window->resize_tracker.last_time < AWIN_RESIZE_END_TIMEOUT) return;
+            if (window->resize_tracker.candidate)
+            {
+                window->resize_tracker.candidate = false;
+                g_ctx->active_resize_window = nullptr;
+                return;
+            }
+            finish_active_resize();
+        }
+
         // Returns whether the event is a selection event
         static Bool is_selection_event(Display *display, XEvent *event, XPointer pointer)
         {
@@ -580,7 +690,7 @@ namespace awin
                 const Atom protocol = event->xclient.data.l[0];
                 if (protocol == None) return;
                 if (protocol == g_ctx->wm.WM_DELETE_WINDOW)
-                    window_data->ready_to_close = true;
+                    set_window_state_flag(window_data->state_flags, WindowStateFlagBits::ready_to_close, true);
                 else if (protocol == g_ctx->wm.NET_WM_PING)
                 {
                     // The window manager is pinging the application to ensure
@@ -688,6 +798,16 @@ namespace awin
                 }
             }
 
+            auto &randr = xlib.randr;
+            if (randr.init && (event->type == randr.event_base + RRScreenChangeNotify ||
+                               event->type == randr.event_base + RRNotify))
+            {
+                if (randr.XRRUpdateConfiguration) randr.XRRUpdateConfiguration(event);
+                poll_monitors(g_env->monitors);
+                refresh_all_window_monitors();
+                return;
+            }
+
             X11WindowData *window_data = nullptr;
             if (xlib.XFindContext(g_ctx->display, event->xany.window, g_ctx->context, (XPointer *)&window_data) != 0)
                 return;
@@ -720,7 +840,7 @@ namespace awin
                     acul::events::dispatch_event_group<MouseEnterEvent>(g_env->events.mouse_enter, window_data->owner,
                                                                         true);
 
-                    if (!window_data->is_cursor_hidden)
+                    if (!(window_data->state_flags & WindowStateFlagBits::cursor_hidden))
                     {
                         if (window_data->cursor && window_data->cursor->valid())
                             window_data->cursor->assign(window_data->owner);
@@ -748,12 +868,6 @@ namespace awin
                 case ConfigureNotify:
                 {
                     acul::point2D<i32> dimenstions(event->xconfigure.width, event->xconfigure.height);
-                    if (dimenstions != window_data->dimenstions)
-                    {
-                        window_data->dimenstions = dimenstions;
-                        acul::events::dispatch_event_group<PosEvent>(g_env->events.resize, event_id::resize,
-                                                                     window_data->owner, window_data->dimenstions);
-                    }
                     acul::point2D<i32> pos(event->xconfigure.x, event->xconfigure.y);
 
                     // NOTE: ConfigureNotify events from the server are in local
@@ -774,9 +888,12 @@ namespace awin
                     if (window_data->window_pos != pos)
                     {
                         window_data->window_pos = pos;
+                        if (!(window_data->flags & (WindowFlagBits::maximized | WindowFlagBits::fullscreen)))
+                            update_window_monitor_by_overlap(window_data);
                         acul::events::dispatch_event_group<PosEvent>(g_env->events.move, event_id::move,
                                                                      window_data->owner, pos);
                     }
+                    if (dimenstions != window_data->dimenstions) dispatch_tracked_resize(window_data, dimenstions);
                     return;
                 }
                 case ClientMessage:
@@ -791,10 +908,11 @@ namespace awin
                         // key chords and window dragging
                         return;
                     }
-                    if (window_data->is_cursor_hidden) capture_cursor(window_data);
+                    if (window_data->state_flags & WindowStateFlagBits::cursor_hidden) capture_cursor(window_data);
                     if (window_data->ic) xlib.XSetICFocus(window_data->ic);
 
-                    window_data->focused = true;
+                    set_window_state_flag(window_data->state_flags, WindowStateFlagBits::focused, true);
+                    set_window_state_flag(window_data->state_flags, WindowStateFlagBits::accepts_surface_update, true);
                     acul::events::dispatch_event_group<FocusEvent>(g_env->events.focus, window_data->owner, true);
                     toogle_rid(true);
                     g_ctx->focused_window = window_data;
@@ -808,10 +926,11 @@ namespace awin
                         // key chords and window dragging
                         return;
                     }
-                    if (window_data->is_cursor_hidden) release_cursor();
+                    if (window_data->state_flags & WindowStateFlagBits::cursor_hidden) release_cursor();
                     if (window_data->ic) xlib.XUnsetICFocus(window_data->ic);
 
-                    window_data->focused = false;
+                    set_window_state_flag(window_data->state_flags, WindowStateFlagBits::focused, false);
+                    set_window_state_flag(window_data->state_flags, WindowStateFlagBits::accepts_surface_update, false);
                     acul::events::dispatch_event_group<FocusEvent>(g_env->events.focus, window_data->owner, false);
                     toogle_rid(false);
                     return;
@@ -1055,6 +1174,7 @@ namespace awin
         {
             auto *x11_data = (X11WindowData *)window_data;
             auto &xlib = g_ctx->xlib;
+            untrack_active_resize_window(x11_data);
 
             if (x11_data->ic)
             {
@@ -1248,17 +1368,25 @@ namespace awin
             }
 
             xlib.XFlush(g_ctx->display);
+            tick_resize_trackers();
         }
 
         void wait_events()
         {
-            wait_for_any_event(NULL);
+            f64 resize_timeout = AWIN_RESIZE_POLL_TICK;
+            wait_for_any_event(has_active_resize_tracker() ? &resize_timeout : NULL);
             poll_events();
         }
 
         void wait_events_timeout()
         {
-            wait_for_any_event(g_env->timeout > AWIN_TIMEOUT_INF ? &g_env->timeout : NULL);
+            f64 resize_timeout = AWIN_RESIZE_POLL_TICK;
+            f64 *timeout = g_env->timeout > AWIN_TIMEOUT_INF ? &g_env->timeout : NULL;
+            if (has_active_resize_tracker())
+            {
+                if (!timeout || *timeout > AWIN_RESIZE_POLL_TICK) timeout = &resize_timeout;
+            }
+            wait_for_any_event(timeout);
             poll_events();
         }
 
@@ -1382,20 +1510,20 @@ namespace awin
         void hide_cursor(WindowData *window_data)
         {
             auto *x11_data = (X11WindowData *)window_data;
-            if (window_data->is_cursor_hidden) return;
+            if (window_data->state_flags & WindowStateFlagBits::cursor_hidden) return;
             g_ctx->xlib.XDefineCursor(g_ctx->display, x11_data->window, g_ctx->hidden_cursor.handle);
             g_ctx->xlib.XFlush(g_ctx->display);
-            window_data->is_cursor_hidden = true;
+            set_window_state_flag(window_data->state_flags, WindowStateFlagBits::cursor_hidden, true);
         }
 
         void show_cursor(Window *window, WindowData *window_data)
         {
-            if (!window_data->is_cursor_hidden) return;
+            if (!(window_data->state_flags & WindowStateFlagBits::cursor_hidden)) return;
             if (window_data->cursor && window_data->cursor->valid())
                 window_data->cursor->assign(window);
             else if (platform::g_env->default_cursor.valid())
                 platform::g_env->default_cursor.assign(window);
-            window_data->is_cursor_hidden = false;
+            set_window_state_flag(window_data->state_flags, WindowStateFlagBits::cursor_hidden, false);
         }
 
     } // namespace platform::x11
