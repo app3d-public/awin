@@ -120,6 +120,15 @@ namespace awin
             EnumWindows(refresh_window_monitor_callback, 0);
         }
 
+        static bool fill_window_background(Win32WindowData *window, HDC hdc, const RECT &rect)
+        {
+            if (!window || !window->has_background_hint || !hdc) return false;
+            HBRUSH brush = CreateSolidBrush(window->background_color);
+            FillRect(hdc, &rect, brush);
+            DeleteObject(brush);
+            return true;
+        }
+
         void on_focus_kill(Win32WindowData *wd)
         {
             if (!wd) return;
@@ -167,18 +176,18 @@ namespace awin
                     break;
                 }
                 case WM_ERASEBKGND:
+                {
+                    RECT rect{};
+                    if (GetClientRect(hwnd, &rect))
+                        fill_window_background(window, reinterpret_cast<HDC>(wParam), rect);
                     return TRUE;
+                }
 
                 case WM_PAINT:
                 {
                     PAINTSTRUCT ps{};
                     HDC hdc = BeginPaint(hwnd, &ps);
-                    if (window && window->has_background_hint)
-                    {
-                        HBRUSH brush = CreateSolidBrush(window->background_color);
-                        FillRect(hdc, &ps.rcPaint, brush);
-                        DeleteObject(brush);
-                    }
+                    fill_window_background(window, hdc, ps.rcPaint);
                     EndPaint(hwnd, &ps);
                     return 0;
                 }
