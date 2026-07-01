@@ -44,14 +44,78 @@ namespace awin
         {
             DWORD style = WS_CLIPSIBLINGS | WS_CLIPCHILDREN;
             const bool decorated = flags & WindowFlagBits::decorated;
-            const bool extended_nc_area = flags & WindowFlagBits::extended_nc_area;
-            if ((flags & WindowFlagBits::fullscreen) || (!decorated && !extended_nc_area)) style |= WS_POPUP;
-            if (decorated || extended_nc_area) style |= WS_SYSMENU;
+            if ((flags & WindowFlagBits::fullscreen) || !decorated) style |= WS_POPUP;
+            if (decorated || (flags & (WindowFlagBits::minimize_box | WindowFlagBits::maximize_box)))
+                style |= WS_SYSMENU;
             if (flags & WindowFlagBits::minimize_box) style |= WS_MINIMIZEBOX;
             if (flags & WindowFlagBits::maximize_box) style |= WS_MAXIMIZEBOX;
             if (flags & WindowFlagBits::resizable) style |= WS_THICKFRAME;
             if (decorated) style |= WS_CAPTION;
             return style;
+        }
+
+        static bool is_borderless_resizable(const Win32WindowData *window)
+        {
+            return window && !(window->flags & WindowFlagBits::decorated) &&
+                   (window->flags & WindowFlagBits::resizable) && !(window->flags & WindowFlagBits::fullscreen);
+        }
+
+        static acul::point2D<i32> get_resize_frame(HWND hwnd)
+        {
+            const UINT dpi = GetDpiForWindow(hwnd);
+            const i32 padding = GetSystemMetricsForDpi(SM_CXPADDEDBORDER, dpi);
+            return {GetSystemMetricsForDpi(SM_CXFRAME, dpi) + padding,
+                    GetSystemMetricsForDpi(SM_CYFRAME, dpi) + padding};
+        }
+
+        static void remove_frame_from_client_area(HWND hwnd, RECT *area)
+        {
+            const auto frame = get_resize_frame(hwnd);
+            area->left += frame.x;
+            area->right -= frame.x;
+            area->bottom -= frame.y;
+
+            if (IsZoomed(hwnd)) area->top += frame.y;
+        }
+
+        static acul::point2D<i32> client_to_window_dimensions(i32 width, i32 height, DWORD style, DWORD ex_style,
+                                                              WindowFlags flags)
+        {
+            if (width == CW_USEDEFAULT || height == CW_USEDEFAULT || (flags & WindowFlagBits::fullscreen))
+                return {width, height};
+            if (!(flags & WindowFlagBits::decorated) && (flags & WindowFlagBits::resizable)) return {width, height};
+
+            RECT rect{0, 0, width, height};
+            const UINT dpi = GetDpiForSystem();
+            if (!AdjustWindowRectExForDpi(&rect, style, FALSE, ex_style, dpi > 0 ? dpi : 96u))
+                AdjustWindowRectEx(&rect, style, FALSE, ex_style);
+            return {rect.right - rect.left, rect.bottom - rect.top};
+        }
+
+        static LRESULT hit_test_borderless_resize(HWND hwnd, const Win32WindowData *window, LPARAM lParam)
+        {
+            if (!is_borderless_resizable(window) || IsZoomed(hwnd)) return HTCLIENT;
+
+            RECT rect{};
+            if (!GetWindowRect(hwnd, &rect)) return HTCLIENT;
+
+            const auto border = get_resize_frame(hwnd);
+            const POINT point{GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)};
+
+            const bool left = point.x >= rect.left && point.x < rect.left + border.x;
+            const bool right = point.x < rect.right && point.x >= rect.right - border.x;
+            const bool top = point.y >= rect.top && point.y < rect.top + border.y;
+            const bool bottom = point.y < rect.bottom && point.y >= rect.bottom - border.y;
+
+            if (top && left) return HTTOPLEFT;
+            if (top && right) return HTTOPRIGHT;
+            if (bottom && left) return HTBOTTOMLEFT;
+            if (bottom && right) return HTBOTTOMRIGHT;
+            if (left) return HTLEFT;
+            if (right) return HTRIGHT;
+            if (top) return HTTOP;
+            if (bottom) return HTBOTTOM;
+            return HTCLIENT;
         }
 
         static io::KeyMode get_key_mods()
@@ -90,8 +154,9 @@ namespace awin
 
         static void update_window_monitor_if_needed(Win32WindowData *window)
         {
-            if (!window || IsZoomed(window->hwnd) ||
-                (window->flags & (WindowFlagBits::maximized | WindowFlagBits::fullscreen)))
+            if (!window) return;
+            if (window->active_monitor &&
+                (IsZoomed(window->hwnd) || (window->flags & (WindowFlagBits::maximized | WindowFlagBits::fullscreen))))
                 return;
 
             HMONITOR hmonitor = MonitorFromWindow(window->hwnd, MONITOR_DEFAULTTONEAREST);
@@ -115,10 +180,7 @@ namespace awin
             return TRUE;
         }
 
-        static void refresh_all_window_monitors()
-        {
-            EnumWindows(refresh_window_monitor_callback, 0);
-        }
+        static void refresh_all_window_monitors() { EnumWindows(refresh_window_monitor_callback, 0); }
 
         static bool fill_window_background(Win32WindowData *window, HDC hdc, const RECT &rect)
         {
@@ -175,11 +237,21 @@ namespace awin
                     }
                     break;
                 }
+                case WM_NCCALCSIZE:
+                {
+                    if (!wParam || !is_borderless_resizable(window)) break;
+                    remove_frame_from_client_area(hwnd, &reinterpret_cast<NCCALCSIZE_PARAMS *>(lParam)->rgrc[0]);
+                    return 0;
+                }
+                case WM_NCHITTEST:
+                {
+                    if (!is_borderless_resizable(window)) break;
+                    return hit_test_borderless_resize(hwnd, window, lParam);
+                }
                 case WM_ERASEBKGND:
                 {
                     RECT rect{};
-                    if (GetClientRect(hwnd, &rect))
-                        fill_window_background(window, reinterpret_cast<HDC>(wParam), rect);
+                    if (GetClientRect(hwnd, &rect)) fill_window_background(window, reinterpret_cast<HDC>(wParam), rect);
                     return TRUE;
                 }
 
@@ -655,9 +727,11 @@ namespace awin
             wd->has_background_hint = true;
             wd->background_color = RGB(next_window_background.r, next_window_background.g, next_window_background.b);
         }
+        const auto window_dimensions =
+            platform::client_to_window_dimensions(wd->dimenstions.x, wd->dimenstions.y, wd->style, wd->ex_style, flags);
         wd->hwnd = CreateWindowExW(wd->ex_style, platform::ctx.win32_class.lpszClassName, (LPCWSTR)wd->title.c_str(),
-                                   wd->style & ~WS_VISIBLE, CW_USEDEFAULT, CW_USEDEFAULT, wd->dimenstions.x,
-                                   wd->dimenstions.y, nullptr, nullptr, platform::ctx.instance, (LPVOID)wd);
+                                   wd->style & ~WS_VISIBLE, CW_USEDEFAULT, CW_USEDEFAULT, window_dimensions.x,
+                                   window_dimensions.y, nullptr, nullptr, platform::ctx.instance, (LPVOID)wd);
 
         if (!wd->hwnd) throw acul::runtime_error("Failed to create window");
         if (!(flags & WindowFlagBits::hidden))
@@ -792,7 +866,10 @@ namespace awin
         auto *wd = (platform::Win32WindowData *)_data;
         GetWindowPlacement(wd->hwnd, &wp);
 
-        acul::point2D<i32> dimensions = get_window_size(*this);
+        RECT rect{};
+        acul::point2D<i32> dimensions{};
+        if (GetWindowRect(wd->hwnd, &rect)) dimensions = {rect.right - rect.left, rect.bottom - rect.top};
+        else dimensions = wd->dimenstions;
         wp.rcNormalPosition.left = position.x;
         wp.rcNormalPosition.top = position.y;
         wp.rcNormalPosition.right = position.x + dimensions.x;
@@ -870,6 +947,17 @@ namespace awin
         RECT area;
         GetClientRect(native_access::get_hwnd(window), &area);
         return {area.right, area.bottom};
+    }
+
+    acul::point2D<i32> get_window_size_origin(const Window &window)
+    {
+        auto *wd = reinterpret_cast<platform::Win32WindowData *>(get_window_data(window));
+        if (platform::is_borderless_resizable(wd))
+        {
+            RECT rect{};
+            if (GetWindowRect(wd->hwnd, &rect)) return {rect.right - rect.left, rect.bottom - rect.top};
+        }
+        return get_window_size(window);
     }
 
     acul::string get_clipboard_string(const Window &window)

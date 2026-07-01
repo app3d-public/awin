@@ -265,6 +265,8 @@ namespace awin
 
     acul::point2D<i32> get_window_size(const Window &window) { return platform::pd.pcall.get_window_size(window); }
 
+    acul::point2D<i32> get_window_size_origin(const Window &window) { return get_window_size(window); }
+
     acul::string get_clipboard_string(const Window &window) { return platform::pd.pcall.get_clipboard_string(); }
 
     void set_clipboard_string(const Window &window, const acul::string &text)

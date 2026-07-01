@@ -67,7 +67,7 @@ namespace awin
     const Monitor *get_window_monitor(const Window &window)
     {
         auto *data = get_window_data(window);
-        return data ? data->active_monitor : nullptr;
+        return data && data->active_monitor ? data->active_monitor : get_primary_monitor();
     }
 
     const Monitor *find_window_monitor_by_overlap(const WindowData *window)

@@ -463,6 +463,9 @@ namespace awin
     // Get the client area size
     AWIN_EXPORT acul::point2D<i32> get_window_size(const Window &window);
 
+    // Get the size used to restore the native window bounds.
+    AWIN_EXPORT acul::point2D<i32> get_window_size_origin(const Window &window);
+
     // Get text string from the clipboard buffer
     AWIN_EXPORT acul::string get_clipboard_string(const Window &window);
 
