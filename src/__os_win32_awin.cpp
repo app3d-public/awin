@@ -44,7 +44,8 @@ namespace awin
         {
             DWORD style = WS_CLIPSIBLINGS | WS_CLIPCHILDREN;
             const bool decorated = flags & WindowFlagBits::decorated;
-            if ((flags & WindowFlagBits::fullscreen) || !decorated) style |= WS_POPUP;
+            const bool undecorated_resizable = !decorated && (flags & WindowFlagBits::resizable);
+            if ((flags & WindowFlagBits::fullscreen) || (!decorated && !undecorated_resizable)) style |= WS_POPUP;
             if (decorated || (flags & (WindowFlagBits::minimize_box | WindowFlagBits::maximize_box)))
                 style |= WS_SYSMENU;
             if (flags & WindowFlagBits::minimize_box) style |= WS_MINIMIZEBOX;
@@ -222,6 +223,13 @@ namespace awin
                     {
                         SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, ctx.screen.x, ctx.screen.y, SWP_SHOWWINDOW);
                         return 0;
+                    }
+                    if (is_borderless_resizable(window))
+                    {
+                        // Force the custom non-client calculation before the first show, so the initial layout
+                        // cannot retain a system caption strip.
+                        SetWindowPos(hwnd, nullptr, 0, 0, 0, 0,
+                                     SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
                     }
                     break;
                 }
