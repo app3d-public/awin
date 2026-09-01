@@ -17,13 +17,13 @@ namespace awin
                 ::Window window = 0, parent = 0;
                 XIC ic;
                 Colormap colormap;
-                acul::point2D<int> window_pos;
+                Point<int> window_pos;
                 struct
                 {
                     bool active{false};
                     bool candidate{false};
                     f64 last_time{0.0};
-                    acul::point2D<i32> last_dimensions{};
+                    IPoint last_dimensions{};
                 } resize_tracker;
                 // The time of the last KeyPress event per keycode, for discarding
                 // duplicate key events generated for some keys by ibus
@@ -49,14 +49,14 @@ namespace awin
             void enable_fullscreen(WindowData *window_data);
             void disable_fullscreen(WindowData *window_data);
 
-            acul::point2D<i32> get_cursor_position(WindowData *window_data);
-            void set_cursor_position(WindowData *window_data, acul::point2D<i32> position);
+            IPoint get_cursor_position(WindowData *window_data);
+            void set_cursor_position(WindowData *window_data, IPoint position);
 
             void hide_cursor(WindowData *window_data);
             void show_cursor(Window *, WindowData *window_data);
 
-            acul::point2D<i32> get_window_position(WindowData *window);
-            void set_window_position(WindowData *window, acul::point2D<i32> position);
+            IPoint get_window_position(WindowData *window);
+            void set_window_position(WindowData *window, IPoint position);
             void center_window(WindowData *window);
             void update_resize_limit(WindowData *window);
 
@@ -71,7 +71,7 @@ namespace awin
             void push_empty_event();
 
             f32 get_dpi(WindowData *);
-            acul::point2D<i32> get_window_size(const Window &window);
+            IPoint get_window_size(const Window &window);
 
             acul::string get_clipboard_string();
             void set_clipboard_string(const acul::string &text);

@@ -81,7 +81,7 @@ namespace awin
                 ResizeFlagBits::repeat | ResizeFlagBits::repeat_end);
         }
 
-        static void dispatch_tracked_resize(WaylandWindowData *window, acul::point2D<i32> dimensions,
+        static void dispatch_tracked_resize(WaylandWindowData *window, IPoint dimensions,
                                             bool platform_resizing)
         {
             ResizeFlags flags = ResizeFlagBits::none;
@@ -178,7 +178,7 @@ namespace awin
 
             wl_data->cursor_pos.x = wl_fixed_to_double(sx);
             wl_data->cursor_pos.y = wl_fixed_to_double(sy);
-            acul::point2D<i32> cursor_pos = wl_data->cursor_pos;
+            IPoint cursor_pos = wl_data->cursor_pos;
 
             if (wl_data->hovered)
             {
@@ -398,7 +398,7 @@ namespace awin
                                                    wl_fixed_t dx, wl_fixed_t dy, wl_fixed_t, wl_fixed_t)
         {
             WaylandWindowData *window = static_cast<WaylandWindowData *>(user_data);
-            acul::point2D<i32> delta = {static_cast<i32>(wl_fixed_to_double(dx)),
+            IPoint delta = {static_cast<i32>(wl_fixed_to_double(dx)),
                                         static_cast<i32>(wl_fixed_to_double(dy))};
             acul::events::dispatch_event_group<PosEvent>(g_env->events.mouse_move_delta, event_id::mouse_move_delta,
                                                          window->owner, delta);
@@ -745,7 +745,7 @@ namespace awin
         static const struct xdg_toplevel_listener xdg_toplevel_listener = {xdg_top_level_handle_configure,
                                                                            xdg_toplevel_handle_close};
 
-        static bool resize_window(WaylandWindowData *window, acul::point2D<int> dimensions)
+        static bool resize_window(WaylandWindowData *window, Point<int> dimensions)
         {
             dimensions.x = std::max(dimensions.x, 1);
             dimensions.y = std::max(dimensions.y, 1);
@@ -813,7 +813,7 @@ namespace awin
         void libdecor_frame_handle_configure(libdecor_frame *frame, libdecor_configuration *config, void *user_data)
         {
             WaylandWindowData *window = (WaylandWindowData *)user_data;
-            acul::point2D<int> size;
+            Point<int> size;
 
             enum libdecor_window_state window_state;
             bool fullscreen, activated, maximized;
@@ -936,7 +936,7 @@ namespace awin
 
         static void update_xdg_size_limits(WaylandWindowData *window)
         {
-            acul::point2D<int> limit;
+            Point<int> limit;
             if (window->flags & WindowFlagBits::resizable)
             {
                 if (window->resize_limit.x == 0 || window->resize_limit.y == 0)
@@ -955,7 +955,7 @@ namespace awin
         }
 
         static void create_fallback_edge(WaylandWindowData *window, FallbackEdgeWayland *edge, wl_surface *parent,
-                                         wl_buffer *buffer, acul::point2D<int> pos, acul::point2D<int> size)
+                                         wl_buffer *buffer, Point<int> pos, Point<int> size)
         {
             edge->surface = wl_compositor_create_surface(g_ctx->compositor);
             wl_surface_set_user_data(edge->surface, window);
@@ -1504,7 +1504,7 @@ namespace awin
             return g_ctx->fractional_scale_manager ? output->scale : output->scale / 100.0f;
         }
 
-        acul::point2D<i32> get_window_size(const Window &window)
+        IPoint get_window_size(const Window &window)
         {
             auto *window_data = get_window_data(window);
             return window_data->dimenstions;
@@ -1689,12 +1689,12 @@ namespace awin
             }
         }
 
-        acul::point2D<i32> get_cursor_position(WindowData *window_data)
+        IPoint get_cursor_position(WindowData *window_data)
         {
             return ((WaylandWindowData *)window_data)->cursor_pos;
         }
 
-        void set_cursor_position(WindowData *window_data, acul::point2D<i32> position)
+        void set_cursor_position(WindowData *window_data, IPoint position)
         {
             AWIN_LOG_ERROR("Wayland: The platform does not support setting the cursor position");
         }
@@ -1778,13 +1778,13 @@ namespace awin
             set_window_state_flag(window_data->state_flags, WindowStateFlagBits::cursor_hidden, false);
         }
 
-        acul::point2D<i32> get_window_position(WindowData *window)
+        IPoint get_window_position(WindowData *window)
         {
             AWIN_LOG_ERROR("Wayland: The platform does not provide the window position");
             return {0, 0};
         }
 
-        void set_window_position(WindowData *window, acul::point2D<i32> position)
+        void set_window_position(WindowData *window, IPoint position)
         {
             AWIN_LOG_ERROR("Wayland: The platform does not support setting the window position");
         }
@@ -1801,7 +1801,7 @@ namespace awin
             {
                 if (!wl_data->libdecor_frame) return;
                 auto resize_limit = window->resize_limit.x > 0 && window->resize_limit.y > 0 ? wl_data->resize_limit
-                                                                                             : acul::point2D<i32>{0, 0};
+                                                                                             : IPoint{0, 0};
                 libdecor_frame_set_min_content_size(wl_data->libdecor_frame, resize_limit.x, resize_limit.y);
                 auto size = window->dimenstions;
                 libdecor_state *state = libdecor_state_new(size.x, size.y);

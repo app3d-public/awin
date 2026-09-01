@@ -46,7 +46,7 @@ namespace awin::platform::wayland
         } xdg;
         struct Pending
         {
-            acul::point2D<int> dimensions;
+            Point<int> dimensions;
             WindowFlags flags;
             bool activated{false};
             bool resizing{false};
@@ -57,7 +57,7 @@ namespace awin::platform::wayland
                     bool candidate{false};
                     bool platform_active{false};
                     f64 last_time{0.0};
-                    acul::point2D<i32> last_dimensions{};
+                    IPoint last_dimensions{};
         } resize_tracker;
     };
 
@@ -76,8 +76,8 @@ namespace awin::platform::wayland
     void enable_fullscreen(WindowData *window_data);
     void disable_fullscreen(WindowData *window_data);
 
-    acul::point2D<i32> get_cursor_position(WindowData *window_data);
-    void set_cursor_position(WindowData *window_data, acul::point2D<i32> position);
+    IPoint get_cursor_position(WindowData *window_data);
+    void set_cursor_position(WindowData *window_data, IPoint position);
 
     void hide_cursor(WindowData *window_data);
     void show_cursor(Window *, WindowData *window_data);
@@ -87,11 +87,11 @@ namespace awin::platform::wayland
     void wait_events_timeout();
     void push_empty_event();
 
-    acul::point2D<i32> get_window_position(WindowData *window);
-    void set_window_position(WindowData *window, acul::point2D<i32> position);
+    IPoint get_window_position(WindowData *window);
+    void set_window_position(WindowData *window, IPoint position);
 
     f32 get_dpi(WindowData *);
-    acul::point2D<i32> get_window_size(const Window &window);
+    IPoint get_window_size(const Window &window);
 
     acul::string get_clipboard_string();
     void set_clipboard_string(const acul::string &text);

@@ -35,12 +35,12 @@ namespace awin
             void (*set_window_title)(WindowData *, const acul::string &);
             void (*enable_fullscreen)(WindowData *);
             void (*disable_fullscreen)(WindowData *);
-            acul::point2D<i32> (*get_cursor_position)(WindowData *);
-            void (*set_cursor_position)(WindowData *, acul::point2D<i32>);
+            IPoint (*get_cursor_position)(WindowData *);
+            void (*set_cursor_position)(WindowData *, IPoint);
             void (*hide_cursor)(WindowData *);
             void (*show_cursor)(Window *, WindowData *);
-            acul::point2D<i32> (*get_window_position)(WindowData *);
-            void (*set_window_position)(WindowData *, acul::point2D<i32>);
+            IPoint (*get_window_position)(WindowData *);
+            void (*set_window_position)(WindowData *, IPoint);
             void (*center_window)(WindowData *);
             void (*update_resize_limit)(WindowData *);
             void (*minimize_window)(WindowData *);
@@ -61,7 +61,7 @@ namespace awin
             void (*wait_events_timeout)();
             void (*push_empty_event)();
             f32 (*get_dpi)(WindowData *);
-            acul::point2D<i32> (*get_window_size)(const Window &);
+            IPoint (*get_window_size)(const Window &);
             acul::string (*get_clipboard_string)();
             void (*set_clipboard_string)(const acul::string &);
         };

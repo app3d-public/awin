@@ -155,7 +155,7 @@ namespace awin::platform::wayland
         acul::string name;
         u32 name_id;
         wl_output *handle;
-        acul::point2D<i32> pos, physical_size, dimensions;
+        IPoint pos, physical_size, dimensions;
         int current_mode;
         i32 scale;
         acul::vector<struct WaylandWindowData *> windows;
@@ -366,7 +366,7 @@ namespace awin::platform::wayland
     {
         wl_cursor *handle;
         wl_buffer *buffer;
-        acul::point2D<int> size, hot;
+        Point<int> size, hot;
         int current_image;
     };
 

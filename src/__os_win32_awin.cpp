@@ -30,7 +30,7 @@ namespace awin
             DWORD ex_style;
             HWND hwnd;
             WCHAR high_surrogate;
-            acul::point2D<i32> saved_cursor_pos{0, 0};
+            IPoint saved_cursor_pos{0, 0};
             bool cursor_tracked{false};
             bool raw_input{false};
             LPBYTE raw_input_data{nullptr};
@@ -61,7 +61,7 @@ namespace awin
                    (window->flags & WindowFlagBits::resizable) && !(window->flags & WindowFlagBits::fullscreen);
         }
 
-        static acul::point2D<i32> get_resize_frame(HWND hwnd)
+        static IPoint get_resize_frame(HWND hwnd)
         {
             const UINT dpi = GetDpiForWindow(hwnd);
             const i32 padding = GetSystemMetricsForDpi(SM_CXPADDEDBORDER, dpi);
@@ -79,8 +79,7 @@ namespace awin
             if (IsZoomed(hwnd)) area->top += frame.y;
         }
 
-        static acul::point2D<i32> client_to_window_dimensions(i32 width, i32 height, DWORD style, DWORD ex_style,
-                                                              WindowFlags flags)
+        static IPoint client_to_window_dimensions(i32 width, i32 height, DWORD style, DWORD ex_style, WindowFlags flags)
         {
             if (width == CW_USEDEFAULT || height == CW_USEDEFAULT || (flags & WindowFlagBits::fullscreen))
                 return {width, height};
@@ -146,7 +145,7 @@ namespace awin
             }
         }
 
-        static const Monitor *find_monitor_by_position(acul::point2D<i32> position)
+        static const Monitor *find_monitor_by_position(IPoint position)
         {
             for (const auto &monitor : get_monitors())
                 if (monitor.position == position) return &monitor;
@@ -167,7 +166,7 @@ namespace awin
             info.cbSize = sizeof(info);
             if (!GetMonitorInfoW(hmonitor, &info)) return;
 
-            const acul::point2D<i32> monitor_position{info.rcMonitor.left, info.rcMonitor.top};
+            const IPoint monitor_position{info.rcMonitor.left, info.rcMonitor.top};
             if (window->active_monitor && window->active_monitor->position == monitor_position) return;
             update_window_monitor(window, find_monitor_by_position(monitor_position));
         }
@@ -489,9 +488,8 @@ namespace awin
                         window->cursor_tracked = true;
                         acul::events::dispatch_event_group<MouseEnterEvent>(events.mouse_enter, window->owner, true);
                     }
-                    acul::events::dispatch_event_group<PosEvent>(
-                        events.mouse_move, event_id::mouse_move, window->owner,
-                        acul::point2D(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)));
+                    acul::events::dispatch_event_group<PosEvent>(events.mouse_move, event_id::mouse_move, window->owner,
+                                                                 IPoint(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)));
                     return 0;
                 }
                 case WM_MOUSELEAVE:
@@ -512,7 +510,7 @@ namespace awin
                 }
                 case WM_SIZE:
                 {
-                    acul::point2D<i32> dimenstions(LOWORD(lParam), HIWORD(lParam));
+                    IPoint dimenstions(LOWORD(lParam), HIWORD(lParam));
                     if (!(window->flags & WindowFlagBits::hidden))
                     {
                         bool want_min = (wParam == SIZE_MINIMIZED);
@@ -573,9 +571,8 @@ namespace awin
                     break;
                 case WM_MOVE:
                     update_window_monitor_if_needed(window);
-                    acul::events::dispatch_event_group<PosEvent>(
-                        events.move, event_id::move, window->owner,
-                        acul::point2D(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)));
+                    acul::events::dispatch_event_group<PosEvent>(events.move, event_id::move, window->owner,
+                                                                 IPoint(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)));
                     break;
                 case WM_GETMINMAXINFO:
                 {
@@ -642,7 +639,7 @@ namespace awin
 
                     if (raw->header.dwType == RIM_TYPEMOUSE)
                     {
-                        acul::point2D<i32> delta{raw->data.mouse.lLastX, raw->data.mouse.lLastY};
+                        IPoint delta{raw->data.mouse.lLastX, raw->data.mouse.lLastY};
                         acul::events::dispatch_event_group<PosEvent>(events.mouse_move_delta,
                                                                      event_id::mouse_move_delta, window->owner, delta);
                     }
@@ -819,7 +816,7 @@ namespace awin
         SetWindowPos(wd->hwnd, HWND_NOTOPMOST, 0, 0, wd->dimenstions.x, wd->dimenstions.y, SWP_SHOWWINDOW);
     }
 
-    acul::point2D<i32> Window::cursor_position() const
+    IPoint Window::cursor_position() const
     {
         POINT pos;
         if (GetCursorPos(&pos))
@@ -831,7 +828,7 @@ namespace awin
         return {};
     }
 
-    void Window::cursor_position(acul::point2D<i32> position)
+    void Window::cursor_position(IPoint position)
     {
         auto *wd = (platform::Win32WindowData *)_data;
         POINT pos = {position.x, position.y};
@@ -860,7 +857,7 @@ namespace awin
         set_window_state_flag(wd->state_flags, WindowStateFlagBits::cursor_hidden, true);
     }
 
-    acul::point2D<i32> Window::position() const
+    IPoint Window::position() const
     {
         RECT rect;
         auto *wd = (platform::Win32WindowData *)_data;
@@ -868,14 +865,14 @@ namespace awin
         else return {0, 0};
     }
 
-    void Window::position(acul::point2D<i32> position)
+    void Window::position(IPoint position)
     {
         WINDOWPLACEMENT wp = {sizeof(WINDOWPLACEMENT)};
         auto *wd = (platform::Win32WindowData *)_data;
         GetWindowPlacement(wd->hwnd, &wp);
 
         RECT rect{};
-        acul::point2D<i32> dimensions{};
+        IPoint dimensions{};
         if (GetWindowRect(wd->hwnd, &rect)) dimensions = {rect.right - rect.left, rect.bottom - rect.top};
         else dimensions = wd->dimenstions;
         wp.rcNormalPosition.left = position.x;
@@ -893,10 +890,10 @@ namespace awin
         RECT window_rect;
         auto *wd = (platform::Win32WindowData *)_data;
         GetWindowRect(wd->hwnd, &window_rect);
-        acul::point2D<int> dimenstions{window_rect.right - window_rect.left, window_rect.bottom - window_rect.top};
-        acul::point2D<int> screen{work_area.right - work_area.left, work_area.bottom - work_area.top};
-        acul::point2D<int> center{work_area.left + (screen.x - dimenstions.x) / 2,
-                                  work_area.top + (screen.y - dimenstions.y) / 2};
+        Point<int> dimenstions{window_rect.right - window_rect.left, window_rect.bottom - window_rect.top};
+        Point<int> screen{work_area.right - work_area.left, work_area.bottom - work_area.top};
+        Point<int> center{work_area.left + (screen.x - dimenstions.x) / 2,
+                          work_area.top + (screen.y - dimenstions.y) / 2};
 
         if (center.y < work_area.top) center.y = work_area.top;
         SetWindowPos(wd->hwnd, NULL, center.x, center.y, dimenstions.x, dimenstions.y, SWP_NOZORDER | SWP_NOACTIVATE);
@@ -950,14 +947,14 @@ namespace awin
 
     f32 get_dpi(const Window &) { return static_cast<f32>(platform::ctx.dpi) / 96.0f; }
 
-    acul::point2D<i32> get_window_size(const Window &window)
+    IPoint get_window_size(const Window &window)
     {
         RECT area;
         GetClientRect(native_access::get_hwnd(window), &area);
         return {area.right, area.bottom};
     }
 
-    acul::point2D<i32> get_window_size_origin(const Window &window)
+    IPoint get_window_size_origin(const Window &window)
     {
         auto *wd = reinterpret_cast<platform::Win32WindowData *>(get_window_data(window));
         if (platform::is_borderless_resizable(wd))

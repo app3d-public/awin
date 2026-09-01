@@ -279,20 +279,106 @@ namespace awin
     awin::WindowFlagBits::resizable | awin::WindowFlagBits::minimize_box | awin::WindowFlagBits::maximize_box | \
         awin::WindowFlagBits::decorated
 
+    template <typename T>
+    struct Point
+    {
+        T x;
+        T y;
+
+        Point() = default;
+
+        Point(T x, T y) : x(x), y(y) {}
+
+        template <typename U, typename = std::enable_if_t<std::is_convertible<U, T>::value>>
+        Point(const Point<U> &other) : x(static_cast<T>(other.x)), y(static_cast<T>(other.y))
+        {
+        }
+    };
+
+    template <typename T>
+    inline bool operator==(const Point<T> a, const Point<T> b)
+    {
+        return a.x == b.x && a.y == b.y;
+    }
+
+    template <typename T>
+    inline bool operator!=(const Point<T> a, const Point<T> b)
+    {
+        return !(a == b);
+    }
+
+    template <typename T>
+    inline bool operator<(const Point<T> a, const Point<T> b)
+    {
+        return a.x < b.x || (a.x == b.x && a.y < b.y);
+    }
+
+    template <typename T>
+    inline bool operator>(const Point<T> a, const Point<T> b)
+    {
+        return b < a;
+    }
+
+    template <typename T>
+    inline Point<T> operator+(const Point<T> a, const Point<T> b)
+    {
+        return {a.x + b.x, a.y + b.y};
+    }
+
+    template <typename T>
+    inline Point<T> operator+=(Point<T> a, const Point<T> b)
+    {
+        a.x += b.x;
+        a.y += b.y;
+        return a;
+    }
+
+    template <typename T>
+    inline Point<T> operator-(const Point<T> a, const Point<T> b)
+    {
+        return {a.x - b.x, a.y - b.y};
+    }
+
+    template <typename T>
+    inline Point<T> operator-=(Point<T> a, const Point<T> b)
+    {
+        a.x -= b.x;
+        a.y -= b.y;
+        return a;
+    }
+    template <typename T>
+    inline Point<T> operator-(const Point<T> a)
+    {
+        return {-a.x, -a.y};
+    }
+    template <typename T>
+    inline Point<T> operator*(const Point<T> a, i32 b)
+    {
+        return {a.x * b, a.y * b};
+    }
+    template <typename T>
+    inline Point<T> operator/(const Point<T> a, i32 b)
+    {
+        return {a.x / b, a.y / b};
+    }
+
+    using IPoint = Point<i32>;
+    using FPoint = Point<f32>;
+
     struct Image
     {
-        acul::point2D<int> dimenstions;
+        IPoint dimenstions;
         const void *pixels;
     };
 
     struct WindowData
     {
         Window *owner;
-        acul::point2D<i32> dimenstions;
+        IPoint dimenstions;
         WindowFlags flags;
         WindowStateFlags state_flags{WindowStateFlagBits::accepts_surface_update};
         const Monitor *active_monitor = nullptr;
-        acul::point2D<i32> resize_limit{0, 0};
+        IPoint resize_limit{0, 0};
         io::KeyPressState keys[io::Key::last + 1];
         Cursor *cursor{NULL};
     };
