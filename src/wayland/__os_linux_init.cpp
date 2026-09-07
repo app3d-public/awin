@@ -117,7 +117,7 @@ namespace awin::platform::wayland
     {
         if (version < 2)
         {
-            AWIN_LOG_ERROR("Unsupported Wayland output interface version");
+            AWIN_LOG_ERROR("unsupported Wayland output interface version");
             return;
         }
 
@@ -215,7 +215,7 @@ namespace awin::platform::wayland
 
     void libdecor_handle_error(libdecor *context, libdecor_error error, const char *message)
     {
-        AWIN_LOG_ERROR("Wayland: libdecor error %u: %s", error, message);
+        AWIN_LOG_ERROR("libdecor error %u: %s", error, message);
     }
 
     static const struct libdecor_interface libdecor_interface = {libdecor_handle_error};
@@ -247,7 +247,7 @@ namespace awin::platform::wayland
         g_ctx->cursor_theme = wl_cursor_theme_load(theme_name, cursor_size, g_ctx->shm);
         if (!g_ctx->cursor_theme)
         {
-            AWIN_LOG_ERROR("Wayland: Failed to load default cursor theme");
+            AWIN_LOG_ERROR("failed to load default cursor theme");
             return false;
         }
 
@@ -260,11 +260,11 @@ namespace awin::platform::wayland
 
     inline bool load_module(ILoader *loader, const char *name, bool required = true)
     {
-        AWIN_LOG_INFO("Loading module: %s", name);
+        AWIN_LOG_INFO("loading module: %s", name);
         if (!loader->load()) return false;
         if (!loader->valid())
         {
-            AWIN_LOG_ERROR("Failed to load %s entry point", name);
+            AWIN_LOG_ERROR("failed to load %s entry point", name);
             loader->unload();
             return required ? false : true;
         }
@@ -293,7 +293,7 @@ namespace awin::platform::wayland
         g_ctx->display = wl_display_connect(NULL);
         if (!g_ctx->display)
         {
-            AWIN_LOG_ERROR("Wayland: Failed to connect to wayland display");
+            AWIN_LOG_ERROR("failed to connect to wayland display");
             return false;
         }
 
@@ -303,7 +303,7 @@ namespace awin::platform::wayland
         g_ctx->xkb.context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
         if (!g_ctx->xkb.context)
         {
-            AWIN_LOG_ERROR("Wayland: Failed to initialize xkb context");
+            AWIN_LOG_ERROR("failed to initialize xkb context");
             return false;
         }
 
@@ -326,13 +326,13 @@ namespace awin::platform::wayland
 
         if (!g_ctx->wm_base)
         {
-            AWIN_LOG_ERROR("Wayland: Failed to find xdg-shell in your compositor");
+            AWIN_LOG_ERROR("failed to find xdg-shell in your compositor");
             return false;
         }
 
         if (!g_ctx->shm)
         {
-            AWIN_LOG_ERROR("Wayland: Failed to find wl_shm in your compositor");
+            AWIN_LOG_ERROR("failed to find wl_shm in your compositor");
             return false;
         }
 

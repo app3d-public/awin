@@ -281,7 +281,7 @@ namespace awin::platform::x11
         g_ctx->error_code = ev->error_code;
         char buf[128];
         g_ctx->xlib.XGetErrorText(g_ctx->display, ev->error_code, buf, sizeof(buf));
-        AWIN_LOG_ERROR("X11 Error: code=%d (%s), req=%d.%d, res=0x%lx", ev->error_code, buf, ev->request_code,
+        AWIN_LOG_ERROR("error: code=%d (%s), req=%d.%d, res=0x%lx", ev->error_code, buf, ev->request_code,
                        ev->minor_code, ev->resourceid);
         return 0;
     }

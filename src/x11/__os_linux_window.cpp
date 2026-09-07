@@ -111,7 +111,7 @@ namespace awin
 
         static void refresh_all_window_monitors() { refresh_window_monitors_in_tree(g_ctx->root); }
 
-        static void dispatch_tracked_resize(X11WindowData *window, IPoint dimensions)
+        static void dispatch_tracked_resize(X11WindowData *window, acul::ipoint32 dimensions)
         {
             if (g_ctx->active_resize_window && g_ctx->active_resize_window != window)
                 finish_active_resize();
@@ -466,7 +466,7 @@ namespace awin
                 XWMHints *hints = xlib.XAllocWMHints();
                 if (!hints)
                 {
-                    AWIN_LOG_ERROR("Failed to allocate WM hints");
+                    AWIN_LOG_ERROR("failed to allocate WM hints");
                     return false;
                 }
 
@@ -482,7 +482,7 @@ namespace awin
                 XSizeHints *hints = xlib.XAllocSizeHints();
                 if (!hints)
                 {
-                    AWIN_LOG_ERROR("Failed to allocate size hints");
+                    AWIN_LOG_ERROR("failed to allocate size hints");
                     return false;
                 }
 
@@ -651,7 +651,7 @@ namespace awin
         // Ungrabs the cursor
         static void release_cursor() { g_ctx->xlib.XUngrabPointer(g_ctx->display, CurrentTime); }
 
-        IPoint get_cursor_position(WindowData *window_data)
+        acul::ipoint32 get_cursor_position(WindowData *window_data)
         {
             auto *x11_data = (X11WindowData *)window_data;
             auto &xlib = g_ctx->xlib;
@@ -665,7 +665,7 @@ namespace awin
             return {};
         }
 
-        void set_cursor_position(WindowData *window_data, IPoint position)
+        void set_cursor_position(WindowData *window_data, acul::ipoint32 position)
         {
             Point<int> abs_pos;
             auto &xlib = g_ctx->xlib;
@@ -770,7 +770,7 @@ namespace awin
             if (event->type == GenericEvent && is_raw_event(event))
             {
                 XIRawEvent *raw = (XIRawEvent *)event->xcookie.data;
-                IPoint delta{0, 0};
+                acul::ipoint32 delta{0, 0};
                 int idx = 0;
                 if (XIMaskIsSet(raw->valuators.mask, 0)) delta.x = raw->raw_values[idx++];
                 if (XIMaskIsSet(raw->valuators.mask, 1)) delta.y = raw->raw_values[idx++];
@@ -867,8 +867,8 @@ namespace awin
                 }
                 case ConfigureNotify:
                 {
-                    IPoint dimenstions(event->xconfigure.width, event->xconfigure.height);
-                    IPoint pos(event->xconfigure.x, event->xconfigure.y);
+                    acul::ipoint32 dimenstions(event->xconfigure.width, event->xconfigure.height);
+                    acul::ipoint32 pos(event->xconfigure.x, event->xconfigure.y);
 
                     // NOTE: ConfigureNotify events from the server are in local
                     //       coordinates, so if we are reparented we need to translate
@@ -982,7 +982,7 @@ namespace awin
             }
         }
 
-        bool prepare_window_wm_hints(X11WindowData *x11_data, WindowFlags flags, IPoint dim,
+        bool prepare_window_wm_hints(X11WindowData *x11_data, WindowFlags flags, acul::ipoint32 dim,
                                      const acul::string &title)
         {
             auto &xlib = g_ctx->xlib;
@@ -1021,7 +1021,7 @@ namespace awin
                 XWMHints *hints = xlib.XAllocWMHints();
                 if (!hints)
                 {
-                    AWIN_LOG_ERROR("Failed to allocate WM hints");
+                    AWIN_LOG_ERROR("failed to allocate WM hints");
                     return false;
                 }
 
@@ -1037,7 +1037,7 @@ namespace awin
                 XSizeHints *hints = xlib.XAllocSizeHints();
                 if (!hints)
                 {
-                    AWIN_LOG_ERROR("Failed to allocate size hints");
+                    AWIN_LOG_ERROR("failed to allocate size hints");
                     return false;
                 }
 
@@ -1071,21 +1071,21 @@ namespace awin
             return true;
         }
 
-        inline void get_window_pos(const X11WindowData *window_data, IPoint &pos)
+        inline void get_window_pos(const X11WindowData *window_data, acul::ipoint32 &pos)
         {
             XID dummy;
             g_ctx->xlib.XTranslateCoordinates(g_ctx->display, window_data->window, g_ctx->root, 0, 0, &pos.x, &pos.y,
                                               &dummy);
         }
 
-        IPoint get_window_size(::Window window)
+        acul::ipoint32 get_window_size(::Window window)
         {
             XWindowAttributes attribs;
             g_ctx->xlib.XGetWindowAttributes(g_ctx->display, window, &attribs);
             return {attribs.width, attribs.height};
         }
 
-        IPoint get_window_size(const Window &window)
+        acul::ipoint32 get_window_size(const Window &window)
         {
             return get_window_size(native_access::get_x11_window_handle(window));
         }
@@ -1122,10 +1122,10 @@ namespace awin
             release_error_handler();
             if (!x11_data->window)
             {
-                AWIN_LOG_ERROR("Failed to create window");
+                AWIN_LOG_ERROR("failed to create window");
                 return false;
             }
-            AWIN_LOG_INFO("Created X11 window: %lu", x11_data->window);
+            AWIN_LOG_INFO("created X11 window: %lu", x11_data->window);
             xlib.XSaveContext(g_ctx->display, x11_data->window, g_ctx->context, (XPointer)x11_data);
             window_data->flags = flags;
             apply_motif_hints(g_ctx->display, x11_data->window, flags);
@@ -1184,7 +1184,7 @@ namespace awin
 
             if (x11_data->window)
             {
-                AWIN_LOG_INFO("Destroying Window: %lu", x11_data->window);
+                AWIN_LOG_INFO("destroying Window: %lu", x11_data->window);
                 xlib.XDeleteContext(g_ctx->display, x11_data->window, g_ctx->context);
                 xlib.XUnmapWindow(g_ctx->display, x11_data->window);
                 xlib.XDestroyWindow(g_ctx->display, x11_data->window);
@@ -1200,16 +1200,16 @@ namespace awin
             xlib.XFlush(g_ctx->display);
         }
 
-        IPoint get_window_position(WindowData *window)
+        acul::ipoint32 get_window_position(WindowData *window)
         {
             auto *x11_data = (X11WindowData *)window;
             ::Window dummy;
-            IPoint r;
+            acul::ipoint32 r;
             g_ctx->xlib.XTranslateCoordinates(g_ctx->display, x11_data->window, g_ctx->root, 0, 0, &r.x, &r.y, &dummy);
             return r;
         }
 
-        void set_window_position(WindowData *window, IPoint position)
+        void set_window_position(WindowData *window, acul::ipoint32 position)
         {
             auto *x11_data = (X11WindowData *)window;
             auto &xlib = g_ctx->xlib;
@@ -1268,7 +1268,7 @@ namespace awin
             xlib.XFlush(g_ctx->display);
         }
 
-        static void update_normal_hints(X11WindowData *window_data, IPoint dim)
+        static void update_normal_hints(X11WindowData *window_data, acul::ipoint32 dim)
         {
             auto &xlib = g_ctx->xlib;
             XSizeHints *hints = xlib.XAllocSizeHints();

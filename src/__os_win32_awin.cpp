@@ -30,7 +30,7 @@ namespace awin
             DWORD ex_style;
             HWND hwnd;
             WCHAR high_surrogate;
-            IPoint saved_cursor_pos{0, 0};
+            acul::ipoint32 saved_cursor_pos{0, 0};
             bool cursor_tracked{false};
             bool raw_input{false};
             LPBYTE raw_input_data{nullptr};
@@ -61,7 +61,7 @@ namespace awin
                    (window->flags & WindowFlagBits::resizable) && !(window->flags & WindowFlagBits::fullscreen);
         }
 
-        static IPoint get_resize_frame(HWND hwnd)
+        static acul::ipoint32 get_resize_frame(HWND hwnd)
         {
             const UINT dpi = GetDpiForWindow(hwnd);
             const i32 padding = GetSystemMetricsForDpi(SM_CXPADDEDBORDER, dpi);
@@ -79,7 +79,8 @@ namespace awin
             if (IsZoomed(hwnd)) area->top += frame.y;
         }
 
-        static IPoint client_to_window_dimensions(i32 width, i32 height, DWORD style, DWORD ex_style, WindowFlags flags)
+        static acul::ipoint32 client_to_window_dimensions(i32 width, i32 height, DWORD style, DWORD ex_style,
+                                                          WindowFlags flags)
         {
             if (width == CW_USEDEFAULT || height == CW_USEDEFAULT || (flags & WindowFlagBits::fullscreen))
                 return {width, height};
@@ -145,7 +146,7 @@ namespace awin
             }
         }
 
-        static const Monitor *find_monitor_by_position(IPoint position)
+        static const Monitor *find_monitor_by_position(acul::ipoint32 position)
         {
             for (const auto &monitor : get_monitors())
                 if (monitor.position == position) return &monitor;
@@ -166,7 +167,7 @@ namespace awin
             info.cbSize = sizeof(info);
             if (!GetMonitorInfoW(hmonitor, &info)) return;
 
-            const IPoint monitor_position{info.rcMonitor.left, info.rcMonitor.top};
+            const acul::ipoint32 monitor_position{info.rcMonitor.left, info.rcMonitor.top};
             if (window->active_monitor && window->active_monitor->position == monitor_position) return;
             update_window_monitor(window, find_monitor_by_position(monitor_position));
         }
@@ -200,7 +201,7 @@ namespace awin
             if (!wd->raw_input) return;
             const RAWINPUTDEVICE rid = {0x01, 0x02, RIDEV_REMOVE, NULL};
             if (!RegisterRawInputDevices(&rid, 1, sizeof(rid)))
-                AWIN_LOG_ERROR("[Win32] Failed to remove raw input device. Error code: %lu", GetLastError());
+                AWIN_LOG_ERROR("failed to remove raw input device. Error code: %lu", GetLastError());
             else wd->raw_input = false;
         }
 
@@ -348,7 +349,7 @@ namespace awin
                     acul::events::dispatch_event_group<FocusEvent>(events.focus, window->owner, true);
                     const RAWINPUTDEVICE rid = {0x01, 0x02, RIDEV_INPUTSINK, hwnd};
                     if (!RegisterRawInputDevices(&rid, 1, sizeof(rid)))
-                        AWIN_LOG_ERROR("[Win32] Failed to register raw input device. Error code: %lu", GetLastError());
+                        AWIN_LOG_ERROR("failed to register raw input device. Error code: %lu", GetLastError());
                     else window->raw_input = true;
                     break;
                 }
@@ -488,8 +489,9 @@ namespace awin
                         window->cursor_tracked = true;
                         acul::events::dispatch_event_group<MouseEnterEvent>(events.mouse_enter, window->owner, true);
                     }
-                    acul::events::dispatch_event_group<PosEvent>(events.mouse_move, event_id::mouse_move, window->owner,
-                                                                 IPoint(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)));
+                    acul::events::dispatch_event_group<PosEvent>(
+                        events.mouse_move, event_id::mouse_move, window->owner,
+                        acul::ipoint32(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)));
                     return 0;
                 }
                 case WM_MOUSELEAVE:
@@ -510,7 +512,7 @@ namespace awin
                 }
                 case WM_SIZE:
                 {
-                    IPoint dimenstions(LOWORD(lParam), HIWORD(lParam));
+                    acul::ipoint32 dimenstions(LOWORD(lParam), HIWORD(lParam));
                     if (!(window->flags & WindowFlagBits::hidden))
                     {
                         bool want_min = (wParam == SIZE_MINIMIZED);
@@ -571,8 +573,9 @@ namespace awin
                     break;
                 case WM_MOVE:
                     update_window_monitor_if_needed(window);
-                    acul::events::dispatch_event_group<PosEvent>(events.move, event_id::move, window->owner,
-                                                                 IPoint(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)));
+                    acul::events::dispatch_event_group<PosEvent>(
+                        events.move, event_id::move, window->owner,
+                        acul::ipoint32(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)));
                     break;
                 case WM_GETMINMAXINFO:
                 {
@@ -632,14 +635,14 @@ namespace awin
                     if (GetRawInputData((HRAWINPUT)lParam, RID_INPUT, window->raw_input_data, &dw_size,
                                         sizeof(RAWINPUTHEADER)) != dw_size)
                     {
-                        AWIN_LOG_ERROR("[Win32] GetRawInputData does not return correct size");
+                        AWIN_LOG_ERROR("GetRawInputData does not return correct size");
                         break;
                     }
                     RAWINPUT *raw = (RAWINPUT *)window->raw_input_data;
 
                     if (raw->header.dwType == RIM_TYPEMOUSE)
                     {
-                        IPoint delta{raw->data.mouse.lLastX, raw->data.mouse.lLastY};
+                        acul::ipoint32 delta{raw->data.mouse.lLastX, raw->data.mouse.lLastY};
                         acul::events::dispatch_event_group<PosEvent>(events.mouse_move_delta,
                                                                      event_id::mouse_move_delta, window->owner, delta);
                     }
@@ -659,7 +662,7 @@ namespace awin
 
         void destroy_platform()
         {
-            AWIN_LOG_INFO("[Win32] Destroying platform");
+            AWIN_LOG_INFO("destroying platform");
             if (ctx.com_initialized)
             {
                 CoUninitialize();
@@ -687,7 +690,7 @@ namespace awin
         {
             ctx.platform_flags = g_env->platform_flags;
             if (!SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2))
-                AWIN_LOG_WARN("[Win32] Failed to set process dpi awareness context");
+                AWIN_LOG_WARN("failed to set process dpi awareness context");
             ctx.instance = GetModuleHandleW(nullptr);
             ctx.thread_id = GetCurrentThreadId();
             ctx.win32_class = {sizeof(ctx.win32_class)};
@@ -700,14 +703,14 @@ namespace awin
             ctx.dpi = 96u;
             if (!ctx.win32_class.hIcon)
             {
-                AWIN_LOG_WARN("[Win32] Failed to load window icon");
+                AWIN_LOG_WARN("failed to load window icon");
                 ctx.win32_class.hIcon = LoadIcon(NULL, IDI_APPLICATION);
             }
             if (!RegisterClassExW(&ctx.win32_class)) return false;
             HRESULT hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
             if (FAILED(hr)) return false;
             ctx.com_initialized = true;
-            if (!poll_monitors(g_env->monitors)) AWIN_LOG_WARN("[Win32] Failed to poll monitors during init");
+            if (!poll_monitors(g_env->monitors)) AWIN_LOG_WARN("failed to poll monitors during init");
             return true;
         }
     } // namespace platform
@@ -745,7 +748,7 @@ namespace awin
             else if (flags & WindowFlagBits::maximized) ShowWindow(wd->hwnd, SW_MAXIMIZE);
             else ShowWindow(wd->hwnd, SW_SHOWNORMAL);
         }
-        AWIN_LOG_INFO("[Win32] Created Window descriptor: %p", wd->hwnd);
+        AWIN_LOG_INFO("created window descriptor");
     }
 
     void Window::destroy()
@@ -761,7 +764,7 @@ namespace awin
         if (wd->hwnd)
         {
             RemovePropW(wd->hwnd, L"AWIN");
-            AWIN_LOG_INFO("[Win32] Destroying Window descriptor: %p", wd->hwnd);
+            AWIN_LOG_INFO("destroying window descriptor");
             HWND hwnd = wd->hwnd;
             DestroyWindow(hwnd);
             wd->hwnd = nullptr;
@@ -816,7 +819,7 @@ namespace awin
         SetWindowPos(wd->hwnd, HWND_NOTOPMOST, 0, 0, wd->dimenstions.x, wd->dimenstions.y, SWP_SHOWWINDOW);
     }
 
-    IPoint Window::cursor_position() const
+    acul::ipoint32 Window::cursor_position() const
     {
         POINT pos;
         if (GetCursorPos(&pos))
@@ -828,7 +831,7 @@ namespace awin
         return {};
     }
 
-    void Window::cursor_position(IPoint position)
+    void Window::cursor_position(acul::ipoint32 position)
     {
         auto *wd = (platform::Win32WindowData *)_data;
         POINT pos = {position.x, position.y};
@@ -857,7 +860,7 @@ namespace awin
         set_window_state_flag(wd->state_flags, WindowStateFlagBits::cursor_hidden, true);
     }
 
-    IPoint Window::position() const
+    acul::ipoint32 Window::position() const
     {
         RECT rect;
         auto *wd = (platform::Win32WindowData *)_data;
@@ -865,14 +868,14 @@ namespace awin
         else return {0, 0};
     }
 
-    void Window::position(IPoint position)
+    void Window::position(acul::ipoint32 position)
     {
         WINDOWPLACEMENT wp = {sizeof(WINDOWPLACEMENT)};
         auto *wd = (platform::Win32WindowData *)_data;
         GetWindowPlacement(wd->hwnd, &wp);
 
         RECT rect{};
-        IPoint dimensions{};
+        acul::ipoint32 dimensions{};
         if (GetWindowRect(wd->hwnd, &rect)) dimensions = {rect.right - rect.left, rect.bottom - rect.top};
         else dimensions = wd->dimenstions;
         wp.rcNormalPosition.left = position.x;
@@ -890,10 +893,10 @@ namespace awin
         RECT window_rect;
         auto *wd = (platform::Win32WindowData *)_data;
         GetWindowRect(wd->hwnd, &window_rect);
-        Point<int> dimenstions{window_rect.right - window_rect.left, window_rect.bottom - window_rect.top};
-        Point<int> screen{work_area.right - work_area.left, work_area.bottom - work_area.top};
-        Point<int> center{work_area.left + (screen.x - dimenstions.x) / 2,
-                          work_area.top + (screen.y - dimenstions.y) / 2};
+        acul::ipoint dimenstions{window_rect.right - window_rect.left, window_rect.bottom - window_rect.top};
+        acul::ipoint screen{work_area.right - work_area.left, work_area.bottom - work_area.top};
+        acul::ipoint center{work_area.left + (screen.x - dimenstions.x) / 2,
+                            work_area.top + (screen.y - dimenstions.y) / 2};
 
         if (center.y < work_area.top) center.y = work_area.top;
         SetWindowPos(wd->hwnd, NULL, center.x, center.y, dimenstions.x, dimenstions.y, SWP_NOZORDER | SWP_NOACTIVATE);
@@ -947,14 +950,14 @@ namespace awin
 
     f32 get_dpi(const Window &) { return static_cast<f32>(platform::ctx.dpi) / 96.0f; }
 
-    IPoint get_window_size(const Window &window)
+    acul::ipoint32 get_window_size(const Window &window)
     {
         RECT area;
         GetClientRect(native_access::get_hwnd(window), &area);
         return {area.right, area.bottom};
     }
 
-    IPoint get_window_size_origin(const Window &window)
+    acul::ipoint32 get_window_size_origin(const Window &window)
     {
         auto *wd = reinterpret_cast<platform::Win32WindowData *>(get_window_data(window));
         if (platform::is_borderless_resizable(wd))
@@ -980,7 +983,7 @@ namespace awin
 
             if (tries == 3)
             {
-                AWIN_LOG_ERROR("[Win32] Failed to open clipboard");
+                AWIN_LOG_ERROR("failed to open clipboard");
                 return "";
             }
         }
@@ -988,7 +991,7 @@ namespace awin
         object = GetClipboardData(CF_UNICODETEXT);
         if (!object)
         {
-            AWIN_LOG_ERROR("[Win32] Failed to get clipboard data");
+            AWIN_LOG_ERROR("failed to get clipboard data");
             CloseClipboard();
             return "";
         }
@@ -996,7 +999,7 @@ namespace awin
         c16 *buffer = (c16 *)GlobalLock(object);
         if (!buffer)
         {
-            AWIN_LOG_ERROR("[Win32] Failed to lock clipboard data. Error code: %lu", GetLastError());
+            AWIN_LOG_ERROR("failed to lock clipboard data. Error code: %lu", GetLastError());
             CloseClipboard();
             return "";
         }
@@ -1014,14 +1017,14 @@ namespace awin
         HANDLE object = GlobalAlloc(GMEM_MOVEABLE, character_count * sizeof(WCHAR));
         if (!object)
         {
-            AWIN_LOG_ERROR("[Win32] Failed to allocate global handle for clipboard. Error code: %lu", GetLastError());
+            AWIN_LOG_ERROR("failed to allocate global handle for clipboard. Error code: %lu", GetLastError());
             return;
         }
 
         WCHAR *buffer = (WCHAR *)GlobalLock(object);
         if (!buffer)
         {
-            AWIN_LOG_ERROR("[Win32] Failed to lock global handle. Error code: %lu", GetLastError());
+            AWIN_LOG_ERROR("failed to lock global handle. Error code: %lu", GetLastError());
             GlobalFree(object);
             return;
         }
@@ -1038,7 +1041,7 @@ namespace awin
 
             if (tries == 3)
             {
-                AWIN_LOG_ERROR("[Win32] Failed to open clipboard");
+                AWIN_LOG_ERROR("failed to open clipboard");
                 GlobalFree(object);
                 return;
             }

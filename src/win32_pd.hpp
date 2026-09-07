@@ -142,7 +142,7 @@ namespace awin::platform
         WNDCLASSEXW win32_class;
         DWORD thread_id;
         int padding;
-        IPoint frame, screen;
+        acul::ipoint32 frame, screen;
         UINT dpi;
         u32 platform_flags{0};
         bool com_initialized{false};

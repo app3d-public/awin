@@ -23,7 +23,7 @@ namespace awin
                     bool active{false};
                     bool candidate{false};
                     f64 last_time{0.0};
-                    IPoint last_dimensions{};
+                    acul::ipoint32 last_dimensions{};
                 } resize_tracker;
                 // The time of the last KeyPress event per keycode, for discarding
                 // duplicate key events generated for some keys by ibus
@@ -49,14 +49,14 @@ namespace awin
             void enable_fullscreen(WindowData *window_data);
             void disable_fullscreen(WindowData *window_data);
 
-            IPoint get_cursor_position(WindowData *window_data);
-            void set_cursor_position(WindowData *window_data, IPoint position);
+            acul::ipoint32 get_cursor_position(WindowData *window_data);
+            void set_cursor_position(WindowData *window_data, acul::ipoint32 position);
 
             void hide_cursor(WindowData *window_data);
             void show_cursor(Window *, WindowData *window_data);
 
-            IPoint get_window_position(WindowData *window);
-            void set_window_position(WindowData *window, IPoint position);
+            acul::ipoint32 get_window_position(WindowData *window);
+            void set_window_position(WindowData *window, acul::ipoint32 position);
             void center_window(WindowData *window);
             void update_resize_limit(WindowData *window);
 
@@ -71,7 +71,7 @@ namespace awin
             void push_empty_event();
 
             f32 get_dpi(WindowData *);
-            IPoint get_window_size(const Window &window);
+            acul::ipoint32 get_window_size(const Window &window);
 
             acul::string get_clipboard_string();
             void set_clipboard_string(const acul::string &text);

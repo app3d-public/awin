@@ -81,7 +81,7 @@ namespace awin
                 ResizeFlagBits::repeat | ResizeFlagBits::repeat_end);
         }
 
-        static void dispatch_tracked_resize(WaylandWindowData *window, IPoint dimensions,
+        static void dispatch_tracked_resize(WaylandWindowData *window, acul::ipoint32 dimensions,
                                             bool platform_resizing)
         {
             ResizeFlags flags = ResizeFlagBits::none;
@@ -178,7 +178,7 @@ namespace awin
 
             wl_data->cursor_pos.x = wl_fixed_to_double(sx);
             wl_data->cursor_pos.y = wl_fixed_to_double(sy);
-            IPoint cursor_pos = wl_data->cursor_pos;
+            acul::ipoint32 cursor_pos = wl_data->cursor_pos;
 
             if (wl_data->hovered)
             {
@@ -350,14 +350,14 @@ namespace awin
 
             if (!keymap)
             {
-                AWIN_LOG_ERROR("Wayland: Failed to compile keymap");
+                AWIN_LOG_ERROR("failed to compile keymap");
                 return;
             }
 
             state = xkb_state_new(keymap);
             if (!state)
             {
-                AWIN_LOG_ERROR("Wayland: Failed to create XKB state");
+                AWIN_LOG_ERROR("failed to create XKB state");
                 xkb_keymap_unref(keymap);
                 return;
             }
@@ -376,10 +376,10 @@ namespace awin
                 if (compose_state)
                     g_ctx->xkb.compose_state = compose_state;
                 else
-                    AWIN_LOG_ERROR("Wayland: Failed to create XKB compose state");
+                    AWIN_LOG_ERROR("failed to create XKB compose state");
             }
             else
-                AWIN_LOG_ERROR("Wayland: Failed to create XKB compose table");
+                AWIN_LOG_ERROR("failed to create XKB compose table");
 
             xkb_keymap_unref(g_ctx->xkb.keymap);
             xkb_state_unref(g_ctx->xkb.state);
@@ -398,7 +398,7 @@ namespace awin
                                                    wl_fixed_t dx, wl_fixed_t dy, wl_fixed_t, wl_fixed_t)
         {
             WaylandWindowData *window = static_cast<WaylandWindowData *>(user_data);
-            IPoint delta = {static_cast<i32>(wl_fixed_to_double(dx)),
+            acul::ipoint32 delta = {static_cast<i32>(wl_fixed_to_double(dx)),
                                         static_cast<i32>(wl_fixed_to_double(dy))};
             acul::events::dispatch_event_group<PosEvent>(g_env->events.mouse_move_delta, event_id::mouse_move_delta,
                                                          window->owner, delta);
@@ -880,7 +880,7 @@ namespace awin
             {
                 wl_data->idle_inhibitor =
                     zwp_idle_inhibit_manager_v1_create_inhibitor(g_ctx->idle_inhibit_manager, wl_data->surface);
-                if (!wl_data->idle_inhibitor) AWIN_LOG_ERROR("Wayland: Failed to create idle inhibitor");
+                if (!wl_data->idle_inhibitor) AWIN_LOG_ERROR("failed to create idle inhibitor");
             }
             else if (!enable && wl_data->idle_inhibitor)
             {
@@ -898,7 +898,7 @@ namespace awin
                 libdecor_decorate(g_ctx->libdecor.context, window->surface, &libdecor_frame_interface, window);
             if (!window->libdecor_frame)
             {
-                AWIN_LOG_ERROR("Wayland: Failed to create libdecor frame");
+                AWIN_LOG_ERROR("failed to create libdecor frame");
                 return false;
             }
 
@@ -1027,14 +1027,14 @@ namespace awin
             const int fd = create_anonymous_file(length);
             if (fd < 0)
             {
-                AWIN_LOG_ERROR("Wayland: Failed to create buffer file of size %d: %s", length, strerror(errno));
+                AWIN_LOG_ERROR("failed to create buffer file of size %d: %s", length, strerror(errno));
                 return NULL;
             }
 
             void *data = mmap(NULL, length, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
             if (data == MAP_FAILED)
             {
-                AWIN_LOG_ERROR("Wayland: Failed to map file: %s", strerror(errno));
+                AWIN_LOG_ERROR("failed to map file: %s", strerror(errno));
                 close(fd);
                 return NULL;
             }
@@ -1152,7 +1152,7 @@ namespace awin
             wl_data->xdg.surface = xdg_wm_base_get_xdg_surface(g_ctx->wm_base, wl_data->surface);
             if (!wl_data->surface)
             {
-                AWIN_LOG_ERROR("Wayland: Failed to create xdg-surface for window");
+                AWIN_LOG_ERROR("failed to create xdg-surface for window");
                 return false;
             }
 
@@ -1161,7 +1161,7 @@ namespace awin
             wl_data->xdg.toplevel = xdg_surface_get_toplevel(wl_data->xdg.surface);
             if (!wl_data->xdg.toplevel)
             {
-                AWIN_LOG_ERROR("Wayland: Failed to create xdg-toplevel for window");
+                AWIN_LOG_ERROR("failed to create xdg-toplevel for window");
                 return false;
             }
 
@@ -1249,10 +1249,10 @@ namespace awin
         {
             auto *wl_data = (WaylandWindowData *)window_data;
             wl_data->surface = wl_compositor_create_surface(g_ctx->compositor);
-            AWIN_LOG_INFO("Wayland: Created window surface: %p", wl_data->surface);
+            AWIN_LOG_INFO("created window surface: %p", wl_data->surface);
             if (!wl_data->surface)
             {
-                AWIN_LOG_ERROR("Wayland: Failed to create window surface");
+                AWIN_LOG_ERROR("failed to create window surface");
                 return false;
             }
             wl_proxy_set_tag((wl_proxy *)wl_data->surface, &g_ctx->tag);
@@ -1310,7 +1310,7 @@ namespace awin
             if (wl_data->idle_inhibitor) zwp_idle_inhibitor_v1_destroy(wl_data->idle_inhibitor);
             destroy_shell_objects(wl_data);
             if (wl_data->fallback.buffer) wl_buffer_destroy(wl_data->fallback.buffer);
-            AWIN_LOG_INFO("Wayland: Destroying window surface: %p", wl_data->surface);
+            AWIN_LOG_INFO("destroying window surface: %p", wl_data->surface);
             if (wl_data->surface) wl_surface_destroy(wl_data->surface);
             wl_data->output_scales.clear();
         }
@@ -1504,7 +1504,7 @@ namespace awin
             return g_ctx->fractional_scale_manager ? output->scale : output->scale / 100.0f;
         }
 
-        IPoint get_window_size(const Window &window)
+        acul::ipoint32 get_window_size(const Window &window)
         {
             auto *window_data = get_window_data(window);
             return window_data->dimenstions;
@@ -1514,7 +1514,7 @@ namespace awin
         {
             if (g_ctx->selection_source != source)
             {
-                AWIN_LOG_ERROR("Wayland: Unknown clipboard data source");
+                AWIN_LOG_ERROR("unknown clipboard data source");
                 return;
             }
         }
@@ -1537,7 +1537,7 @@ namespace awin
                 if (result == -1)
                 {
                     if (errno == EINTR) continue;
-                    AWIN_LOG_ERROR("Wayland: Error while writing the clipboard: %s", strerror(errno));
+                    AWIN_LOG_ERROR("error while writing the clipboard: %s", strerror(errno));
                     break;
                 }
 
@@ -1567,7 +1567,7 @@ namespace awin
 
             if (pipe2(fds, O_CLOEXEC) == -1)
             {
-                AWIN_LOG_ERROR("Wayland: Failed to create pipe for data offer: %s", strerror(errno));
+                AWIN_LOG_ERROR("failed to create pipe for data offer: %s", strerror(errno));
                 return {};
             }
 
@@ -1589,7 +1589,7 @@ namespace awin
                     if (errno == EINTR) continue;
 
                     close(fds[0]);
-                    AWIN_LOG_ERROR("Wayland: Failed to read from data offer pipe: %s", strerror(errno));
+                    AWIN_LOG_ERROR("failed to read from data offer pipe: %s", strerror(errno));
                 }
 
                 r.append(buffer.data(), bytes_read);
@@ -1602,7 +1602,7 @@ namespace awin
         {
             if (!g_ctx->selection_offer)
             {
-                AWIN_LOG_ERROR("Wayland: No clipboard data available");
+                AWIN_LOG_ERROR("no clipboard data available");
                 return {};
             }
 
@@ -1624,7 +1624,7 @@ namespace awin
             g_ctx->selection_source = wl_data_device_manager_create_data_source(g_ctx->data_device_manager);
             if (!g_ctx->selection_source)
             {
-                AWIN_LOG_ERROR("Wayland: Failed to create clipboard data source");
+                AWIN_LOG_ERROR("failed to create clipboard data source");
                 return;
             }
             wl_data_source_add_listener(g_ctx->selection_source, &data_source_listener, NULL);
@@ -1634,7 +1634,7 @@ namespace awin
 
         void set_window_icon(WindowData *, const acul::vector<Image> &)
         {
-            AWIN_LOG_WARN("Wayland: The platform does not support setting the window icon");
+            AWIN_LOG_WARN("the platform does not support setting the window icon");
         }
 
         void show_window(WindowData *window_data)
@@ -1689,14 +1689,14 @@ namespace awin
             }
         }
 
-        IPoint get_cursor_position(WindowData *window_data)
+        acul::ipoint32 get_cursor_position(WindowData *window_data)
         {
             return ((WaylandWindowData *)window_data)->cursor_pos;
         }
 
-        void set_cursor_position(WindowData *window_data, IPoint position)
+        void set_cursor_position(WindowData *window_data, acul::ipoint32 position)
         {
-            AWIN_LOG_ERROR("Wayland: The platform does not support setting the cursor position");
+            AWIN_LOG_ERROR("the platform does not support setting the cursor position");
         }
 
         Cursor::Platform *create_cursor(Cursor::Type type)
@@ -1726,7 +1726,7 @@ namespace awin
             if (!cursor->handle) cursor->handle = wl_cursor_theme_get_cursor(g_ctx->cursor_theme, entry.fallback);
             if (!cursor->handle)
             {
-                AWIN_LOG_ERROR("Wayland: Failed to create standard cursor \"%s\"", entry.name);
+                AWIN_LOG_ERROR("failed to create standard cursor \"%s\"", entry.name);
                 acul::release(cursor);
                 return nullptr;
             }
@@ -1778,20 +1778,20 @@ namespace awin
             set_window_state_flag(window_data->state_flags, WindowStateFlagBits::cursor_hidden, false);
         }
 
-        IPoint get_window_position(WindowData *window)
+        acul::ipoint32 get_window_position(WindowData *window)
         {
-            AWIN_LOG_ERROR("Wayland: The platform does not provide the window position");
+            AWIN_LOG_ERROR("the platform does not provide the window position");
             return {0, 0};
         }
 
-        void set_window_position(WindowData *window, IPoint position)
+        void set_window_position(WindowData *window, acul::ipoint32 position)
         {
-            AWIN_LOG_ERROR("Wayland: The platform does not support setting the window position");
+            AWIN_LOG_ERROR("the platform does not support setting the window position");
         }
 
         void center_window(WindowData *window)
         {
-            AWIN_LOG_WARN("Wayland: Cannot center window, compositor decides position");
+            AWIN_LOG_WARN("cannot center window, compositor decides position");
         }
 
         void update_resize_limit(WindowData *window)
@@ -1801,7 +1801,7 @@ namespace awin
             {
                 if (!wl_data->libdecor_frame) return;
                 auto resize_limit = window->resize_limit.x > 0 && window->resize_limit.y > 0 ? wl_data->resize_limit
-                                                                                             : IPoint{0, 0};
+                                                                                             : acul::ipoint32{0, 0};
                 libdecor_frame_set_min_content_size(wl_data->libdecor_frame, resize_limit.x, resize_limit.y);
                 auto size = window->dimenstions;
                 libdecor_state *state = libdecor_state_new(size.x, size.y);

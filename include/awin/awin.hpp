@@ -10,6 +10,7 @@
 
 #include <acul/event.hpp>
 #include <acul/log.hpp>
+#include <acul/point.hpp>
 #include <acul/vector.hpp>
 #include "types.hpp"
 
@@ -58,12 +59,12 @@ namespace awin
     {
         acul::string name;
         acul::string system_name;
-        IPoint position;
-        IPoint work_position;
-        IPoint dimensions;
-        IPoint work_dimensions;
-        IPoint physical_size_mm;
-        FPoint content_scale{1.f, 1.f};
+        acul::ipoint32 position;
+        acul::ipoint32 work_position;
+        acul::ipoint32 dimensions;
+        acul::ipoint32 work_dimensions;
+        acul::ipoint32 physical_size_mm;
+        acul::fpoint32 content_scale{1.f, 1.f};
     };
 
     struct ColorHint
@@ -98,7 +99,7 @@ namespace awin
         AWIN_EXPORT void title(const acul::string &title);
 
         // Returns the width of the window.
-        IPoint dimensions() const { return _data->dimenstions; }
+        acul::ipoint32 dimensions() const { return _data->dimenstions; }
 
         // Check if the window has decorations
         inline bool decorated() const { return (_data->flags & WindowFlagBits::decorated) != 0; }
@@ -116,10 +117,10 @@ namespace awin
         AWIN_EXPORT void disable_fullscreen();
 
         // Get the current cursor position.
-        AWIN_EXPORT IPoint cursor_position() const;
+        AWIN_EXPORT acul::ipoint32 cursor_position() const;
 
         // Set the cursor position
-        AWIN_EXPORT void cursor_position(IPoint position);
+        AWIN_EXPORT void cursor_position(acul::ipoint32 position);
 
         // Show the cursor.
         AWIN_EXPORT void show_cursor();
@@ -161,10 +162,10 @@ namespace awin
         inline bool hidden() const { return _data->flags & awin::WindowFlagBits::hidden; }
 
         // Get the window's resize limits.
-        inline IPoint resize_limit() const { return _data->resize_limit; }
+        inline acul::ipoint32 resize_limit() const { return _data->resize_limit; }
 
         // Set the window's resize limits.
-        void resize_limit(IPoint size)
+        void resize_limit(acul::ipoint32 size)
         {
             _data->resize_limit = size;
             update_resize_limit();
@@ -186,10 +187,10 @@ namespace awin
         AWIN_EXPORT void hide_window();
 
         // Get current window position
-        AWIN_EXPORT IPoint position() const;
+        AWIN_EXPORT acul::ipoint32 position() const;
 
         // Set window position
-        AWIN_EXPORT void position(IPoint position);
+        AWIN_EXPORT void position(acul::ipoint32 position);
 
         // Center the window to the parent
         AWIN_EXPORT void center_window();
@@ -358,10 +359,10 @@ namespace awin
     // Represents a position change event in a window.
     struct PosEvent : public acul::events::event
     {
-        awin::Window *window; // Pointer to the associated Window object.
-        IPoint position;      // The new position.
+        awin::Window *window;    // Pointer to the associated Window object.
+        acul::ipoint32 position; // The new position.
 
-        explicit PosEvent(u64 id = 0, awin::Window *window = nullptr, IPoint position = {})
+        explicit PosEvent(u64 id = 0, awin::Window *window = nullptr, acul::ipoint32 position = {})
             : event(id), window(window), position(position)
         {
         }
@@ -370,10 +371,10 @@ namespace awin
     struct ResizeEvent : public acul::events::event
     {
         awin::Window *window;
-        IPoint position;
+        acul::ipoint32 position;
         ResizeFlags flags;
 
-        explicit ResizeEvent(awin::Window *window = nullptr, IPoint position = {},
+        explicit ResizeEvent(awin::Window *window = nullptr, acul::ipoint32 position = {},
                              ResizeFlags flags = ResizeFlagBits::none)
             : event(event_id::resize), window(window), position(position), flags(flags)
         {
@@ -397,7 +398,7 @@ namespace awin
     struct DpiChangedEvent : public acul::events::event
     {
         awin::Window *window; // Pointer to the associated Window object.
-        FPoint dpi;
+        acul::fpoint32 dpi;
 
         explicit DpiChangedEvent(awin::Window *window = nullptr, f32 x_dpi = 0.0f, f32 y_dpi = 0.0f)
             : event(event_id::dpi_changed), window(window), dpi(x_dpi, y_dpi)
@@ -467,10 +468,10 @@ namespace awin
     AWIN_EXPORT f32 get_dpi(const Window &window);
 
     // Get the client area size
-    AWIN_EXPORT IPoint get_window_size(const Window &window);
+    AWIN_EXPORT acul::ipoint32 get_window_size(const Window &window);
 
     // Get the size used to restore the native window bounds.
-    AWIN_EXPORT IPoint get_window_size_origin(const Window &window);
+    AWIN_EXPORT acul::ipoint32 get_window_size_origin(const Window &window);
 
     // Get text string from the clipboard buffer
     AWIN_EXPORT acul::string get_clipboard_string(const Window &window);

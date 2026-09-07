@@ -10,7 +10,7 @@ namespace awin::platform::wayland
         handle = dlopen(name, RTLD_LAZY);
         if (!handle)
         {
-            AWIN_LOG_ERROR("Failed to load %s: %s", name, dlerror());
+            AWIN_LOG_ERROR("failed to load %s: %s", name, dlerror());
             return false;
         }
         return true;

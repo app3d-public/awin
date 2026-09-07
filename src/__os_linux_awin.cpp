@@ -90,7 +90,7 @@ namespace awin
         {
             if (!init_platform_caller())
             {
-                AWIN_LOG_ERROR("Unknown window backend");
+                AWIN_LOG_ERROR("unknown window backend");
                 return false;
             }
             if (!pd.pcall.init_platform()) return false;
@@ -230,9 +230,9 @@ namespace awin
         platform::pd.wcall.disable_fullscreen(_data);
     }
 
-    IPoint Window::cursor_position() const { return platform::pd.wcall.get_cursor_position(_data); }
+    acul::ipoint32 Window::cursor_position() const { return platform::pd.wcall.get_cursor_position(_data); }
 
-    void Window::cursor_position(IPoint position)
+    void Window::cursor_position(acul::ipoint32 position)
     {
         platform::pd.wcall.set_cursor_position(_data, position);
     }
@@ -241,9 +241,9 @@ namespace awin
 
     void Window::show_cursor() { platform::pd.wcall.show_cursor(this, _data); }
 
-    IPoint Window::position() const { return platform::pd.wcall.get_window_position(_data); }
+    acul::ipoint32 Window::position() const { return platform::pd.wcall.get_window_position(_data); }
 
-    void Window::position(IPoint position) { platform::pd.wcall.set_window_position(_data, position); }
+    void Window::position(acul::ipoint32 position) { platform::pd.wcall.set_window_position(_data, position); }
 
     void Window::center_window() { platform::pd.wcall.center_window(_data); }
 
@@ -263,9 +263,9 @@ namespace awin
 
     f32 get_dpi(const Window &window) { return platform::pd.pcall.get_dpi(get_window_data(window)); }
 
-    IPoint get_window_size(const Window &window) { return platform::pd.pcall.get_window_size(window); }
+    acul::ipoint32 get_window_size(const Window &window) { return platform::pd.pcall.get_window_size(window); }
 
-    IPoint get_window_size_origin(const Window &window) { return get_window_size(window); }
+    acul::ipoint32 get_window_size_origin(const Window &window) { return get_window_size(window); }
 
     acul::string get_clipboard_string(const Window &window) { return platform::pd.pcall.get_clipboard_string(); }
 

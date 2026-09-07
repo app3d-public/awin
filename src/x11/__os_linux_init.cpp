@@ -37,7 +37,7 @@ namespace awin::platform::x11
     {
         if (pipe(g_ctx->empty_pipe) != 0)
         {
-            AWIN_LOG_ERROR("Failed to create empty event pipe: %s", strerror(errno));
+            AWIN_LOG_ERROR("failed to create empty event pipe: %s", strerror(errno));
             return false;
         }
         for (int i = 0; i < 2; i++)
@@ -48,7 +48,7 @@ namespace awin::platform::x11
             if (sf == -1 || df == -1 || fcntl(g_ctx->empty_pipe[i], F_SETFL, sf | O_NONBLOCK) == -1 ||
                 fcntl(g_ctx->empty_pipe[i], F_SETFD, df | FD_CLOEXEC) == -1)
             {
-                AWIN_LOG_ERROR("Failed to set flags for empty event pipe: %s", strerror(errno));
+                AWIN_LOG_ERROR("failed to set flags for empty event pipe: %s", strerror(errno));
                 close(g_ctx->empty_pipe[i]);
                 return false;
             }
@@ -60,7 +60,7 @@ namespace awin::platform::x11
     {
         auto &xi = g_ctx->xlib.xi;
         if (!xi.load()) return;
-        AWIN_LOG_INFO("Loaded XInput library");
+        AWIN_LOG_INFO("loaded XInput library");
         if (g_ctx->xlib.XQueryExtension(g_ctx->display, "XInputExtension", &xi.major_op_code, &xi.event_base,
                                         &xi.error_base))
         {
@@ -74,7 +74,7 @@ namespace awin::platform::x11
     {
         auto &randr = g_ctx->xlib.randr;
         if (!randr.load()) return;
-        AWIN_LOG_INFO("Loaded XRandR library");
+        AWIN_LOG_INFO("loaded XRandR library");
 
         if (!randr.XRRQueryExtension || !randr.XRRQueryVersion || !randr.XRRGetScreenResourcesCurrent ||
             !randr.XRRGetOutputInfo || !randr.XRRGetCrtcInfo || !randr.XRRFreeOutputInfo ||
@@ -97,7 +97,7 @@ namespace awin::platform::x11
         randr.minor = 3;
         if (!randr.XRRQueryVersion(g_ctx->display, &randr.major, &randr.minor))
         {
-            AWIN_LOG_WARN("Failed to query XRandR version");
+            AWIN_LOG_WARN("failed to query XRandR version");
             randr.init = false;
             unload(randr.handle);
             return;
@@ -130,7 +130,7 @@ namespace awin::platform::x11
                                       XkbGroupStateMask);
         }
 
-        AWIN_LOG_INFO("Loaded XKB");
+        AWIN_LOG_INFO("loaded XKB");
     }
 
     // Return the atom ID only if it is listed in the specified array
@@ -360,21 +360,21 @@ namespace awin::platform::x11
         if (!xlib.load()) return false;
         if (!xlib.XInitThreads || !xlib.XrmInitialize || !xlib.XOpenDisplay)
         {
-            AWIN_LOG_ERROR("Failed to load X11 entry points");
+            AWIN_LOG_ERROR("failed to load X11 entry points");
             g_ctx->xlib.unload();
             return false;
         }
-        AWIN_LOG_INFO("Loaded X11 library");
+        AWIN_LOG_INFO("loaded X11 library");
         xlib.XInitThreads();
         xlib.XrmInitialize();
         g_ctx->display = xlib.XOpenDisplay(NULL);
         if (!g_ctx->display)
         {
-            AWIN_LOG_ERROR("Failed to open X11 display");
+            AWIN_LOG_ERROR("failed to open X11 display");
             g_ctx->xlib.unload();
             return false;
         }
-        AWIN_LOG_INFO("Connected to X11 display");
+        AWIN_LOG_INFO("connected to X11 display");
 
         g_ctx->xlib.xkb.load(xlib.handle);
         g_ctx->utf8 = xlib.Xutf8LookupString && xlib.Xutf8SetWMProperties;
@@ -386,9 +386,9 @@ namespace awin::platform::x11
         if (!create_empty_pipe()) return false;
         init_xi();
         init_randr();
-        if (g_ctx->xlib.xcursor.load()) AWIN_LOG_INFO("Loaded Xcursor library");
+        if (g_ctx->xlib.xcursor.load()) AWIN_LOG_INFO("loaded Xcursor library");
 #ifndef ACUL_BUILD_MIN
-        if (g_ctx->xlib.xcb.load()) AWIN_LOG_INFO("Loaded XCB");
+        if (g_ctx->xlib.xcb.load()) AWIN_LOG_INFO("loaded XCB");
 #endif
         init_atoms();
         g_ctx->helper_window = create_helper_window();
@@ -402,7 +402,7 @@ namespace awin::platform::x11
                                                 NULL);
         }
 
-        AWIN_LOG_INFO("Created X11 Window Context");
+        AWIN_LOG_INFO("created X11 Window Context");
         return true;
     }
 
