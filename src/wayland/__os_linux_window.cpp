@@ -745,7 +745,7 @@ namespace awin
         static const struct xdg_toplevel_listener xdg_toplevel_listener = {xdg_top_level_handle_configure,
                                                                            xdg_toplevel_handle_close};
 
-        static bool resize_window(WaylandWindowData *window, Point<int> dimensions)
+        static bool resize_window(WaylandWindowData *window, acul::point<int> dimensions)
         {
             dimensions.x = std::max(dimensions.x, 1);
             dimensions.y = std::max(dimensions.y, 1);
@@ -813,7 +813,7 @@ namespace awin
         void libdecor_frame_handle_configure(libdecor_frame *frame, libdecor_configuration *config, void *user_data)
         {
             WaylandWindowData *window = (WaylandWindowData *)user_data;
-            Point<int> size;
+            acul::point<int> size;
 
             enum libdecor_window_state window_state;
             bool fullscreen, activated, maximized;
@@ -936,7 +936,7 @@ namespace awin
 
         static void update_xdg_size_limits(WaylandWindowData *window)
         {
-            Point<int> limit;
+            acul::point<int> limit;
             if (window->flags & WindowFlagBits::resizable)
             {
                 if (window->resize_limit.x == 0 || window->resize_limit.y == 0)
@@ -955,7 +955,7 @@ namespace awin
         }
 
         static void create_fallback_edge(WaylandWindowData *window, FallbackEdgeWayland *edge, wl_surface *parent,
-                                         wl_buffer *buffer, Point<int> pos, Point<int> size)
+                                         wl_buffer *buffer, acul::point<int> pos, acul::point<int> size)
         {
             edge->surface = wl_compositor_create_surface(g_ctx->compositor);
             wl_surface_set_user_data(edge->surface, window);
@@ -1305,6 +1305,12 @@ namespace awin
             if (it != g_ctx->windows.end()) g_ctx->windows.erase(it);
             if (wl_data == g_ctx->pointer_focus) g_ctx->pointer_focus = NULL;
             if (wl_data == g_ctx->keyboard_focus) g_ctx->keyboard_focus = NULL;
+            disable_relative_pointer(wl_data);
+            for (auto &output : g_ctx->outputs)
+            {
+                auto &windows = output.windows;
+                windows.erase(std::remove(windows.begin(), windows.end(), wl_data), windows.end());
+            }
             if (wl_data->fractional_scale) wp_fractional_scale_v1_destroy(wl_data->fractional_scale);
             if (wl_data->scaling_viewport) wp_viewport_destroy(wl_data->scaling_viewport);
             if (wl_data->idle_inhibitor) zwp_idle_inhibitor_v1_destroy(wl_data->idle_inhibitor);
@@ -1312,7 +1318,7 @@ namespace awin
             if (wl_data->fallback.buffer) wl_buffer_destroy(wl_data->fallback.buffer);
             AWIN_LOG_INFO("destroying window surface: %p", wl_data->surface);
             if (wl_data->surface) wl_surface_destroy(wl_data->surface);
-            wl_data->output_scales.clear();
+            acul::release(wl_data);
         }
 
         static bool flush_display()

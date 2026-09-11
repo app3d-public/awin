@@ -11,7 +11,7 @@ namespace awin::platform::x11
 
     void set_system_dpi()
     {
-        acul::point2D<f32> dpi{96.0f, 96.0f};
+        acul::fpoint32 dpi{96.0f, 96.0f};
 
         char *rms = g_ctx->xlib.XResourceManagerString(g_ctx->display);
         if (rms)
@@ -77,8 +77,8 @@ namespace awin::platform::x11
         AWIN_LOG_INFO("loaded XRandR library");
 
         if (!randr.XRRQueryExtension || !randr.XRRQueryVersion || !randr.XRRGetScreenResourcesCurrent ||
-            !randr.XRRGetOutputInfo || !randr.XRRGetCrtcInfo || !randr.XRRFreeOutputInfo ||
-            !randr.XRRFreeCrtcInfo || !randr.XRRFreeScreenResources)
+            !randr.XRRGetOutputInfo || !randr.XRRGetCrtcInfo || !randr.XRRFreeOutputInfo || !randr.XRRFreeCrtcInfo ||
+            !randr.XRRFreeScreenResources)
         {
             AWIN_LOG_WARN("XRandR entry points are incomplete");
             unload(randr.handle);

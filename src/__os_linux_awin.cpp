@@ -198,7 +198,12 @@ namespace awin
             throw acul::runtime_error("Failed to create Window");
     }
 
-    void Window::destroy() { platform::pd.wcall.destroy(_data); }
+    void Window::destroy()
+    {
+        if (!_data) return;
+        platform::pd.wcall.destroy(_data);
+        _data = nullptr;
+    }
 
     void Window::show_window()
     {
@@ -259,6 +264,8 @@ namespace awin
 
     void wait_events_timeout() { platform::pd.pcall.wait_events_timeout(); }
 
+    void set_timeout(f64 timeout) { platform::g_env->timeout = timeout; }
+
     void push_empty_event() { platform::pd.pcall.push_empty_event(); }
 
     f32 get_dpi(const Window &window) { return platform::pd.pcall.get_dpi(get_window_data(window)); }
@@ -280,6 +287,8 @@ namespace awin
     }
 
     int native_access::get_backend_type() { return platform::pd.backend_type; }
+
+    WindowFlags get_window_flags(const Window &window) { return get_window_data(window)->flags; }
 
     Cursor Cursor::create(Type type) { return {platform::pd.ccall.create(type)}; }
 

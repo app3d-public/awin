@@ -248,7 +248,7 @@ namespace awin::platform::x11
         XContext context;
         bool utf8 = false;
         XIM im;
-        acul::point2D<f32> dpi;
+        acul::fpoint32 dpi;
         int empty_pipe[2];
         int error_code;
         XErrorHandler error_handler = NULL;

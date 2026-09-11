@@ -753,6 +753,7 @@ namespace awin
 
     void Window::destroy()
     {
+        if (!_data) return;
         auto *wd = (platform::Win32WindowData *)_data;
         if (wd->raw_input_data)
         {
@@ -769,6 +770,8 @@ namespace awin
             DestroyWindow(hwnd);
             wd->hwnd = nullptr;
         }
+        acul::release(wd);
+        _data = nullptr;
     }
 
     void Window::show_window()

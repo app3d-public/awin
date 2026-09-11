@@ -20,7 +20,7 @@ namespace awin::platform::wayland
         acul::string title;
         bool hovered, activated;
         i32 buffer_scale;
-        acul::point2D<f64> cursor_pos;
+        acul::point<f64> cursor_pos;
         Output *output;
         acul::vector<OutputScale> output_scales;
         bool scale_framebuffer;
@@ -46,7 +46,7 @@ namespace awin::platform::wayland
         } xdg;
         struct Pending
         {
-            Point<int> dimensions;
+            acul::point<int> dimensions;
             WindowFlags flags;
             bool activated{false};
             bool resizing{false};

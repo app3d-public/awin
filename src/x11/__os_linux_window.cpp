@@ -26,6 +26,9 @@ namespace awin
 {
     namespace platform::x11
     {
+        static void update_normal_hints(X11WindowData *window_data, acul::ipoint32 dim,
+                                        bool ignore_resize_limit = false);
+
         void input_context_destroy_callback(XIC ic, XPointer clientData, XPointer callData)
         {
             X11WindowData *window = (X11WindowData *)clientData;
@@ -667,7 +670,7 @@ namespace awin
 
         void set_cursor_position(WindowData *window_data, acul::ipoint32 position)
         {
-            Point<int> abs_pos;
+            acul::ipoint abs_pos;
             auto &xlib = g_ctx->xlib;
             auto *xd = reinterpret_cast<X11WindowData *>(window_data);
             xlib.XTranslateCoordinates(g_ctx->display, xd->window, g_ctx->root, position.x, position.y, &abs_pos.x,
@@ -847,7 +850,7 @@ namespace awin
                         else if (platform::g_env->default_cursor.valid())
                             platform::g_env->default_cursor.assign(window_data->owner);
                     }
-                    acul::point2D dim{event->xcrossing.x, event->xcrossing.y};
+                    acul::point dim{event->xcrossing.x, event->xcrossing.y};
                     acul::events::dispatch_event_group<PosEvent>(g_env->events.mouse_move, event_id::mouse_move,
                                                                  window_data->owner, dim);
                     return;
@@ -860,7 +863,7 @@ namespace awin
                 }
                 case MotionNotify:
                 {
-                    acul::point2D pos{event->xmotion.x, event->xmotion.y};
+                    acul::point pos{event->xmotion.x, event->xmotion.y};
                     acul::events::dispatch_event_group<PosEvent>(g_env->events.mouse_move, event_id::mouse_move,
                                                                  window_data->owner, pos);
                     return;
@@ -960,6 +963,9 @@ namespace awin
                     }
                     else if (event->xproperty.atom == g_ctx->wm.NET_WM_STATE)
                     {
+                        // A WM may clear maximization while withdrawing an unmapped window.
+                        // Preserve the requested state for show_window() and session restoration.
+                        if (window_data->flags & WindowFlagBits::hidden) return;
                         const bool maximized = is_window_maximized(window_data);
                         const bool already = (window_data->flags & WindowFlagBits::maximized);
 
@@ -969,6 +975,8 @@ namespace awin
                                 window_data->flags |= WindowFlagBits::maximized;
                             else
                                 window_data->flags &= ~WindowFlagBits::maximized;
+
+                            update_normal_hints(window_data, window_data->dimenstions);
 
                             acul::events::dispatch_event_group<StateEvent>(g_env->events.maximize, event_id::maximize,
                                                                            window_data->owner, maximized);
@@ -1101,10 +1109,13 @@ namespace awin
 
             XSetWindowAttributes wa = {0};
             wa.colormap = x11_data->colormap;
+            // Preserve the last presented pixels while an asynchronous resize is being rendered.
+            // ForgetGravity clears the entire window to background_pixel on every size change.
+            wa.bit_gravity = NorthWestGravity;
             wa.event_mask = StructureNotifyMask | KeyPressMask | KeyReleaseMask | PointerMotionMask | ButtonPressMask |
                             ButtonReleaseMask | ExposureMask | FocusChangeMask | VisibilityChangeMask |
                             EnterWindowMask | LeaveWindowMask | PropertyChangeMask;
-            unsigned long attribute_mask = CWBorderPixel | CWColormap | CWEventMask;
+            unsigned long attribute_mask = CWBorderPixel | CWColormap | CWEventMask | CWBitGravity;
             if (g_env->has_active_window_hints && g_env->active_window_background_hint.enabled)
             {
                 wa.background_pixel =
@@ -1198,6 +1209,7 @@ namespace awin
             }
 
             xlib.XFlush(g_ctx->display);
+            acul::release(x11_data);
         }
 
         acul::ipoint32 get_window_position(WindowData *window)
@@ -1232,10 +1244,10 @@ namespace awin
             xlib.XFlush(g_ctx->display);
         }
 
-        static acul::point2D<long> get_primary_work_dimensions()
+        static acul::point<long> get_primary_work_dimensions()
         {
             auto &xlib = g_ctx->xlib;
-            acul::point2D<long> work_dimensions = {DisplayWidth(g_ctx->display, g_ctx->screen),
+            acul::point<long> work_dimensions = {DisplayWidth(g_ctx->display, g_ctx->screen),
                                                    DisplayHeight(g_ctx->display, g_ctx->screen)};
 
             Atom type;
@@ -1260,7 +1272,7 @@ namespace awin
         {
             auto &xlib = g_ctx->xlib;
             const auto work = get_primary_work_dimensions();
-            acul::point2D<long> center = {(work.x - window->dimenstions.x) / 2, (work.y - window->dimenstions.y) / 2};
+            acul::point<long> center = {(work.x - window->dimenstions.x) / 2, (work.y - window->dimenstions.y) / 2};
             if (center.y < 0) center.y = 0;
             auto *x11_data = (X11WindowData *)window;
             xlib.XMoveResizeWindow(g_ctx->display, x11_data->window, center.x, center.y, window->dimenstions.x,
@@ -1268,7 +1280,7 @@ namespace awin
             xlib.XFlush(g_ctx->display);
         }
 
-        static void update_normal_hints(X11WindowData *window_data, acul::ipoint32 dim)
+        static void update_normal_hints(X11WindowData *window_data, acul::ipoint32 dim, bool ignore_resize_limit)
         {
             auto &xlib = g_ctx->xlib;
             XSizeHints *hints = xlib.XAllocSizeHints();
@@ -1281,7 +1293,9 @@ namespace awin
 
             if (window_data->flags & WindowFlagBits::resizable)
             {
-                if (window_data->resize_limit.x != AWIN_DONT_CARE && window_data->resize_limit.y != AWIN_DONT_CARE)
+                // The configured minimum applies to normal windows, not the WM's maximized work area.
+                if (!ignore_resize_limit && !(window_data->flags & WindowFlagBits::maximized) &&
+                    window_data->resize_limit.x != AWIN_DONT_CARE && window_data->resize_limit.y != AWIN_DONT_CARE)
                 {
                     hints->flags |= PMinSize;
                     hints->min_width = window_data->resize_limit.x;
@@ -1320,6 +1334,7 @@ namespace awin
                 return;
             auto &xlib = g_ctx->xlib;
             auto *x11_data = (X11WindowData *)window;
+            update_normal_hints(x11_data, window->dimenstions, true);
             if (window->flags & WindowFlagBits::hidden)
             {
                 Atom *states = NULL;
