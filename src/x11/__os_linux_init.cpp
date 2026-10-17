@@ -11,7 +11,7 @@ namespace awin::platform::x11
 
     void set_system_dpi()
     {
-        acul::point2D<f32> dpi{96.0f, 96.0f};
+        acul::point<f32> dpi{96.0f, 96.0f};
 
         char *rms = g_ctx->xlib.XResourceManagerString(g_ctx->display);
         if (rms)

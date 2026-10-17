@@ -1,7 +1,7 @@
 #pragma once
 
 #include <acul/lut_table.hpp>
-#include <acul/pair.hpp>
+#include <acul/point.hpp>
 #include <awin/types.hpp>
 #include <windows.h>
 
@@ -142,7 +142,7 @@ namespace awin::platform
         WNDCLASSEXW win32_class;
         DWORD thread_id;
         int padding;
-        acul::point2D<int> frame, screen;
+        acul::point<int> frame, screen;
         UINT dpi;
         u32 platform_flags{0};
         bool com_initialized{false};

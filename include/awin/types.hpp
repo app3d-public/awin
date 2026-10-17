@@ -2,7 +2,7 @@
 #define APP_AWIN_TYPES_H
 
 #include <acul/enum.hpp>
-#include <acul/pair.hpp>
+#include <acul/point.hpp>
 #include <acul/scalars.hpp>
 #include <acul/vector.hpp>
 #include <awin/symbol_export.h>
@@ -281,18 +281,18 @@ namespace awin
 
     struct Image
     {
-        acul::point2D<int> dimenstions;
+        acul::point<int> dimenstions;
         const void *pixels;
     };
 
     struct WindowData
     {
         Window *owner;
-        acul::point2D<i32> dimenstions;
+        acul::point<i32> dimenstions;
         WindowFlags flags;
         WindowStateFlags state_flags{WindowStateFlagBits::accepts_surface_update};
         const Monitor *active_monitor = nullptr;
-        acul::point2D<i32> resize_limit{0, 0};
+        acul::point<i32> resize_limit{0, 0};
         io::KeyPressState keys[io::Key::last + 1];
         Cursor *cursor{NULL};
     };

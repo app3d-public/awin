@@ -1,7 +1,7 @@
 #pragma once
 
 #include <acul/lut_table.hpp>
-#include <acul/pair.hpp>
+#include <acul/point.hpp>
 #include <acul/string/string.hpp>
 #include "../env.hpp"
 #include "../linux_pd.hpp"
@@ -248,7 +248,7 @@ namespace awin::platform::x11
         XContext context;
         bool utf8 = false;
         XIM im;
-        acul::point2D<f32> dpi;
+        acul::point<f32> dpi;
         int empty_pipe[2];
         int error_code;
         XErrorHandler error_handler = NULL;

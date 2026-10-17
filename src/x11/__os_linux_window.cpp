@@ -111,7 +111,7 @@ namespace awin
 
         static void refresh_all_window_monitors() { refresh_window_monitors_in_tree(g_ctx->root); }
 
-        static void dispatch_tracked_resize(X11WindowData *window, acul::point2D<i32> dimensions)
+        static void dispatch_tracked_resize(X11WindowData *window, acul::point<i32> dimensions)
         {
             if (g_ctx->active_resize_window && g_ctx->active_resize_window != window)
                 finish_active_resize();
@@ -651,7 +651,7 @@ namespace awin
         // Ungrabs the cursor
         static void release_cursor() { g_ctx->xlib.XUngrabPointer(g_ctx->display, CurrentTime); }
 
-        acul::point2D<i32> get_cursor_position(WindowData *window_data)
+        acul::point<i32> get_cursor_position(WindowData *window_data)
         {
             auto *x11_data = (X11WindowData *)window_data;
             auto &xlib = g_ctx->xlib;
@@ -665,9 +665,9 @@ namespace awin
             return {};
         }
 
-        void set_cursor_position(WindowData *window_data, acul::point2D<i32> position)
+        void set_cursor_position(WindowData *window_data, acul::point<i32> position)
         {
-            acul::point2D<int> abs_pos;
+            acul::point<int> abs_pos;
             auto &xlib = g_ctx->xlib;
             auto *xd = reinterpret_cast<X11WindowData *>(window_data);
             xlib.XTranslateCoordinates(g_ctx->display, xd->window, g_ctx->root, position.x, position.y, &abs_pos.x,
@@ -770,7 +770,7 @@ namespace awin
             if (event->type == GenericEvent && is_raw_event(event))
             {
                 XIRawEvent *raw = (XIRawEvent *)event->xcookie.data;
-                acul::point2D<i32> delta{0, 0};
+                acul::point<i32> delta{0, 0};
                 int idx = 0;
                 if (XIMaskIsSet(raw->valuators.mask, 0)) delta.x = raw->raw_values[idx++];
                 if (XIMaskIsSet(raw->valuators.mask, 1)) delta.y = raw->raw_values[idx++];
@@ -847,7 +847,7 @@ namespace awin
                         else if (platform::g_env->default_cursor.valid())
                             platform::g_env->default_cursor.assign(window_data->owner);
                     }
-                    acul::point2D dim{event->xcrossing.x, event->xcrossing.y};
+                    acul::point dim{event->xcrossing.x, event->xcrossing.y};
                     acul::events::dispatch_event_group<PosEvent>(g_env->events.mouse_move, event_id::mouse_move,
                                                                  window_data->owner, dim);
                     return;
@@ -860,15 +860,15 @@ namespace awin
                 }
                 case MotionNotify:
                 {
-                    acul::point2D pos{event->xmotion.x, event->xmotion.y};
+                    acul::point pos{event->xmotion.x, event->xmotion.y};
                     acul::events::dispatch_event_group<PosEvent>(g_env->events.mouse_move, event_id::mouse_move,
                                                                  window_data->owner, pos);
                     return;
                 }
                 case ConfigureNotify:
                 {
-                    acul::point2D<i32> dimenstions(event->xconfigure.width, event->xconfigure.height);
-                    acul::point2D<i32> pos(event->xconfigure.x, event->xconfigure.y);
+                    acul::point<i32> dimenstions(event->xconfigure.width, event->xconfigure.height);
+                    acul::point<i32> pos(event->xconfigure.x, event->xconfigure.y);
 
                     // NOTE: ConfigureNotify events from the server are in local
                     //       coordinates, so if we are reparented we need to translate
@@ -982,7 +982,7 @@ namespace awin
             }
         }
 
-        bool prepare_window_wm_hints(X11WindowData *x11_data, WindowFlags flags, acul::point2D<i32> dim,
+        bool prepare_window_wm_hints(X11WindowData *x11_data, WindowFlags flags, acul::point<i32> dim,
                                      const acul::string &title)
         {
             auto &xlib = g_ctx->xlib;
@@ -1071,21 +1071,21 @@ namespace awin
             return true;
         }
 
-        inline void get_window_pos(const X11WindowData *window_data, acul::point2D<i32> &pos)
+        inline void get_window_pos(const X11WindowData *window_data, acul::point<i32> &pos)
         {
             XID dummy;
             g_ctx->xlib.XTranslateCoordinates(g_ctx->display, window_data->window, g_ctx->root, 0, 0, &pos.x, &pos.y,
                                               &dummy);
         }
 
-        acul::point2D<i32> get_window_size(::Window window)
+        acul::point<i32> get_window_size(::Window window)
         {
             XWindowAttributes attribs;
             g_ctx->xlib.XGetWindowAttributes(g_ctx->display, window, &attribs);
             return {attribs.width, attribs.height};
         }
 
-        acul::point2D<i32> get_window_size(const Window &window)
+        acul::point<i32> get_window_size(const Window &window)
         {
             return get_window_size(native_access::get_x11_window_handle(window));
         }
@@ -1200,16 +1200,16 @@ namespace awin
             xlib.XFlush(g_ctx->display);
         }
 
-        acul::point2D<i32> get_window_position(WindowData *window)
+        acul::point<i32> get_window_position(WindowData *window)
         {
             auto *x11_data = (X11WindowData *)window;
             ::Window dummy;
-            acul::point2D<i32> r;
+            acul::point<i32> r;
             g_ctx->xlib.XTranslateCoordinates(g_ctx->display, x11_data->window, g_ctx->root, 0, 0, &r.x, &r.y, &dummy);
             return r;
         }
 
-        void set_window_position(WindowData *window, acul::point2D<i32> position)
+        void set_window_position(WindowData *window, acul::point<i32> position)
         {
             auto *x11_data = (X11WindowData *)window;
             auto &xlib = g_ctx->xlib;
@@ -1232,10 +1232,10 @@ namespace awin
             xlib.XFlush(g_ctx->display);
         }
 
-        static acul::point2D<long> get_primary_work_dimensions()
+        static acul::point<long> get_primary_work_dimensions()
         {
             auto &xlib = g_ctx->xlib;
-            acul::point2D<long> work_dimensions = {DisplayWidth(g_ctx->display, g_ctx->screen),
+            acul::point<long> work_dimensions = {DisplayWidth(g_ctx->display, g_ctx->screen),
                                                    DisplayHeight(g_ctx->display, g_ctx->screen)};
 
             Atom type;
@@ -1260,7 +1260,7 @@ namespace awin
         {
             auto &xlib = g_ctx->xlib;
             const auto work = get_primary_work_dimensions();
-            acul::point2D<long> center = {(work.x - window->dimenstions.x) / 2, (work.y - window->dimenstions.y) / 2};
+            acul::point<long> center = {(work.x - window->dimenstions.x) / 2, (work.y - window->dimenstions.y) / 2};
             if (center.y < 0) center.y = 0;
             auto *x11_data = (X11WindowData *)window;
             xlib.XMoveResizeWindow(g_ctx->display, x11_data->window, center.x, center.y, window->dimenstions.x,
@@ -1268,7 +1268,7 @@ namespace awin
             xlib.XFlush(g_ctx->display);
         }
 
-        static void update_normal_hints(X11WindowData *window_data, acul::point2D<i32> dim)
+        static void update_normal_hints(X11WindowData *window_data, acul::point<i32> dim)
         {
             auto &xlib = g_ctx->xlib;
             XSizeHints *hints = xlib.XAllocSizeHints();
