@@ -8,7 +8,7 @@ namespace awin
 {
     namespace integration
     {
-        class CreateCtx final : public agrb::device_present_ctx
+        class AWIN_CLASS_EXPORT CreateCtx final : public agrb::device_present_ctx
         {
         public:
             CreateCtx(Window &window) : _window(window) {}

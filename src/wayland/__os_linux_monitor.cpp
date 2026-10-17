@@ -1,5 +1,6 @@
 #include <awin/awin.hpp>
 #include <cstdlib>
+#include "../env.hpp"
 #include "platform.hpp"
 
 namespace awin::platform::wayland

@@ -17,7 +17,7 @@ namespace awin::platform::x11
 #endif
         if (!handle)
         {
-            AWIN_LOG_ERROR("Failed to load X11 library: %s", dlerror());
+            AWIN_LOG_ERROR("failed to load X11 library: %s", dlerror());
             return false;
         }
 
@@ -138,7 +138,7 @@ namespace awin::platform::x11
 #endif
         if (!handle)
         {
-            AWIN_LOG_ERROR("Failed to load X Input library: %s", dlerror());
+            AWIN_LOG_ERROR("failed to load X Input library: %s", dlerror());
             return false;
         }
 
@@ -159,7 +159,7 @@ namespace awin::platform::x11
 #endif
         if (!handle)
         {
-            AWIN_LOG_WARN("Failed to load X Cursor library: %s", dlerror());
+            AWIN_LOG_WARN("failed to load X Cursor library: %s", dlerror());
             return false;
         }
 
@@ -181,7 +181,7 @@ namespace awin::platform::x11
 #endif
         if (!handle)
         {
-            AWIN_LOG_WARN("Failed to load XCB library: %s", dlerror());
+            AWIN_LOG_WARN("failed to load XCB library: %s", dlerror());
             return false;
         }
 
@@ -201,7 +201,7 @@ namespace awin::platform::x11
 #endif
         if (!handle)
         {
-            AWIN_LOG_WARN("Failed to load XRandR library: %s", dlerror());
+            AWIN_LOG_WARN("failed to load XRandR library: %s", dlerror());
             return false;
         }
 

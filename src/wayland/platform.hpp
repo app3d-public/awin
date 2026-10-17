@@ -1,8 +1,8 @@
 #pragma once
 
-#include <acul/api.hpp>
 #include <acul/list.hpp>
 #include <acul/lut_table.hpp>
+#include <awin/symbol_export.h>
 #include <linux/input-event-codes.h>
 #include "../linux_pd.hpp"
 #include "loaders.hpp"
@@ -155,7 +155,7 @@ namespace awin::platform::wayland
         acul::string name;
         u32 name_id;
         wl_output *handle;
-        acul::point<i32> pos, physical_size, dimensions;
+        acul::ipoint32 pos, physical_size, dimensions;
         int current_mode;
         i32 scale;
         acul::vector<struct WaylandWindowData *> windows;
@@ -322,6 +322,7 @@ namespace awin::platform::wayland
         u32 serial;
         u32 pointer_enter_serial;
         struct WaylandWindowData *pointer_focus, *keyboard_focus;
+        acul::vector<WaylandWindowData *> windows;
         const char *cursor_previous_name;
         const char *tag;
         wl_cursor_theme *cursor_theme;

@@ -46,7 +46,7 @@ namespace awin::integration
         xcb_connection_t *connection = platform::x11::g_ctx->xlib.xcb.XGetXCBConnection(platform::x11::g_ctx->display);
         if (!connection)
         {
-            AWIN_LOG_ERROR("X11: Failed to retrieve XCB connection");
+            AWIN_LOG_ERROR("failed to retrieve XCB connection");
             return vk::Result::eErrorExtensionNotPresent;
         }
         vk::XcbSurfaceCreateInfoKHR info;

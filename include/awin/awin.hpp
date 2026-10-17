@@ -10,6 +10,7 @@
 
 #include <acul/event.hpp>
 #include <acul/log.hpp>
+#include <acul/point.hpp>
 #include <acul/vector.hpp>
 #include "types.hpp"
 
@@ -58,12 +59,12 @@ namespace awin
     {
         acul::string name;
         acul::string system_name;
-        acul::point<i32> position;
-        acul::point<i32> work_position;
-        acul::point<i32> dimensions;
-        acul::point<i32> work_dimensions;
-        acul::point<i32> physical_size_mm;
-        acul::point<f32> content_scale{1.f, 1.f};
+        acul::ipoint32 position;
+        acul::ipoint32 work_position;
+        acul::ipoint32 dimensions;
+        acul::ipoint32 work_dimensions;
+        acul::ipoint32 physical_size_mm;
+        acul::fpoint32 content_scale{1.f, 1.f};
     };
 
     struct ColorHint
@@ -76,7 +77,9 @@ namespace awin
     };
 
     inline constexpr ColorHint make_color_hint(u8 r, u8 g, u8 b, u8 a = 255)
-    { return ColorHint{.enabled = true, .a = a, .r = r, .g = g, .b = b}; }
+    {
+        return ColorHint{.enabled = true, .a = a, .r = r, .g = g, .b = b};
+    }
 
     // A window entity in the windowing system
     class Window
@@ -96,7 +99,7 @@ namespace awin
         AWIN_EXPORT void title(const acul::string &title);
 
         // Returns the width of the window.
-        acul::point<i32> dimensions() const { return _data->dimenstions; }
+        acul::ipoint32 dimensions() const { return _data->dimenstions; }
 
         // Check if the window has decorations
         inline bool decorated() const { return (_data->flags & WindowFlagBits::decorated) != 0; }
@@ -114,10 +117,10 @@ namespace awin
         AWIN_EXPORT void disable_fullscreen();
 
         // Get the current cursor position.
-        AWIN_EXPORT acul::point<i32> cursor_position() const;
+        AWIN_EXPORT acul::ipoint32 cursor_position() const;
 
         // Set the cursor position
-        AWIN_EXPORT void cursor_position(acul::point<i32> position);
+        AWIN_EXPORT void cursor_position(acul::ipoint32 position);
 
         // Show the cursor.
         AWIN_EXPORT void show_cursor();
@@ -136,7 +139,9 @@ namespace awin
 
         // Check whether the owner may update this window surface from the main render loop.
         inline bool accepts_surface_update() const
-        { return _data->state_flags & WindowStateFlagBits::accepts_surface_update; }
+        {
+            return _data->state_flags & WindowStateFlagBits::accepts_surface_update;
+        }
 
         // Check whether the window is currently inside an active resize series.
         inline bool is_active_resizing() const { return _data->state_flags & WindowStateFlagBits::active_resizing; }
@@ -157,10 +162,10 @@ namespace awin
         inline bool hidden() const { return _data->flags & awin::WindowFlagBits::hidden; }
 
         // Get the window's resize limits.
-        inline acul::point<i32> resize_limit() const { return _data->resize_limit; }
+        inline acul::ipoint32 resize_limit() const { return _data->resize_limit; }
 
         // Set the window's resize limits.
-        void resize_limit(acul::point<i32> size)
+        void resize_limit(acul::ipoint32 size)
         {
             _data->resize_limit = size;
             update_resize_limit();
@@ -171,7 +176,9 @@ namespace awin
 
         // Change the window's ready-to-close state.
         inline void ready_to_close(bool ready_to_close)
-        { set_window_state_flag(_data->state_flags, WindowStateFlagBits::ready_to_close, ready_to_close); }
+        {
+            set_window_state_flag(_data->state_flags, WindowStateFlagBits::ready_to_close, ready_to_close);
+        }
 
         // Show the window if it is hidden.
         AWIN_EXPORT void show_window();
@@ -180,10 +187,10 @@ namespace awin
         AWIN_EXPORT void hide_window();
 
         // Get current window position
-        AWIN_EXPORT acul::point<i32> position() const;
+        AWIN_EXPORT acul::ipoint32 position() const;
 
         // Set window position
-        AWIN_EXPORT void position(acul::point<i32> position);
+        AWIN_EXPORT void position(acul::ipoint32 position);
 
         // Center the window to the parent
         AWIN_EXPORT void center_window();
@@ -352,10 +359,10 @@ namespace awin
     // Represents a position change event in a window.
     struct PosEvent : public acul::events::event
     {
-        awin::Window *window;        // Pointer to the associated Window object.
-        acul::point<i32> position; // The new position.
+        awin::Window *window;    // Pointer to the associated Window object.
+        acul::ipoint32 position; // The new position.
 
-        explicit PosEvent(u64 id = 0, awin::Window *window = nullptr, acul::point<i32> position = {})
+        explicit PosEvent(u64 id = 0, awin::Window *window = nullptr, acul::ipoint32 position = {})
             : event(id), window(window), position(position)
         {
         }
@@ -364,10 +371,10 @@ namespace awin
     struct ResizeEvent : public acul::events::event
     {
         awin::Window *window;
-        acul::point<i32> position;
+        acul::ipoint32 position;
         ResizeFlags flags;
 
-        explicit ResizeEvent(awin::Window *window = nullptr, acul::point<i32> position = {},
+        explicit ResizeEvent(awin::Window *window = nullptr, acul::ipoint32 position = {},
                              ResizeFlags flags = ResizeFlagBits::none)
             : event(event_id::resize), window(window), position(position), flags(flags)
         {
@@ -391,7 +398,7 @@ namespace awin
     struct DpiChangedEvent : public acul::events::event
     {
         awin::Window *window; // Pointer to the associated Window object.
-        acul::point<f32> dpi;
+        acul::fpoint32 dpi;
 
         explicit DpiChangedEvent(awin::Window *window = nullptr, f32 x_dpi = 0.0f, f32 y_dpi = 0.0f)
             : event(event_id::dpi_changed), window(window), dpi(x_dpi, y_dpi)
@@ -461,10 +468,10 @@ namespace awin
     AWIN_EXPORT f32 get_dpi(const Window &window);
 
     // Get the client area size
-    AWIN_EXPORT acul::point<i32> get_window_size(const Window &window);
+    AWIN_EXPORT acul::ipoint32 get_window_size(const Window &window);
 
     // Get the size used to restore the native window bounds.
-    AWIN_EXPORT acul::point<i32> get_window_size_origin(const Window &window);
+    AWIN_EXPORT acul::ipoint32 get_window_size_origin(const Window &window);
 
     // Get text string from the clipboard buffer
     AWIN_EXPORT acul::string get_clipboard_string(const Window &window);

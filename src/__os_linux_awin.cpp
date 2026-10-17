@@ -1,5 +1,5 @@
 #include <X11/X.h>
-#include <acul/point.hpp>
+#include <acul/pair.hpp>
 #include <awin/native_access.hpp>
 #include "env.hpp"
 #include "wayland/platform.hpp"
@@ -90,7 +90,7 @@ namespace awin
         {
             if (!init_platform_caller())
             {
-                AWIN_LOG_ERROR("Unknown window backend");
+                AWIN_LOG_ERROR("unknown window backend");
                 return false;
             }
             if (!pd.pcall.init_platform()) return false;
@@ -198,7 +198,12 @@ namespace awin
             throw acul::runtime_error("Failed to create Window");
     }
 
-    void Window::destroy() { platform::pd.wcall.destroy(_data); }
+    void Window::destroy()
+    {
+        if (!_data) return;
+        platform::pd.wcall.destroy(_data);
+        _data = nullptr;
+    }
 
     void Window::show_window()
     {
@@ -230,9 +235,9 @@ namespace awin
         platform::pd.wcall.disable_fullscreen(_data);
     }
 
-    acul::point<i32> Window::cursor_position() const { return platform::pd.wcall.get_cursor_position(_data); }
+    acul::ipoint32 Window::cursor_position() const { return platform::pd.wcall.get_cursor_position(_data); }
 
-    void Window::cursor_position(acul::point<i32> position)
+    void Window::cursor_position(acul::ipoint32 position)
     {
         platform::pd.wcall.set_cursor_position(_data, position);
     }
@@ -241,9 +246,9 @@ namespace awin
 
     void Window::show_cursor() { platform::pd.wcall.show_cursor(this, _data); }
 
-    acul::point<i32> Window::position() const { return platform::pd.wcall.get_window_position(_data); }
+    acul::ipoint32 Window::position() const { return platform::pd.wcall.get_window_position(_data); }
 
-    void Window::position(acul::point<i32> position) { platform::pd.wcall.set_window_position(_data, position); }
+    void Window::position(acul::ipoint32 position) { platform::pd.wcall.set_window_position(_data, position); }
 
     void Window::center_window() { platform::pd.wcall.center_window(_data); }
 
@@ -259,13 +264,15 @@ namespace awin
 
     void wait_events_timeout() { platform::pd.pcall.wait_events_timeout(); }
 
+    void set_timeout(f64 timeout) { platform::g_env->timeout = timeout; }
+
     void push_empty_event() { platform::pd.pcall.push_empty_event(); }
 
     f32 get_dpi(const Window &window) { return platform::pd.pcall.get_dpi(get_window_data(window)); }
 
-    acul::point<i32> get_window_size(const Window &window) { return platform::pd.pcall.get_window_size(window); }
+    acul::ipoint32 get_window_size(const Window &window) { return platform::pd.pcall.get_window_size(window); }
 
-    acul::point<i32> get_window_size_origin(const Window &window) { return get_window_size(window); }
+    acul::ipoint32 get_window_size_origin(const Window &window) { return get_window_size(window); }
 
     acul::string get_clipboard_string(const Window &window) { return platform::pd.pcall.get_clipboard_string(); }
 
@@ -280,6 +287,8 @@ namespace awin
     }
 
     int native_access::get_backend_type() { return platform::pd.backend_type; }
+
+    WindowFlags get_window_flags(const Window &window) { return get_window_data(window)->flags; }
 
     Cursor Cursor::create(Type type) { return {platform::pd.ccall.create(type)}; }
 

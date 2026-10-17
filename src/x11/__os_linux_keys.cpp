@@ -1024,7 +1024,7 @@ namespace awin::platform::x11
             if (!out.empty()) break;
         }
 
-        if (out.empty()) AWIN_LOG_ERROR("Failed to convert X11 selection to UTF-8 string");
+        if (out.empty()) AWIN_LOG_ERROR("failed to convert X11 selection to UTF-8 string");
 
         return out;
     }
@@ -1037,7 +1037,7 @@ namespace awin::platform::x11
         auto &xlib = g_ctx->xlib;
         xlib.XSetSelectionOwner(g_ctx->display, g_ctx->select_atoms.CLIPBOARD, g_ctx->helper_window, CurrentTime);
         if (xlib.XGetSelectionOwner(g_ctx->display, g_ctx->select_atoms.CLIPBOARD) != g_ctx->helper_window)
-            AWIN_LOG_ERROR("X11: Failed to become owner of clipboard selection");
+            AWIN_LOG_ERROR("failed to become owner of clipboard selection");
     }
 
     // Translates an X event modifier state mask

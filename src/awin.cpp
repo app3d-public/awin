@@ -83,7 +83,7 @@ namespace awin
     void destroy_library()
     {
         assert(platform::g_env);
-        AWIN_LOG_INFO("Destroying Window library");
+        AWIN_LOG_INFO("destroying window library");
         if (platform::g_env->next_window_background_hint)
         {
             acul::release(platform::g_env->next_window_background_hint);
@@ -105,7 +105,7 @@ namespace awin
     {
         if (std::isnan(time) || time < 0.0 || time > 18446744073.0)
         {
-            AWIN_LOG_ERROR("Invalid time value: %f", time);
+            AWIN_LOG_ERROR("invalid time value: %f", time);
             return;
         }
         platform::g_env->timer.offset =

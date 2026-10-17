@@ -1,7 +1,7 @@
 #pragma once
 
 #include <acul/lut_table.hpp>
-#include <acul/point.hpp>
+#include <acul/pair.hpp>
 #include <acul/string/string.hpp>
 #include "../env.hpp"
 #include "../linux_pd.hpp"
@@ -248,7 +248,7 @@ namespace awin::platform::x11
         XContext context;
         bool utf8 = false;
         XIM im;
-        acul::point<f32> dpi;
+        acul::fpoint32 dpi;
         int empty_pipe[2];
         int error_code;
         XErrorHandler error_handler = NULL;
@@ -281,7 +281,7 @@ namespace awin::platform::x11
         g_ctx->error_code = ev->error_code;
         char buf[128];
         g_ctx->xlib.XGetErrorText(g_ctx->display, ev->error_code, buf, sizeof(buf));
-        AWIN_LOG_ERROR("X11 Error: code=%d (%s), req=%d.%d, res=0x%lx", ev->error_code, buf, ev->request_code,
+        AWIN_LOG_ERROR("error: code=%d (%s), req=%d.%d, res=0x%lx", ev->error_code, buf, ev->request_code,
                        ev->minor_code, ev->resourceid);
         return 0;
     }

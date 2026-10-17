@@ -281,18 +281,18 @@ namespace awin
 
     struct Image
     {
-        acul::point<int> dimenstions;
+        acul::ipoint32 dimenstions;
         const void *pixels;
     };
 
     struct WindowData
     {
         Window *owner;
-        acul::point<i32> dimenstions;
+        acul::ipoint32 dimenstions;
         WindowFlags flags;
         WindowStateFlags state_flags{WindowStateFlagBits::accepts_surface_update};
         const Monitor *active_monitor = nullptr;
-        acul::point<i32> resize_limit{0, 0};
+        acul::ipoint32 resize_limit{0, 0};
         io::KeyPressState keys[io::Key::last + 1];
         Cursor *cursor{NULL};
     };
