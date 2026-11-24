@@ -221,7 +221,7 @@ namespace awin
                     update_primary_screen_cache();
                     if (window->flags & WindowFlagBits::fullscreen)
                     {
-                        SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, ctx.screen.x, ctx.screen.y, SWP_SHOWWINDOW);
+                        SetWindowPos(hwnd, HWND_NOTOPMOST, 0, 0, ctx.screen.x, ctx.screen.y, SWP_SHOWWINDOW);
                         return 0;
                     }
                     if (is_borderless_resizable(window))
@@ -811,7 +811,7 @@ namespace awin
         auto *wd = (platform::Win32WindowData *)_data;
         wd->flags |= WindowFlagBits::fullscreen;
         SetWindowLongPtr(wd->hwnd, GWL_STYLE, WS_VISIBLE | WS_POPUP);
-        SetWindowPos(wd->hwnd, HWND_TOPMOST, 0, 0, platform::ctx.screen.x, platform::ctx.screen.y, SWP_SHOWWINDOW);
+        SetWindowPos(wd->hwnd, HWND_NOTOPMOST, 0, 0, platform::ctx.screen.x, platform::ctx.screen.y, SWP_SHOWWINDOW);
     }
 
     void Window::disable_fullscreen()
